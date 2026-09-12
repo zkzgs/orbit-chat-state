@@ -22,6 +22,8 @@ let pendingAttachment = null;
 let toastTimer = null;
 let requestController = null;
 let imageHistory = [];
+let editingMessageId = null;
+let imageReference = null;
 
 const IMAGE_DB_NAME = 'orbit-chat-images-v1';
 const IMAGE_STORE_NAME = 'generations';
@@ -177,14 +179,43 @@ function renderMessages() {
   $('#welcomePanel').hidden = hasMessages;
   list.innerHTML = conversation.messages.map((message) => {
     const image = message.image ? `<img class="message-image" src="${message.image}" alt="用户上传的图片">` : '';
-    return `<article class="message ${message.role}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div><div class="message-text">${escapeHtml(message.content)}</div>${image}<div class="message-actions"><button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button></div></div></article>`;
+    const editAction = message.role === 'user' ? `<button class="message-action edit-message" data-message-id="${message.id}">修改</button>` : '';
+    return `<article class="message ${message.role}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div><div class="message-text">${escapeHtml(message.content)}</div>${image}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button></div></div></article>`;
   }).join('');
   $$('.copy-message').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard?.writeText(decodeURIComponent(button.dataset.message));
     showToast('已复制到剪贴板');
   }));
+  $$('.edit-message').forEach((button) => button.addEventListener('click', () => beginMessageEdit(button.dataset.messageId)));
   const stage = $('.content-stage');
   if (hasMessages) requestAnimationFrame(() => { stage.scrollTop = stage.scrollHeight; });
+}
+
+function beginMessageEdit(messageId) {
+  const message = activeConversation().messages.find((entry) => entry.id === messageId);
+  if (!message) return;
+  editingMessageId = messageId;
+  $('#messageInput').value = message.content;
+  autoResizeTextarea($('#messageInput'));
+  clearAttachment();
+  if (message.image) setChatAttachment(message.image, '原消息图片');
+  $('#editingBanner').hidden = false;
+  $('#messageInput').focus();
+}
+
+function cancelMessageEdit() {
+  editingMessageId = null;
+  $('#editingBanner').hidden = true;
+  $('#messageInput').value = '';
+  autoResizeTextarea($('#messageInput'));
+  clearAttachment();
+}
+
+function setChatAttachment(data, name) {
+  pendingAttachment = { data, name };
+  $('#attachmentPreview').hidden = false;
+  $('#attachmentPreview').innerHTML = `<img src="${data}" alt="待发送的图片"><button type="button" class="remove-attachment" aria-label="移除图片">×</button>`;
+  $('.remove-attachment').addEventListener('click', clearAttachment);
 }
 
 function renderConnection(status = '') {
@@ -228,9 +259,10 @@ function addMessage(message) {
 }
 
 function buildApiEndpoint(input, suffix) {
-  const value = input.trim().replace(/\/$/, '');
+  let value = input.trim().replace(/\/$/, '');
   if (!value) return '';
   if (value.endsWith(suffix)) return value;
+  value = value.replace(/\/(chat\/completions|images\/generations|images\/edits)$/, '');
   if (value.endsWith('/v1') || value.endsWith('/api')) return `${value}${suffix}`;
   return value;
 }
@@ -260,6 +292,14 @@ async function sendMessage() {
   input.value = '';
   autoResizeTextarea(input);
   clearAttachment();
+  if (editingMessageId) {
+    const conversation = activeConversation();
+    const editIndex = conversation.messages.findIndex((message) => message.id === editingMessageId);
+    if (editIndex >= 0) conversation.messages.splice(editIndex);
+    editingMessageId = null;
+    $('#editingBanner').hidden = true;
+    persist();
+  }
   addMessage(createMessage('user', content || '请分析这张图片', attachment?.data || ''));
   $('#sendButton').disabled = true;
   $('#typingIndicator').hidden = false;
@@ -328,8 +368,21 @@ async function generateImage() {
       await new Promise((resolve) => setTimeout(resolve, 1100));
       showDemoImage(prompt);
     } else {
-      const endpoint = buildApiEndpoint(state.settings.imageBaseUrl, '/images/generations');
-      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.imageApiKey}` }, body: JSON.stringify({ model: state.settings.imageModel, prompt, size: ratioToSize($('#imageRatio').value) }) });
+      const hasReference = Boolean(imageReference);
+      const endpoint = buildApiEndpoint(state.settings.imageBaseUrl, hasReference ? '/images/edits' : '/images/generations');
+      const request = { model: state.settings.imageModel, prompt, size: ratioToSize($('#imageRatio').value) };
+      let fetchOptions;
+      if (hasReference) {
+        const form = new FormData();
+        form.append('model', request.model);
+        form.append('prompt', request.prompt);
+        form.append('size', request.size);
+        form.append('image', imageReference.file, imageReference.file.name);
+        fetchOptions = { method: 'POST', headers: { Authorization: `Bearer ${state.settings.imageApiKey}` }, body: form };
+      } else {
+        fetchOptions = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.imageApiKey}` }, body: JSON.stringify(request) };
+      }
+      const response = await fetch(endpoint, fetchOptions);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
       const imageData = payload?.data?.[0]?.url || (payload?.data?.[0]?.b64_json ? `data:image/png;base64,${payload.data[0].b64_json}` : '');
@@ -417,6 +470,26 @@ function showDemoImage(prompt) {
   showImage(src);
   saveGeneratedImage(src, prompt);
   showToast('已生成演示预览, 配置生图接口后可获得真实图片');
+}
+
+function handleImageReference(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    imageReference = { file, data: reader.result };
+    $('#imageReferencePreview').hidden = false;
+    $('#imageReferencePreview').innerHTML = `<img src="${reader.result}" alt="生图参考图"><button type="button" class="remove-reference" aria-label="移除参考图">×</button>`;
+    $('.remove-reference').addEventListener('click', clearImageReference);
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function clearImageReference() {
+  imageReference = null;
+  $('#imageReferencePreview').hidden = true;
+  $('#imageReferencePreview').innerHTML = '';
 }
 
 function openSettings() {
@@ -524,6 +597,8 @@ function bindEvents() {
   $('#sendButton').addEventListener('click', sendMessage);
   $('#generateImage').addEventListener('click', generateImage);
   $('#imageUpload').addEventListener('change', handleAttachment);
+  $('#imageReferenceUpload').addEventListener('change', handleImageReference);
+  $('#cancelEdit').addEventListener('click', cancelMessageEdit);
   $('#openSidebar').addEventListener('click', () => $('#sidebar').classList.add('open'));
   $('#closeSidebar').addEventListener('click', () => $('#sidebar').classList.remove('open'));
   $('#messageInput').addEventListener('input', (event) => autoResizeTextarea(event.target));
