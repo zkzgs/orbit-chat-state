@@ -142,7 +142,7 @@ function renderImageHistory() {
   if (!section || !list) return;
   section.hidden = imageHistory.length === 0;
   $('#imageHistoryCount').textContent = imageHistory.length;
-  list.innerHTML = imageHistory.map((item) => `<article class="history-item"><button class="history-delete" data-history-id="${item.id}" title="删除记录" aria-label="删除记录">×</button><button class="history-image-button" data-history-image="${item.id}" aria-label="查看生成图片"><img src="${item.src}" alt="${escapeHtml(item.prompt)}"></button><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(item.prompt)}</div><time class="history-item-time">${formatTime(item.createdAt)}</time></div><div class="history-actions"><button data-history-action="config" data-history-id="${item.id}" title="复制提示词, 参数和原参考图">复制配置</button><button data-history-action="edit" data-history-id="${item.id}" title="只把输出图带到新的生图任务">编辑输出</button><button data-history-action="new-chat" data-history-id="${item.id}">发到对话</button></div></article>`).join('');
+  list.innerHTML = imageHistory.map((item) => `<article class="history-item"><button class="history-delete" data-history-id="${item.id}" title="删除记录" aria-label="删除记录">×</button><button class="history-image-button" data-history-image="${item.id}" aria-label="查看生成图片"><img src="${item.src}" alt="${escapeHtml(item.prompt)}"></button><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(item.prompt)}</div><time class="history-item-time">${formatTime(item.createdAt)}</time></div><div class="history-actions"><button data-history-action="config" data-history-id="${item.id}" title="复制提示词, 参数和原参考图">复制配置</button><button data-history-action="copy" data-history-id="${item.id}">复制图片</button><button data-history-action="edit" data-history-id="${item.id}" title="只把输出图带到新的生图任务">编辑输出</button><button data-history-action="new-chat" data-history-id="${item.id}">发到对话</button></div></article>`).join('');
   $$('.history-delete').forEach((button) => button.addEventListener('click', () => deleteImageHistory(button.dataset.historyId)));
   $$('.history-image-button').forEach((button) => button.addEventListener('click', () => {
     const item = imageHistory.find((entry) => entry.id === button.dataset.historyImage);
@@ -152,6 +152,7 @@ function renderImageHistory() {
     const item = imageHistory.find((entry) => entry.id === button.dataset.historyId);
     if (!item) return;
     if (button.dataset.historyAction === 'config') applyImageConfig(item);
+    if (button.dataset.historyAction === 'copy') copyImageToClipboard(item.src);
     if (button.dataset.historyAction === 'edit') editGeneratedImage(item);
     if (button.dataset.historyAction === 'new-chat') copyImageToNewChat(item);
   }));
@@ -537,21 +538,6 @@ function ratioToSize(ratio) {
   return ({ auto: 'auto', '1:1': '1024x1024', '16:9': '1536x1024', '9:16': '1024x1536' })[ratio] || 'auto';
 }
 
-function showImage(src, prompt = '', item = null) {
-  const result = $('#imageResult');
-  currentImage = { ...(item || {}), src, prompt: prompt || item?.prompt || '' };
-  result.classList.add('has-image');
-  result.innerHTML = `<button class="generated-image-button" id="generatedImageButton" aria-label="查看生成图片全图"><img class="generated-image" src="${src}" alt="生成的图片"></button><div class="image-result-toolbar"><button data-result-action="lightbox">查看全图</button><button data-result-action="config" title="复制提示词, 参数和原参考图">复制配置</button><button data-result-action="copy">复制图片</button><button data-result-action="new-chat">发到对话</button><button data-result-action="edit" title="只把输出图带到新的生图任务">编辑输出</button></div>`;
-  $('#generatedImageButton').addEventListener('click', () => openLightbox(src, currentImage.prompt, currentImage));
-  $$('[data-result-action]').forEach((button) => button.addEventListener('click', () => {
-    if (button.dataset.resultAction === 'lightbox') openLightbox(src, currentImage.prompt, currentImage);
-    if (button.dataset.resultAction === 'config') applyImageConfig(currentImage);
-    if (button.dataset.resultAction === 'copy') copyImageToClipboard(src);
-    if (button.dataset.resultAction === 'new-chat') copyImageToNewChat(currentImage);
-    if (button.dataset.resultAction === 'edit') editGeneratedImage(currentImage);
-  }));
-}
-
 async function editGeneratedImage(item) {
   try {
     const dataUrl = item.src.startsWith('data:') ? item.src : await downloadImageAsDataUrl(item.src);
@@ -577,32 +563,36 @@ function dataUrlToFile(dataUrl, name) {
   return new File([bytes], name, { type: mime });
 }
 
-async function saveGeneratedImage(src, prompt, config = getImageConfig(), referenceSources = imageReferences.map((reference) => reference.data)) {
-  let storedSrc = src;
-  if (!src.startsWith('data:')) {
+async function saveGeneratedImage(record) {
+  await saveImageHistory(record);
+  let storedRecord = record;
+  if (!record.src.startsWith('data:')) {
     try {
-      storedSrc = await downloadImageAsDataUrl(src);
+      const storedSrc = await downloadImageAsDataUrl(record.src);
+      storedRecord = { ...record, src: storedSrc };
+      await saveImageHistory(storedRecord);
     } catch (error) {
       // 某些生图服务的临时地址禁止跨域下载, 仍保留原地址供当前会话查看
     }
   }
-  const record = { id: createId(), src: storedSrc, prompt, config, referenceSources, type: 'generation', createdAt: Date.now() };
-  await saveImageHistory(record);
-  storedImages.set(record.id, record);
-  imageHistory.unshift(record);
+  storedImages.set(storedRecord.id, storedRecord);
+  const index = imageHistory.findIndex((item) => item.id === storedRecord.id);
+  if (index >= 0) imageHistory[index] = storedRecord;
+  if (currentImage?.id === storedRecord.id) currentImage = storedRecord;
   renderImageHistory();
-  return record;
+  return storedRecord;
 }
 
 function presentGeneratedImages(imageDataList, prompt, config, referenceSources) {
-  const firstSrc = imageDataList[0];
-  showImage(firstSrc, prompt, { config, referenceSources });
+  const createdAt = Date.now();
+  const records = imageDataList.map((src, index) => ({ id: createId(), src, prompt, config, referenceSources, type: 'generation', createdAt: createdAt - index }));
+  imageHistory.unshift(...records);
+  records.forEach((record) => storedImages.set(record.id, record));
+  renderImageHistory();
 
-  // 本地持久化不阻塞预览, 避免大图写入时界面一直显示生成中
-  Promise.allSettled(imageDataList.map((src) => saveGeneratedImage(src, prompt, config, referenceSources))).then((results) => {
-    const firstRecord = results[0]?.status === 'fulfilled' ? results[0].value : null;
-    if (firstRecord && currentImage?.src === firstSrc) currentImage = firstRecord;
-    if (results.some((result) => result.status === 'rejected')) showToast('图片已显示, 但部分图片无法写入本地历史');
+  // 缩略图先显示, 大图继续在后台写入本地历史
+  Promise.allSettled(records.map(saveGeneratedImage)).then((results) => {
+    if (results.some((result) => result.status === 'rejected')) showToast('图片已生成, 但部分图片无法写入本地历史');
   });
 }
 
