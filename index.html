@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101827">
+  <title>Orbit Chat - 个人 AI 工作台</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="会话侧栏">
+      <div class="brand-row">
+        <div class="brand-mark">O</div>
+        <div>
+          <div class="brand-name">Orbit Chat</div>
+          <div class="brand-caption">个人 AI 工作台</div>
+        </div>
+        <button class="icon-button mobile-only" id="closeSidebar" title="关闭侧栏" aria-label="关闭侧栏">×</button>
+      </div>
+
+      <button class="new-chat-button" id="newChatButton"><span class="button-glyph">＋</span> 新建对话 <span class="shortcut-hint">⌘ K</span></button>
+
+      <div class="sidebar-section-heading">
+        <span>最近对话</span>
+        <span class="conversation-count" id="conversationCount">0</span>
+      </div>
+      <div class="conversation-list" id="conversationList"></div>
+
+      <div class="sidebar-footer">
+        <div class="privacy-note"><span class="status-dot"></span><span>数据仅保存在本机</span></div>
+        <button class="settings-link" id="openSettings"><span class="settings-symbol">⚙</span> 接口与偏好设置</button>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div class="mobile-brand-row">
+          <button class="icon-button" id="openSidebar" title="打开侧栏" aria-label="打开侧栏">☰</button>
+          <div class="mobile-title">Orbit Chat</div>
+        </div>
+        <div class="topbar-context">
+          <div class="eyebrow">当前工作区</div>
+          <div class="workspace-title" id="workspaceTitle">新对话</div>
+        </div>
+        <div class="topbar-actions">
+          <div class="connection-pill" id="connectionPill"><span class="connection-dot"></span><span id="connectionText">演示模式</span></div>
+          <button class="icon-button" id="clearConversation" title="清空当前对话" aria-label="清空当前对话">⌫</button>
+          <button class="avatar-button" id="topbarSettings" title="打开设置" aria-label="打开设置">ME</button>
+        </div>
+      </header>
+
+      <div class="mode-switcher" role="tablist" aria-label="工作模式">
+        <button class="mode-tab active" data-view="chat" role="tab" aria-selected="true"><span>对话</span><small>Chat</small></button>
+        <button class="mode-tab" data-view="image" role="tab" aria-selected="false"><span>生图</span><small>Image</small></button>
+      </div>
+
+      <section class="content-stage">
+        <div class="chat-view" id="chatView">
+          <div class="welcome-panel" id="welcomePanel">
+            <div class="welcome-kicker"><span class="sparkle">✦</span> Personal AI workspace</div>
+            <h1>把想法, 变成<br><em>下一步行动</em></h1>
+            <p>连接你自己的 GPT 接口, 保留真正重要的上下文<br>图片理解和生图, 也在同一个工作区完成</p>
+            <div class="quick-actions">
+              <button class="quick-action" data-prompt="帮我把下面这段内容整理成一份清晰的行动清单:"><span class="quick-icon">↗</span><span>整理成行动清单</span></button>
+              <button class="quick-action" data-prompt="用产品经理的视角, 帮我分析这个想法的优先级, 风险和下一步:"><span class="quick-icon">◒</span><span>分析一个想法</span></button>
+              <button class="quick-action" data-prompt="请帮我把这段话改得更自然, 简洁, 专业:"><span class="quick-icon">Aa</span><span>润色一段文字</span></button>
+            </div>
+          </div>
+          <div class="message-list" id="messageList" aria-live="polite"></div>
+          <div class="typing-indicator" id="typingIndicator" hidden><span></span><span></span><span></span><em>正在思考</em></div>
+        </div>
+
+        <div class="image-view" id="imageView" hidden>
+          <div class="image-workspace">
+            <div class="image-copy">
+              <div class="welcome-kicker"><span class="sparkle">✦</span> Image studio</div>
+              <h2>把描述, 变成<br><em>一张画面</em></h2>
+              <p>使用独立的生图接口和密钥, 你可以在设置里切换服务商和模型</p>
+            </div>
+            <div class="image-generator-panel">
+              <div class="panel-label-row"><span>描述你想要的画面</span><span class="panel-label-hint">支持中文</span></div>
+              <textarea id="imagePrompt" rows="4" placeholder="例如: 雨后的上海街头, 霓虹倒影, 35mm 胶片质感, 电影感构图"></textarea>
+              <div class="image-controls">
+                <label class="select-control"><span>比例</span><select id="imageRatio"><option value="1:1">1:1 方形</option><option value="16:9">16:9 横向</option><option value="9:16">9:16 竖向</option></select></label>
+                <button class="primary-button" id="generateImage"><span>✦</span> 生成图片</button>
+              </div>
+            </div>
+          </div>
+          <div class="image-result" id="imageResult">
+            <div class="result-placeholder"><div class="result-placeholder-mark">✦</div><span>生成结果会显示在这里</span><small>你可以先在设置里填写独立的生图接口</small></div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="composer-wrap" id="composerWrap">
+        <div class="context-toolbar">
+          <div class="context-mode" role="group" aria-label="上下文策略">
+            <span class="toolbar-label">上下文</span>
+            <button class="context-option active" data-context="client">客户端拼接</button>
+            <button class="context-option" data-context="single">单轮请求</button>
+          </div>
+          <div class="model-badge" id="modelBadge">gpt-4o-mini</div>
+        </div>
+        <div class="composer-box" id="composerBox">
+          <div class="attachment-preview" id="attachmentPreview" hidden></div>
+          <textarea id="messageInput" rows="1" placeholder="给 Orbit Chat 发消息..." aria-label="消息输入框"></textarea>
+          <div class="composer-actions">
+            <div class="composer-left-actions">
+              <label class="icon-button composer-icon" title="上传图片" aria-label="上传图片"><span>⊕</span><input type="file" id="imageUpload" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+              <span class="composer-hint">Enter 发送 · Shift + Enter 换行</span>
+            </div>
+            <button class="send-button" id="sendButton" title="发送消息" aria-label="发送消息"><span>↑</span></button>
+          </div>
+        </div>
+        <div class="composer-footnote">AI 可能会犯错, 请核对重要信息 <span>·</span> <button id="openSettingsFromFootnote">配置你的接口</button></div>
+      </footer>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="settingsBackdrop" hidden>
+    <section class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="modal-header"><div><div class="eyebrow">Workspace setup</div><h2 id="settingsTitle">接口与偏好设置</h2></div><button class="icon-button" id="closeSettings" title="关闭设置" aria-label="关闭设置">×</button></div>
+      <div class="settings-scroll">
+        <div class="settings-section">
+          <div class="section-title"><span class="section-number">01</span><div><strong>对话接口</strong><small>兼容 OpenAI Chat Completions 格式</small></div></div>
+          <label class="field-label">接口地址<input id="chatBaseUrl" type="url" placeholder="https://api.openai.com/v1/chat/completions"></label>
+          <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="chatApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="chatApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="chatModel" type="text" placeholder="gpt-4o-mini"></label></div>
+        </div>
+        <div class="settings-section">
+          <div class="section-title"><span class="section-number">02</span><div><strong>生图接口</strong><small>可以使用和对话不同的服务商或密钥</small></div></div>
+          <label class="field-label">接口地址<input id="imageBaseUrl" type="url" placeholder="https://api.openai.com/v1/images/generations"></label>
+          <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="imageApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="imageApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="imageModel" type="text" placeholder="gpt-image-1"></label></div>
+        </div>
+        <div class="settings-section compact-section">
+          <div class="section-title"><span class="section-number">03</span><div><strong>本地偏好</strong><small>不会发送到任何接口</small></div></div>
+          <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手"></textarea></label>
+          <label class="toggle-row"><span><strong>演示模式</strong><small>不填写 Key 时也能体验完整交互</small></span><input type="checkbox" id="demoMode"><span class="toggle-ui"></span></label>
+        </div>
+        <div class="security-callout"><span>⌁</span><p>Key 只保存在当前浏览器的 localStorage。部署到公开环境前, 建议通过自己的后端代理请求, 避免在前端暴露密钥</p></div>
+      </div>
+      <div class="modal-footer"><button class="text-button danger" id="resetLocalData">清除本地数据</button><div><button class="secondary-button" id="cancelSettings">取消</button><button class="primary-button" id="saveSettings">保存设置</button></div></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
