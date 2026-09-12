@@ -25,12 +25,12 @@
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; background: #0c131f; color: var(--ink); font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; }
+body { display: flex; flex-direction: column; margin: 0; background: #0c131f; color: var(--ink); font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; }
 button, input, textarea, select { font: inherit; }
 button { color: inherit; cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.app-shell { height: 100%; display: flex; overflow: hidden; background: #0e1622; }
+.app-shell { min-height: 0; flex: 1; display: flex; overflow: hidden; background: #0e1622; }
 .sidebar { width: 274px; flex: 0 0 274px; height: 100%; display: flex; flex-direction: column; padding: 24px 14px 16px; background: #0d1623; border-right: 1px solid var(--line); }
 .brand-row { display: flex; align-items: center; gap: 10px; padding: 0 10px 25px; }
 .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: var(--accent); color: #27320c; font-weight: 800; font-size: 16px; box-shadow: 0 0 0 5px rgba(230,243,107,.08); }
@@ -65,11 +65,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .settings-symbol { display: inline-block; margin-right: 8px; font-size: 14px; }
 
 .main-panel { min-width: 0; flex: 1; display: flex; flex-direction: column; background: #101927; }
-.topbar { height: 75px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid var(--line); }
-.topbar-context { min-width: 0; }
+.topbar { position: relative; z-index: 10; flex: 0 0 75px; height: 75px; display: flex; align-items: center; padding: 0 32px; border-bottom: 1px solid var(--line); background: #101927; }
+.topbar-brand { width: 274px; flex: 0 0 274px; display: flex; align-items: center; gap: 10px; }
+.topbar-context { min-width: 0; margin-left: 32px; }
 .eyebrow { color: var(--muted-2); text-transform: uppercase; letter-spacing: .11em; font-size: 10px; font-weight: 650; }
 .workspace-title { margin-top: 4px; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.topbar-actions { display: flex; align-items: center; gap: 12px; }
+.topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-left: auto; }
 .connection-pill { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 20px; color: var(--muted); font-size: 11px; }
 .connection-pill.connected .connection-dot { background: var(--accent); box-shadow: 0 0 0 3px rgba(230,243,107,.1); }
 .connection-pill.loading .connection-dot { background: var(--warm); box-shadow: 0 0 0 3px rgba(244,185,107,.1); }
@@ -78,8 +79,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .avatar-button { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: #253347; color: #c5d5e8; font-size: 10px; letter-spacing: .03em; }
 .mobile-brand-row { display: none; }
 
-.mode-switcher { height: 53px; display: flex; align-items: end; gap: 24px; padding: 0 32px; border-bottom: 1px solid var(--line); }
-.mode-tab { position: relative; display: flex; align-items: baseline; gap: 8px; height: 53px; padding: 0 1px; border: 0; background: transparent; color: var(--muted-2); }
+.mode-switcher { position: absolute; top: 0; left: 50%; height: 100%; display: flex; align-items: center; gap: 20px; padding: 0 14px; transform: translateX(-50%); }
+.mode-tab { position: relative; display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 1px; border: 0; background: transparent; color: var(--muted-2); }
 .mode-tab span { font-size: 13px; font-weight: 600; }
 .mode-tab small { font-size: 10px; letter-spacing: .05em; }
 .mode-tab.active { color: var(--ink); }
@@ -128,7 +129,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .context-option { padding: 4px 7px; border: 0; border-radius: 4px; background: transparent; color: var(--muted-2); font-size: 11px; }
 .context-option.active { background: rgba(116,212,203,.11); color: var(--cyan); }
 .context-description { margin-left: 7px; color: var(--muted-2); font-size: 10px; }
-.model-badge { padding: 4px 7px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); font-size: 10px; }
+.chat-quick-settings { display: flex; align-items: center; gap: 8px; }
+.quick-setting { display: flex; align-items: center; gap: 4px; color: var(--muted-2); font-size: 10px; }
+.quick-setting input, .quick-setting select { height: 27px; min-width: 0; padding: 0 7px; border: 1px solid var(--line); border-radius: 4px; outline: 0; background: #101a28; color: var(--muted); font-size: 10px; }
+.quick-setting input { width: 132px; }
+.quick-setting select { width: 70px; }
+.quick-setting input:focus, .quick-setting select:focus { border-color: rgba(116,212,203,.55); color: var(--ink); }
 .composer-box { padding: 12px 13px 9px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--panel-soft); box-shadow: 0 10px 32px rgba(0,0,0,.12); transition: .2s ease; }
 .composer-box:focus-within { border-color: rgba(116,212,203,.45); box-shadow: 0 0 0 3px rgba(116,212,203,.06); }
 .composer-box textarea { width: 100%; min-height: 28px; max-height: 150px; resize: none; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); line-height: 1.55; }
@@ -159,17 +165,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .history-image-button { display: block; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; }
 .history-delete { z-index: 1; }
 
-.modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 18px; background: rgba(2,7,13,.72); backdrop-filter: blur(8px); }.modal-backdrop[hidden], .image-view[hidden], .chat-view[hidden] { display: none; }.settings-modal { width: min(620px, 100%); max-height: min(760px, 94vh); display: flex; flex-direction: column; border: 1px solid var(--line-strong); border-radius: 11px; background: #111b29; box-shadow: var(--shadow); }.modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 25px 19px; border-bottom: 1px solid var(--line); }.modal-header h2 { margin: 6px 0 0; font-size: 21px; letter-spacing: -.03em; }.settings-scroll { overflow-y: auto; padding: 2px 25px; }.settings-section { padding: 22px 0; border-bottom: 1px solid var(--line); }.compact-section { border-bottom: 0; }.section-title { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 17px; }.section-number { color: var(--accent); font-family: ui-monospace, monospace; font-size: 11px; }.section-title strong { display: block; font-size: 13px; }.section-title small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.field-label { display: flex; flex-direction: column; gap: 6px; margin-bottom: 13px; color: var(--muted); font-size: 11px; }.field-label input, .field-label textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; }.field-label input:focus, .field-label textarea:focus { border-color: rgba(116,212,203,.55); }.field-label textarea { resize: vertical; line-height: 1.5; }.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }.input-with-action { position: relative; }.input-with-action input { padding-right: 52px; }.show-key { position: absolute; top: 50%; right: 7px; transform: translateY(-50%); padding: 3px; border: 0; background: transparent; color: var(--muted-2); font-size: 10px; }.show-key:hover { color: var(--ink); }.toggle-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }.toggle-row > span:first-child strong { display: block; color: var(--ink); font-size: 12px; }.toggle-row > span:first-child small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.toggle-row input { position: absolute; opacity: 0; pointer-events: none; }.toggle-ui { position: relative; width: 35px; height: 20px; flex: 0 0 auto; border-radius: 10px; background: #28364a; transition: .2s; }.toggle-ui::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #8391a3; transition: .2s; }.toggle-row input:checked + .toggle-ui { background: rgba(230,243,107,.55); }.toggle-row input:checked + .toggle-ui::after { left: 18px; background: var(--accent); }.security-callout { display: flex; gap: 9px; margin: 3px 0 20px; padding: 10px 11px; border: 1px solid rgba(116,212,203,.12); border-radius: 6px; background: rgba(116,212,203,.04); color: var(--muted); }.security-callout span { color: var(--cyan); }.security-callout p { margin: 0; font-size: 10px; line-height: 1.55; }.modal-footer { display: flex; align-items: center; justify-content: space-between; padding: 16px 25px; border-top: 1px solid var(--line); }.modal-footer > div { display: flex; gap: 8px; }.text-button { padding: 5px 0; border: 0; background: transparent; font-size: 11px; }.danger { color: var(--danger); }.danger:hover { text-decoration: underline; }.toast { position: fixed; right: 22px; bottom: 22px; z-index: 30; max-width: 320px; padding: 10px 13px; border: 1px solid var(--line-strong); border-radius: 6px; background: #1b293a; color: var(--ink); font-size: 12px; box-shadow: var(--shadow); opacity: 0; transform: translateY(8px); pointer-events: none; transition: .2s ease; }.toast.show { opacity: 1; transform: translateY(0); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 18px; background: rgba(2,7,13,.72); backdrop-filter: blur(8px); }.modal-backdrop[hidden], .image-view[hidden], .chat-view[hidden] { display: none; }.settings-modal { width: min(620px, 100%); max-height: min(760px, 94vh); display: flex; flex-direction: column; border: 1px solid var(--line-strong); border-radius: 11px; background: #111b29; box-shadow: var(--shadow); }.modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 25px 19px; border-bottom: 1px solid var(--line); }.modal-header h2 { margin: 6px 0 0; font-size: 21px; letter-spacing: -.03em; }.settings-scroll { overflow-y: auto; padding: 2px 25px; }.settings-section { padding: 22px 0; border-bottom: 1px solid var(--line); }.compact-section { border-bottom: 0; }.section-title { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 17px; }.section-number { color: var(--accent); font-family: ui-monospace, monospace; font-size: 11px; }.section-title strong { display: block; font-size: 13px; }.section-title small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.field-label { display: flex; flex-direction: column; gap: 6px; margin-bottom: 13px; color: var(--muted); font-size: 11px; }.field-label input, .field-label textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; }.field-label input:focus, .field-label textarea:focus { border-color: rgba(116,212,203,.55); }.field-label textarea { resize: vertical; line-height: 1.5; }.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }.input-with-action { position: relative; }.input-with-action input { padding-right: 52px; }.show-key { position: absolute; top: 50%; right: 7px; transform: translateY(-50%); padding: 3px; border: 0; background: transparent; color: var(--muted-2); font-size: 10px; }.show-key:hover { color: var(--ink); }.toggle-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }.toggle-row > span:first-child strong { display: block; color: var(--ink); font-size: 12px; }.toggle-row > span:first-child small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.toggle-row input { position: absolute; opacity: 0; pointer-events: none; }.toggle-ui { position: relative; width: 35px; height: 20px; flex: 0 0 auto; border-radius: 10px; background: #28364a; transition: .2s; }.toggle-ui::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #8391a3; transition: .2s; }.toggle-row input:checked + .toggle-ui { background: rgba(230,243,107,.55); }.toggle-row input:checked + .toggle-ui::after { left: 18px; background: var(--accent); }.security-callout { display: flex; gap: 9px; margin: 3px 0 20px; padding: 10px 11px; border: 1px solid rgba(116,212,203,.12); border-radius: 6px; background: rgba(116,212,203,.04); color: var(--muted); }.security-callout span { color: var(--cyan); }.security-callout p { margin: 0; font-size: 10px; line-height: 1.55; }.modal-footer { display: flex; align-items: center; justify-content: space-between; padding: 16px 25px; border-top: 1px solid var(--line); }.modal-footer > div { display: flex; gap: 8px; }.text-button { padding: 5px 0; border: 0; background: transparent; font-size: 11px; }.danger { color: var(--danger); }.danger:hover { text-decoration: underline; }.toast { position: fixed; top: 18px; right: 18px; z-index: 60; width: min(380px, calc(100vw - 36px)); display: flex; align-items: flex-start; gap: 10px; padding: 13px 12px 13px 14px; border: 1px solid var(--line-strong); border-left: 3px solid var(--cyan); border-radius: 7px; background: #1b293a; color: var(--ink); font-size: 12px; line-height: 1.5; box-shadow: var(--shadow); opacity: 0; transform: translateX(calc(100% + 24px)); pointer-events: none; transition: .24s ease; }.toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; }.toast.error { border-left-color: var(--danger); }.toast-icon { flex: 0 0 auto; color: var(--cyan); font-size: 14px; line-height: 1.45; }.toast.error .toast-icon { color: var(--danger); }.toast-message { min-width: 0; flex: 1; overflow-wrap: anywhere; }.toast-close { width: 23px; height: 23px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; }.toast-close:hover { background: rgba(255,255,255,.08); color: var(--ink); }
 .field-label-heading { display: flex; align-items: center; justify-content: space-between; }
 .field-label select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; }
 .field-label select:focus { border-color: rgba(116,212,203,.55); }
 .field-help { color: var(--muted-2); font-size: 10px; }
 .field-action { padding: 0; border: 0; background: transparent; color: var(--cyan); font-size: 10px; }
 .field-action:hover { text-decoration: underline; }
+.data-management-actions { display: flex; gap: 8px; }
+.data-management-actions .secondary-button { flex: 1; }
 .mobile-only { display: none; }
 
 @media (max-width: 780px) {
-  .sidebar { position: fixed; z-index: 15; top: 0; bottom: 0; left: 0; width: min(286px, 88vw); transform: translateX(-100%); transition: transform .25s ease; box-shadow: var(--shadow); }.sidebar.open { transform: translateX(0); }.mobile-only { display: grid; margin-left: auto; }.topbar { height: 63px; padding: 0 17px; }.mobile-brand-row { display: flex; align-items: center; gap: 6px; }.mobile-title { font-weight: 700; font-size: 13px; }.topbar-context { display: none; }.connection-pill { display: none; }.mode-switcher { height: 48px; padding: 0 17px; gap: 21px; }.mode-tab { height: 48px; }.chat-view { padding: 42px 20px 20px; }.welcome-panel h1 { font-size: 44px; }.welcome-panel p br { display: none; }.quick-actions { flex-direction: column; align-items: stretch; }.quick-action { justify-content: flex-start; }.composer-wrap { padding: 4px 17px 16px; }.composer-hint, .context-description { display: none; }.image-view { padding: 42px 20px 35px; }.image-workspace { grid-template-columns: 1fr; gap: 28px; }.image-copy h2 { font-size: 44px; }.settings-scroll { padding: 2px 20px; }.modal-header, .modal-footer { padding-left: 20px; padding-right: 20px; }.field-grid { grid-template-columns: 1fr; gap: 0; }.modal-footer { align-items: flex-end; gap: 12px; }.modal-footer > div { flex: 1; justify-content: flex-end; }.modal-footer .primary-button, .modal-footer .secondary-button { padding: 0 10px; }.message { gap: 9px; }.message-avatar { flex-basis: 27px; height: 27px; }.typing-indicator { margin-left: 36px; }.history-delete { opacity: 1; }
+  .sidebar { position: fixed; z-index: 15; top: 63px; bottom: 0; left: 0; width: min(286px, 88vw); height: auto; transform: translateX(-100%); transition: transform .25s ease; box-shadow: var(--shadow); }.sidebar.open { transform: translateX(0); }.mobile-only { display: grid; margin-left: auto; }.topbar { flex-basis: 63px; height: 63px; padding: 0 17px; }.topbar-brand { display: none; }.mobile-brand-row { display: flex; align-items: center; gap: 6px; }.mobile-title { font-weight: 700; font-size: 13px; }.topbar-context { display: none; }.connection-pill { display: none; }.mode-switcher { height: 100%; justify-content: center; gap: 17px; padding: 0 8px; }.mode-tab { height: 100%; }.chat-view { padding: 42px 20px 20px; }.welcome-panel h1 { font-size: 44px; }.welcome-panel p br { display: none; }.quick-actions { flex-direction: column; align-items: stretch; }.quick-action { justify-content: flex-start; }.composer-wrap { padding: 4px 17px 16px; }.composer-hint, .context-description { display: none; }.image-view { padding: 42px 20px 35px; }.image-workspace { grid-template-columns: 1fr; gap: 28px; }.image-copy h2 { font-size: 44px; }.settings-scroll { padding: 2px 20px; }.modal-header, .modal-footer { padding-left: 20px; padding-right: 20px; }.field-grid { grid-template-columns: 1fr; gap: 0; }.modal-footer { align-items: flex-end; gap: 12px; }.modal-footer > div { flex: 1; justify-content: flex-end; }.modal-footer .primary-button, .modal-footer .secondary-button { padding: 0 10px; }.message { gap: 9px; }.message-avatar { flex-basis: 27px; height: 27px; }.typing-indicator { margin-left: 36px; }.history-delete { opacity: 1; }.data-management-actions { flex-direction: column; }
 }
 
 .history-actions button { padding: 5px 7px; border: 1px solid var(--line); border-radius: 4px; background: rgba(255,255,255,.04); color: var(--muted); font-size: 10px; }
@@ -177,7 +185,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .image-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .image-controls .select-control { min-width: 0; }
 .image-controls .select-control select, .image-controls .select-control input { width: 100%; min-width: 0; }
-.image-controls-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 12px; }
+.image-controls-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding-top: 12px; }
+.image-controls-foot .primary-button { flex: 0 0 auto; white-space: nowrap; }
+.image-tasks { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.image-task { display: flex; align-items: flex-start; gap: 8px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 5px; background: rgba(255,255,255,.025); color: var(--muted); font-size: 10px; line-height: 1.45; }
+.image-task-icon { flex: 0 0 auto; color: var(--cyan); font-size: 12px; }
+.image-task.error { border-color: rgba(255,150,150,.35); background: rgba(255,150,150,.06); }
+.image-task.error .image-task-icon { color: var(--danger); }
+.image-task-body { min-width: 0; flex: 1; }
+.image-task-title { color: var(--ink); font-weight: 600; }
+.image-task-detail { margin-top: 2px; overflow-wrap: anywhere; }
+.image-task-close { width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted-2); }
+.image-task-close:hover { background: rgba(255,255,255,.08); color: var(--ink); }
 .count-control input { min-width: 0; padding: 7px 8px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #101a28; color: var(--ink); font-size: 11px; }
 .history-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 0 8px 8px; }
 .image-lightbox { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 22px; background: rgba(2,7,13,.84); backdrop-filter: blur(8px); }
@@ -192,7 +211,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .lightbox-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 @media (max-width: 780px) {
   .image-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .image-controls-foot { align-items: stretch; flex-direction: column; }
+  .image-controls-foot { display: flex; align-items: stretch; flex-direction: column; }
   .image-controls-foot .primary-button { width: 100%; }
   .lightbox-panel { max-height: 92vh; }
   .lightbox-footer { align-items: stretch; flex-direction: column; }
@@ -208,7 +227,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .image-mode .image-history { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); }
 .history-empty { padding: 45px 10px; color: var(--muted-2); text-align: center; font-size: 11px; }
 .image-mode .sidebar { display: none; }
-.image-mode .main-panel { width: 100%; }
 .image-mode .content-stage { overflow: hidden; }
 @media (max-width: 780px) {
   .image-mode .content-stage { overflow-y: auto; }
@@ -221,27 +239,40 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 </style>
 </head>
 <body>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-mark">O</div>
+      <div>
+        <div class="brand-name">Orbit Chat</div>
+        <div class="brand-caption">个人 AI 工作台</div>
+      </div>
+    </div>
+    <div class="mobile-brand-row">
+      <button class="icon-button" id="openSidebar" title="打开侧栏" aria-label="打开侧栏">☰</button>
+      <div class="mobile-title">Orbit Chat</div>
+    </div>
+    <div class="topbar-context">
+      <div class="eyebrow">当前工作区</div>
+      <div class="workspace-title" id="workspaceTitle">新对话</div>
+    </div>
+    <div class="mode-switcher" role="tablist" aria-label="工作模式">
+      <button class="mode-tab active" data-view="chat" role="tab" aria-selected="true"><span>对话</span><small>Chat</small></button>
+      <button class="mode-tab" data-view="image" role="tab" aria-selected="false"><span>生图</span><small>Image</small></button>
+    </div>
+    <div class="topbar-actions">
+      <div class="connection-pill" id="connectionPill"><span class="connection-dot"></span><span id="connectionText">演示模式</span></div>
+      <button class="avatar-button" id="topbarSettings" title="打开设置" aria-label="打开设置">ME</button>
+    </div>
+  </header>
+
   <div class="app-shell">
     <aside class="sidebar" id="sidebar" aria-label="会话侧栏">
-      <div class="brand-row">
-        <div class="brand-mark">O</div>
-        <div>
-          <div class="brand-name">Orbit Chat</div>
-          <div class="brand-caption">个人 AI 工作台</div>
-        </div>
-        <button class="icon-button mobile-only" id="closeSidebar" title="关闭侧栏" aria-label="关闭侧栏">×</button>
-      </div>
-
+      <button class="icon-button mobile-only" id="closeSidebar" title="关闭侧栏" aria-label="关闭侧栏">×</button>
       <button class="new-chat-button" id="newChatButton"><span class="button-glyph">＋</span> 新建对话 <span class="shortcut-hint">⌘ K</span></button>
 
       <div class="sidebar-section-heading">
         <span>最近对话</span>
         <span class="conversation-count" id="conversationCount">0</span>
-      </div>
-      <div class="sidebar-tools">
-        <button class="sidebar-tool" id="exportConversations" title="导出对话记录">导出记录</button>
-        <button class="sidebar-tool" id="importConversations" title="导入对话记录">导入记录</button>
-        <input type="file" id="conversationImportFile" accept="application/json,.json" hidden>
       </div>
       <div class="conversation-list" id="conversationList"></div>
 
@@ -252,27 +283,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
     </aside>
 
     <main class="main-panel">
-      <header class="topbar">
-        <div class="mobile-brand-row">
-          <button class="icon-button" id="openSidebar" title="打开侧栏" aria-label="打开侧栏">☰</button>
-          <div class="mobile-title">Orbit Chat</div>
-        </div>
-        <div class="topbar-context">
-          <div class="eyebrow">当前工作区</div>
-          <div class="workspace-title" id="workspaceTitle">新对话</div>
-        </div>
-        <div class="topbar-actions">
-          <div class="connection-pill" id="connectionPill"><span class="connection-dot"></span><span id="connectionText">演示模式</span></div>
-          <button class="icon-button" id="clearConversation" title="清空当前对话" aria-label="清空当前对话">⌫</button>
-          <button class="avatar-button" id="topbarSettings" title="打开设置" aria-label="打开设置">ME</button>
-        </div>
-      </header>
-
-      <div class="mode-switcher" role="tablist" aria-label="工作模式">
-        <button class="mode-tab active" data-view="chat" role="tab" aria-selected="true"><span>对话</span><small>Chat</small></button>
-        <button class="mode-tab" data-view="image" role="tab" aria-selected="false"><span>生图</span><small>Image</small></button>
-      </div>
-
       <section class="content-stage">
         <div class="chat-view" id="chatView">
           <div class="welcome-panel" id="welcomePanel">
@@ -298,7 +308,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
                 <p>使用独立的生图接口和密钥, 你可以在设置里切换服务商和模型</p>
               </div>
               <div class="image-generator-panel">
-                <div class="panel-label-row"><span>描述你想要的画面</span><span class="panel-label-hint">支持中文</span></div>
+                <div class="panel-label-row"><span>描述你想要的画面</span><span class="panel-label-hint">支持中文, 可粘贴参考图</span></div>
                 <textarea id="imagePrompt" rows="4" placeholder="例如: 雨后的上海街头, 霓虹倒影, 35mm 胶片质感, 电影感构图"></textarea>
                 <div class="reference-row"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><span class="panel-label-hint">最多 16 张, 会发送到图片编辑接口</span></div>
                 <div class="image-reference-preview" id="imageReferencePreview" hidden></div>
@@ -311,6 +321,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
                   <label class="select-control count-control"><span>数量</span><input id="imageCount" type="number" min="1" max="10" value="1"></label>
                 </div>
                 <div class="image-controls-foot"><span class="panel-label-hint">图片参数遵循 OpenAI Images API, 其他服务商可能忽略或拒绝部分字段</span><button class="primary-button" id="generateImage"><span>✦</span> 生成图片</button></div>
+                <div class="image-tasks" id="imageTasks" aria-live="polite"></div>
               </div>
             </div>
             <section class="image-history-section" id="imageHistorySection">
@@ -329,7 +340,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
             <button class="context-option" data-context="single" title="每次只发送当前问题和系统提示词">单轮请求</button>
             <span class="context-description" id="contextDescription">每次请求带上本会话历史</span>
           </div>
-          <div class="model-badge" id="modelBadge">gpt-4o-mini</div>
+          <div class="chat-quick-settings" aria-label="当前对话模型设置">
+            <label class="quick-setting"><span>模型</span><input id="chatModelQuick" list="chatModelOptions" type="text" value="gpt-4o-mini" aria-label="当前对话模型"></label>
+            <label class="quick-setting"><span>思考</span><select id="reasoningEffortQuick" aria-label="当前对话思考程度"><option value="auto">自动</option><option value="none">关闭</option><option value="minimal">最小</option><option value="low">轻度</option><option value="medium">中</option><option value="high">高</option><option value="xhigh">极高</option><option value="max">Ultra</option></select></label>
+          </div>
         </div>
         <div class="composer-box" id="composerBox">
           <div class="editing-banner" id="editingBanner" hidden><span>正在修改一条消息</span><button type="button" id="cancelEdit">取消修改</button></div>
@@ -338,6 +352,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <div class="composer-actions">
             <div class="composer-left-actions">
               <label class="icon-button composer-icon" title="上传图片" aria-label="上传图片"><span>⊕</span><input type="file" id="imageUpload" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+              <label class="icon-button composer-icon file-upload-button" title="上传文本文件" aria-label="上传文本文件"><span>▤</span><input type="file" id="fileUpload" accept=".txt,.md,.json,.csv,.log,text/plain,application/json,text/csv" hidden></label>
               <span class="composer-hint">Enter 发送 · Shift + Enter 换行</span>
             </div>
             <button class="send-button" id="sendButton" title="发送消息" aria-label="发送消息"><span>↑</span></button>
@@ -364,7 +379,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <div class="section-title"><span class="section-number">01</span><div><strong>对话接口</strong><small>兼容 OpenAI Chat Completions 格式</small></div></div>
           <label class="field-label">接口地址<input id="chatBaseUrl" type="url" placeholder="https://api.openai.com/v1/chat/completions"></label>
           <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="chatApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="chatApiKey" type="button">显示</button></div></label><label class="field-label"><span class="field-label-heading">模型 <button class="field-action" id="loadChatModels" type="button">获取模型</button></span><input id="chatModel" list="chatModelOptions" type="text" placeholder="gpt-4o-mini"><datalist id="chatModelOptions"></datalist></label></div>
-          <label class="field-label">思考程度 <select id="reasoningEffort"><option value="auto">默认, 由模型决定</option><option value="none">关闭</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select><small class="field-help">仅支持 reasoning_effort 的推理模型会使用此项</small></label>
+          <label class="field-label">思考程度 <select id="reasoningEffort"><option value="auto">自动, 由模型决定</option><option value="none">关闭 · none</option><option value="minimal">最小 · minimal</option><option value="low">轻度 · low</option><option value="medium">中 · medium</option><option value="high">高 · high</option><option value="xhigh">极高 · xhigh</option><option value="max">Ultra · max</option></select><small class="field-help">官方取值按模型而异, 不支持的取值会被接口拒绝。自动模式不发送此字段</small></label>
         </div>
         <div class="settings-section">
           <div class="section-title"><span class="section-number">02</span><div><strong>生图接口</strong><small>可以使用和对话不同的服务商或密钥</small></div></div>
@@ -376,24 +391,28 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手"></textarea></label>
           <label class="toggle-row"><span><strong>演示模式</strong><small>不填写 Key 时也能体验完整交互</small></span><input type="checkbox" id="demoMode"><span class="toggle-ui"></span></label>
         </div>
+        <div class="settings-section compact-section data-management-section">
+          <div class="section-title"><span class="section-number">04</span><div><strong>数据管理</strong><small>导入导出对话和生图工作区, 不包含 API Key</small></div></div>
+          <div class="data-management-actions"><button class="secondary-button" id="exportWorkspace" type="button">导出工作区</button><button class="secondary-button" id="importWorkspace" type="button">导入工作区</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
+        </div>
         <div class="security-callout"><span>⌁</span><p>Key 只保存在当前浏览器的 localStorage。部署到公开环境前, 建议通过自己的后端代理请求, 避免在前端暴露密钥</p></div>
       </div>
       <div class="modal-footer"><button class="text-button danger" id="resetLocalData">清除本地数据</button><div><button class="secondary-button" id="cancelSettings">取消</button><button class="primary-button" id="saveSettings">保存设置</button></div></div>
     </section>
   </div>
 
-  <div class="toast" id="toast" role="status"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"><span class="toast-icon" aria-hidden="true">✓</span><span class="toast-message"></span><button class="toast-close" id="closeToast" type="button" title="关闭提示" aria-label="关闭提示">×</button></div>
   <script>
 const STORAGE_KEY = 'orbit-chat-state-v1';
 
 const defaultState = {
   settings: {
-    chatBaseUrl: '',
+    chatBaseUrl: 'https://aixor.cc/v1',
     chatApiKey: '',
-    chatModel: 'gpt-4o-mini',
-    imageBaseUrl: '',
+    chatModel: 'gpt-5.6-sol',
+    imageBaseUrl: 'https://aixor.cc/v1',
     imageApiKey: '',
-    imageModel: 'gpt-image-1',
+    imageModel: 'gpt-image-2.5',
     imageOptions: { ratio: 'auto', quality: 'auto', format: 'png', background: 'auto', moderation: 'auto', count: 1 },
     systemPrompt: '你是一位简洁, 直接的中文助手',
     reasoningEffort: 'auto',
@@ -413,6 +432,7 @@ let storedImages = new Map();
 let editingMessageId = null;
 let imageReferences = [];
 let currentImage = null;
+let imageTasks = [];
 
 const IMAGE_DB_NAME = 'orbit-chat-images-v1';
 const IMAGE_STORE_NAME = 'generations';
@@ -587,7 +607,8 @@ function render() {
   renderConversations();
   renderMessages();
   $('#workspaceTitle').textContent = $('#imageView').hidden ? activeConversation().title : '生图工作区';
-  $('#modelBadge').textContent = state.settings.chatModel || 'gpt-4o-mini';
+  $('#chatModelQuick').value = state.settings.chatModel || 'gpt-4o-mini';
+  $('#reasoningEffortQuick').value = state.settings.reasoningEffort || 'auto';
   renderConnection();
   $$('.context-option').forEach((button) => button.classList.toggle('active', button.dataset.context === state.contextMode));
   $('#contextDescription').textContent = state.contextMode === 'client' ? '每次请求带上本会话历史' : '每次只发送当前问题';
@@ -603,6 +624,7 @@ function renderConversations() {
     .map((conversation) => `<div class="conversation-row"><button class="conversation-item ${conversation.id === state.activeConversationId ? 'active' : ''}" data-conversation-id="${conversation.id}"><span class="conversation-icon">${conversation.id === state.activeConversationId ? '●' : '○'}</span><span class="conversation-title">${escapeHtml(conversation.title)}</span></button><div class="conversation-actions"><button class="conversation-action rename-conversation" data-conversation-id="${conversation.id}" title="重命名对话" aria-label="重命名对话">✎</button><button class="conversation-action delete-conversation" data-conversation-id="${conversation.id}" title="删除对话" aria-label="删除对话">×</button></div></div>`)
     .join('');
   $$('.conversation-item').forEach((button) => button.addEventListener('click', () => {
+    resetComposerDraft();
     state.activeConversationId = button.dataset.conversationId;
     persist();
     render();
@@ -625,6 +647,7 @@ function renameConversation(id) {
 function deleteConversation(id) {
   const conversation = state.conversations.find((entry) => entry.id === id);
   if (!conversation || !window.confirm(`删除对话“${conversation.title}”?`)) return;
+  if (state.activeConversationId === id) resetComposerDraft();
   state.conversations = state.conversations.filter((entry) => entry.id !== id);
   if (state.activeConversationId === id) state.activeConversationId = state.conversations[0]?.id || null;
   ensureActiveConversation();
@@ -642,15 +665,27 @@ function renderMessages() {
     const imageSrc = message.image || storedImages.get(message.imageHistoryId)?.src;
     const image = imageSrc ? `<img class="message-image" src="${imageSrc}" alt="用户上传的图片">` : '';
     const editAction = message.role === 'user' ? `<button class="message-action edit-message" data-message-id="${message.id}">修改</button>` : '';
-    return `<article class="message ${message.role}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div><div class="message-text">${escapeHtml(message.content)}</div>${image}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button></div></div></article>`;
+    return `<article class="message ${message.role}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div><div class="message-text">${escapeHtml(message.content)}</div>${image}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
   }).join('');
   $$('.copy-message').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard?.writeText(decodeURIComponent(button.dataset.message));
     showToast('已复制到剪贴板');
   }));
   $$('.edit-message').forEach((button) => button.addEventListener('click', () => beginMessageEdit(button.dataset.messageId)));
+  $$('.delete-message').forEach((button) => button.addEventListener('click', () => deleteMessage(button.dataset.messageId)));
   const stage = $('.content-stage');
   if (hasMessages) requestAnimationFrame(() => { stage.scrollTop = stage.scrollHeight; });
+}
+
+function deleteMessage(messageId) {
+  const conversation = activeConversation();
+  const index = conversation.messages.findIndex((message) => message.id === messageId);
+  if (index < 0 || !window.confirm('删除这条消息?')) return;
+  if (editingMessageId === messageId) cancelMessageEdit();
+  conversation.messages.splice(index, 1);
+  persist();
+  render();
+  showToast('消息已删除');
 }
 
 function beginMessageEdit(messageId) {
@@ -667,6 +702,10 @@ function beginMessageEdit(messageId) {
 }
 
 function cancelMessageEdit() {
+  resetComposerDraft();
+}
+
+function resetComposerDraft() {
   editingMessageId = null;
   $('#editingBanner').hidden = true;
   $('#messageInput').value = '';
@@ -748,7 +787,7 @@ async function copyImageToClipboard(src) {
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
     showToast('图片已复制');
   } catch (error) {
-    showToast('复制图片失败, 可右键图片另存为');
+    showErrorToast('复制图片失败, 可右键图片另存为');
   }
 }
 
@@ -789,8 +828,11 @@ function setView(view) {
   $('#imageView').hidden = view !== 'image';
   $('#composerWrap').hidden = view !== 'chat';
   $('.app-shell').classList.toggle('image-mode', view === 'image');
-  $('#clearConversation').hidden = view === 'image';
   $('#openSidebar').hidden = view === 'image';
+  if (view === 'image') {
+    resetComposerDraft();
+    $('#sidebar').classList.remove('open');
+  }
   $('#workspaceTitle').textContent = view === 'image' ? '生图工作区' : activeConversation().title;
 }
 
@@ -861,7 +903,7 @@ async function sendMessage() {
     else responseText = await requestChat();
     addMessage(createMessage('assistant', responseText));
   } catch (error) {
-    showToast(error.message || '请求失败, 请检查接口设置');
+    showErrorToast(error.message || '请求失败, 请检查接口设置');
   } finally {
     requestController?.abort();
     requestController = null;
@@ -907,24 +949,25 @@ async function requestChat() {
 async function generateImage() {
   const prompt = $('#imagePrompt').value.trim();
   if (!prompt) {
-    showToast('先写下你想生成的画面');
+    showErrorToast('先写下你想生成的画面');
     $('#imagePrompt').focus();
     return;
   }
   const config = getImageConfig();
   if (config.background === 'transparent' && config.format === 'jpeg') {
-    showToast('透明背景只支持 PNG 或 WebP 格式');
+    showErrorToast('透明背景只支持 PNG 或 WebP 格式');
     return;
   }
-  const button = $('#generateImage');
-  button.disabled = true;
-  button.innerHTML = '<span>◌</span> 生成中';
+  const taskId = createId();
+  const references = imageReferences.map((reference) => ({ data: reference.data, file: reference.file }));
+  imageTasks.unshift({ id: taskId, title: prompt.slice(0, 48), detail: '生成中, 可以继续提交其他任务', status: 'running' });
+  renderImageTasks();
   try {
     if (state.settings.demoMode || !state.settings.imageApiKey || !state.settings.imageBaseUrl) {
       await new Promise((resolve) => setTimeout(resolve, 1100));
-      await showDemoImage(prompt);
+      await showDemoImage(prompt, config, references.map((reference) => reference.data));
     } else {
-      const hasReference = imageReferences.length > 0;
+      const hasReference = references.length > 0;
       const endpoint = buildApiEndpoint(state.settings.imageBaseUrl, hasReference ? '/images/edits' : '/images/generations');
       const request = { model: state.settings.imageModel, prompt, size: ratioToSize(config.ratio), n: config.count };
       if (config.quality !== 'auto') request.quality = config.quality;
@@ -942,24 +985,26 @@ async function generateImage() {
         if (request.background) form.append('background', request.background);
         if (request.output_format) form.append('output_format', request.output_format);
         if (request.moderation) form.append('moderation', request.moderation);
-        imageReferences.forEach((reference) => form.append('image[]', reference.file, reference.file.name));
+        references.forEach((reference) => form.append('image[]', reference.file, reference.file.name));
         fetchOptions = { method: 'POST', headers: { Authorization: `Bearer ${state.settings.imageApiKey}` }, body: form };
       } else {
         fetchOptions = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.imageApiKey}` }, body: JSON.stringify(request) };
       }
       const response = await fetch(endpoint, fetchOptions);
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
+      const raw = await response.text();
+      let payload = {};
+      try { payload = raw ? JSON.parse(raw) : {}; } catch (error) { payload = {}; }
+      if (!response.ok) throw new Error(payload?.error?.message || payload?.message || payload?.detail || raw.slice(0, 500) || `接口返回 ${response.status}`);
       const imageDataList = (payload?.data || []).map((item) => item.url || (item.b64_json ? `data:image/png;base64,${item.b64_json}` : '')).filter(Boolean);
       if (!imageDataList.length) throw new Error('接口没有返回图片地址');
-      const referenceSources = imageReferences.map((reference) => reference.data);
+      const referenceSources = references.map((reference) => reference.data);
       presentGeneratedImages(imageDataList, prompt, config, referenceSources);
     }
+    updateImageTask(taskId, { status: 'success', detail: '已完成' });
   } catch (error) {
-    showToast(error.message || '生图失败, 请检查接口设置');
-  } finally {
-    button.disabled = false;
-    button.innerHTML = '<span>✦</span> 生成图片';
+    const detail = error.message || '生图失败, 请检查接口设置';
+    updateImageTask(taskId, { status: 'error', detail });
+    showErrorToast(detail);
   }
 }
 
@@ -978,7 +1023,7 @@ async function editGeneratedImage(item) {
     $('#imagePrompt').focus();
     showToast('已将输出图作为新任务的参考图');
   } catch (error) {
-    showToast('无法读取这张图片, 请先下载到本地再上传');
+    showErrorToast('无法读取这张图片, 请先下载到本地再上传');
   }
 }
 
@@ -1021,7 +1066,7 @@ function presentGeneratedImages(imageDataList, prompt, config, referenceSources)
 
   // 缩略图先显示, 大图继续在后台写入本地历史
   Promise.allSettled(records.map(saveGeneratedImage)).then((results) => {
-    if (results.some((result) => result.status === 'rejected')) showToast('图片已生成, 但部分图片无法写入本地历史');
+    if (results.some((result) => result.status === 'rejected')) showErrorToast('图片已生成, 但部分图片无法写入本地历史');
   });
 }
 
@@ -1043,7 +1088,7 @@ async function loadModels(kind) {
   const endpoint = buildModelsEndpoint(isChat ? $('#chatBaseUrl').value : $('#imageBaseUrl').value);
   const apiKey = isChat ? $('#chatApiKey').value.trim() : $('#imageApiKey').value.trim();
   if (!endpoint || !apiKey) {
-    showToast('请先填写对应的接口地址和 API Key');
+    showErrorToast('请先填写对应的接口地址和 API Key');
     return;
   }
   button.disabled = true;
@@ -1057,18 +1102,16 @@ async function loadModels(kind) {
     $(`#${isChat ? 'chatModelOptions' : 'imageModelOptions'}`).innerHTML = models.map((model) => `<option value="${escapeHtml(model)}"></option>`).join('');
     showToast(`已获取 ${models.length} 个模型`);
   } catch (error) {
-    showToast(error.message || '获取模型失败, 也可以直接手动填写模型名');
+    showErrorToast(error.message || '获取模型失败, 也可以直接手动填写模型名');
   } finally {
     button.disabled = false;
     button.textContent = '获取模型';
   }
 }
 
-function showDemoImage(prompt) {
+function showDemoImage(prompt, config = getImageConfig(), referenceSources = imageReferences.map((reference) => reference.data)) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760"><rect width="1200" height="760" fill="#152536"/><circle cx="925" cy="160" r="125" fill="#e6f36b" opacity=".85"/><path d="M0 590 285 360l176 125 170-203 369 308H0Z" fill="#2d5960"/><path d="M0 670 260 488l185 115 155-124 367 191H0Z" fill="#173a4a"/><rect x="45" y="55" width="430" height="72" rx="10" fill="#0d1725" opacity=".83"/><text x="78" y="101" fill="#ecf2f9" font-family="sans-serif" font-size="24">${escapeHtml(prompt.slice(0, 27))}</text><text x="78" y="711" fill="#94a8b8" font-family="sans-serif" font-size="16">Orbit Image Studio · Demo preview</text></svg>`;
   const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  const config = getImageConfig();
-  const referenceSources = imageReferences.map((reference) => reference.data);
   presentGeneratedImages([src], prompt, config, referenceSources);
   showToast('已生成演示预览, 配置生图接口后可获得真实图片');
 }
@@ -1080,6 +1123,23 @@ async function handleImageReference(event) {
   imageReferences.push(...references);
   renderImageReferences();
   event.target.value = '';
+}
+
+async function addImageReferenceFile(file) {
+  if (!file || imageReferences.length >= 16) {
+    showErrorToast('参考图最多添加 16 张');
+    return;
+  }
+  imageReferences.push({ file, data: await fileToDataUrl(file) });
+  renderImageReferences();
+  showToast('参考图已添加');
+}
+
+function handleImagePromptPaste(event) {
+  const item = [...(event.clipboardData?.items || [])].find((entry) => entry.kind === 'file' && entry.type.startsWith('image/'));
+  if (!item) return;
+  event.preventDefault();
+  addImageReferenceFile(item.getAsFile());
 }
 
 function fileToDataUrl(file) {
@@ -1099,6 +1159,23 @@ function renderImageReferences() {
     imageReferences.splice(Number(button.dataset.referenceIndex), 1);
     renderImageReferences();
   }));
+}
+
+function renderImageTasks() {
+  const list = $('#imageTasks');
+  if (!list) return;
+  list.innerHTML = imageTasks.map((task) => `<div class="image-task ${task.status === 'error' ? 'error' : ''}"><span class="image-task-icon">${task.status === 'error' ? '!' : task.status === 'running' ? '◌' : '✓'}</span><div class="image-task-body"><div class="image-task-title">${escapeHtml(task.title)}</div><div class="image-task-detail">${escapeHtml(task.detail)}</div></div>${task.status !== 'running' ? `<button class="image-task-close" data-task-id="${task.id}" title="关闭任务提示" aria-label="关闭任务提示">×</button>` : ''}</div>`).join('');
+  $$('.image-task-close').forEach((button) => button.addEventListener('click', () => {
+    imageTasks = imageTasks.filter((task) => task.id !== button.dataset.taskId);
+    renderImageTasks();
+  }));
+}
+
+function updateImageTask(id, patch) {
+  const task = imageTasks.find((entry) => entry.id === id);
+  if (!task) return;
+  Object.assign(task, patch);
+  renderImageTasks();
 }
 
 async function setImageReferencesFromSources(sources) {
@@ -1137,6 +1214,14 @@ function saveSettings() {
 }
 
 function newConversation() {
+  resetComposerDraft();
+  const current = activeConversation();
+  if (current && current.messages.length === 0) {
+    setView('chat');
+    $('#messageInput').focus();
+    $('#sidebar').classList.remove('open');
+    return;
+  }
   const conversation = { id: createId(), title: '新对话', createdAt: Date.now(), messages: [] };
   state.conversations.push(conversation);
   state.activeConversationId = conversation.id;
@@ -1147,22 +1232,12 @@ function newConversation() {
   $('#sidebar').classList.remove('open');
 }
 
-function clearConversation() {
-  const conversation = activeConversation();
-  if (!conversation.messages.length) return;
-  if (!window.confirm('清空当前对话内容?')) return;
-  conversation.messages = [];
-  conversation.title = '新对话';
-  persist();
-  render();
-  showToast('当前对话已清空');
-}
-
 async function clearLocalData() {
   if (!window.confirm('清除所有本地对话和接口设置?')) return;
   localStorage.removeItem(STORAGE_KEY);
   await clearStoredImages();
   state = createInitialState();
+  imageTasks = [];
   closeSettings();
   pendingAttachment = null;
   clearImageReferences();
@@ -1171,50 +1246,100 @@ async function clearLocalData() {
   showToast('本地数据已清除');
 }
 
-async function exportConversations() {
+async function exportWorkspace() {
+  const images = [...storedImages.values()].map((image) => ({ ...image }));
   const conversations = state.conversations.map((conversation) => ({
     ...conversation,
     messages: conversation.messages.map((message) => {
-      const image = message.image || storedImages.get(message.imageHistoryId)?.src || '';
-      return { ...message, image, imageHistoryId: '' };
+      let imageHistoryId = message.imageHistoryId || '';
+      if (message.image && !imageHistoryId) {
+        imageHistoryId = createId();
+        images.push({ id: imageHistoryId, src: message.image, name: 'chat-image', type: 'chat', createdAt: message.createdAt || Date.now() });
+      }
+      return { ...message, image: '', imageHistoryId };
     })
   }));
-  const payload = JSON.stringify({ version: 2, exportedAt: Date.now(), contextMode: state.contextMode, conversations }, null, 2);
+  const payload = JSON.stringify({
+    version: 3,
+    exportedAt: Date.now(),
+    contextMode: state.contextMode,
+    activeConversationId: state.activeConversationId,
+    imageModel: state.settings.imageModel,
+    imageOptions: state.settings.imageOptions,
+    imageDraft: { prompt: $('#imagePrompt').value, references: imageReferences.map((reference) => reference.data), config: getImageConfig() },
+    conversations,
+    images
+  }, null, 2);
   const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `orbit-conversations-${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = `orbit-workspace-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
   URL.revokeObjectURL(url);
-  showToast('对话记录已导出');
+  showToast('工作区已导出, 包含对话和生图历史');
 }
 
-async function importConversations(file) {
+async function replaceStoredImages(records) {
+  const db = await openImageDb();
+  await new Promise((resolve, reject) => {
+    const transaction = db.transaction(IMAGE_STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(IMAGE_STORE_NAME);
+    store.clear();
+    records.forEach((record) => store.put(record));
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+  });
+  db.close();
+  storedImages = new Map(records.map((record) => [record.id, record]));
+  imageHistory = records.filter((record) => record.type !== 'chat').sort((a, b) => b.createdAt - a.createdAt);
+}
+
+async function importWorkspace(file) {
   if (!file) return;
   try {
     const payload = JSON.parse(await file.text());
     if (!Array.isArray(payload.conversations)) throw new Error('文件中没有对话记录');
-    if (!window.confirm(`导入 ${payload.conversations.length} 个对话并替换当前记录?`)) return;
+    const sourceImages = Array.isArray(payload.images) ? payload.images : [];
+    if (!window.confirm(`导入 ${payload.conversations.length} 个对话和 ${sourceImages.filter((image) => image.type !== 'chat').length} 条生图记录并替换当前工作区?`)) return;
+    const images = sourceImages.filter((image) => image && image.id && image.src).map((image) => ({ ...image }));
     const conversations = [];
     for (const source of payload.conversations) {
       const messages = [];
       for (const message of Array.isArray(source.messages) ? source.messages : []) {
-        let imageHistoryId = '';
-        if (message.image) imageHistoryId = await saveChatImage(message.image, 'imported-image');
+        let imageHistoryId = message.imageHistoryId || '';
+        if (message.image && !imageHistoryId) {
+          imageHistoryId = createId();
+          images.push({ id: imageHistoryId, src: message.image, name: 'imported-image', type: 'chat', createdAt: message.createdAt || Date.now() });
+        }
         messages.push({ ...message, image: '', imageHistoryId });
       }
-      conversations.push({ ...source, id: createId(), messages });
+      conversations.push({ ...source, id: source.id || createId(), messages });
+    }
+    try {
+      await replaceStoredImages(images);
+    } catch (error) {
+      // 某些 file:// 环境禁用 IndexedDB 时, 保留本次导入的页面内数据
+      storedImages = new Map(images.map((image) => [image.id, image]));
+      imageHistory = images.filter((image) => image.type !== 'chat').sort((a, b) => b.createdAt - a.createdAt);
     }
     state.conversations = conversations;
     state.contextMode = payload.contextMode === 'single' ? 'single' : 'client';
-    state.activeConversationId = conversations[0]?.id || null;
+    if (payload.imageModel) state.settings.imageModel = payload.imageModel;
+    if (payload.imageOptions && typeof payload.imageOptions === 'object') state.settings.imageOptions = { ...state.settings.imageOptions, ...payload.imageOptions };
+    state.activeConversationId = conversations.some((conversation) => conversation.id === payload.activeConversationId) ? payload.activeConversationId : conversations[0]?.id || null;
     ensureActiveConversation();
     persist();
     render();
-    await loadImageHistory();
-    showToast('对话记录已导入');
+    if (payload.imageDraft && typeof payload.imageDraft === 'object') {
+      $('#imagePrompt').value = payload.imageDraft.prompt || '';
+      setImageConfig(payload.imageDraft.config || state.settings.imageOptions);
+      await setImageReferencesFromSources(Array.isArray(payload.imageDraft.references) ? payload.imageDraft.references : []);
+    }
+    renderImageHistory();
+    renderMessages();
+    showToast('工作区已导入, 包含对话和生图历史');
   } catch (error) {
-    showToast(error.message || '导入失败, 请选择有效的 JSON 文件');
+    showErrorToast(error.message || '导入失败, 请选择有效的工作区 JSON 文件');
   }
 }
 
@@ -1232,6 +1357,49 @@ function handleAttachment(event) {
   event.target.value = '';
 }
 
+async function insertTextFile(file) {
+  const text = await file.text();
+  const input = $('#messageInput');
+  const prefix = input.value.trim() ? `${input.value.trim()}\n\n` : '';
+  input.value = `${prefix}[文件: ${file.name}]\n${text}`;
+  autoResizeTextarea(input);
+  input.focus();
+  showToast(`已加入文件内容: ${file.name}`);
+}
+
+async function handleFileAttachment(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  await insertTextFile(file);
+  event.target.value = '';
+}
+
+async function handlePastedImage(file) {
+  setChatAttachment(await fileToDataUrl(file), file.name || '粘贴的图片');
+  showToast('图片已放入当前消息');
+}
+
+function handleMessagePaste(event) {
+  const items = [...(event.clipboardData?.items || [])];
+  const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'));
+  if (imageItem) {
+    event.preventDefault();
+    handlePastedImage(imageItem.getAsFile());
+    return;
+  }
+  const textFileItem = items.find((item) => item.kind === 'file' && (item.type.startsWith('text/') || item.type === 'application/json'));
+  if (textFileItem) {
+    event.preventDefault();
+    insertTextFile(textFileItem.getAsFile());
+    return;
+  }
+  const unsupportedFile = items.find((item) => item.kind === 'file');
+  if (unsupportedFile) {
+    event.preventDefault();
+    showErrorToast('暂不支持直接读取该文件, 请粘贴文本或上传图片');
+  }
+}
+
 function clearAttachment() {
   pendingAttachment = null;
   $('#attachmentPreview').hidden = true;
@@ -1244,16 +1412,45 @@ function autoResizeTextarea(textarea) {
 }
 
 function showToast(message) {
+  showToastOfType(message, 'success');
+}
+
+function showErrorToast(message) {
+  showToastOfType(message, 'error');
+}
+
+function showToastOfType(message, type) {
   const toast = $('#toast');
-  toast.textContent = message;
+  const messageNode = $('.toast-message');
+  const iconNode = $('.toast-icon');
+  messageNode.textContent = message;
+  iconNode.textContent = type === 'error' ? '!' : '✓';
+  toast.classList.toggle('error', type === 'error');
+  toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
   toast.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2800);
+  if (type !== 'error') toastTimer = window.setTimeout(() => toast.classList.remove('show'), 5000);
+}
+
+function closeToast() {
+  clearTimeout(toastTimer);
+  $('#toast').classList.remove('show');
+}
+
+function updateChatModelQuick() {
+  const model = $('#chatModelQuick').value.trim();
+  if (!model) return;
+  state.settings.chatModel = model;
+  persist();
+}
+
+function updateReasoningQuick() {
+  state.settings.reasoningEffort = $('#reasoningEffortQuick').value;
+  persist();
 }
 
 function bindEvents() {
   $('#newChatButton').addEventListener('click', newConversation);
-  $('#clearConversation').addEventListener('click', clearConversation);
   $('#openSettings').addEventListener('click', openSettings);
   $('#topbarSettings').addEventListener('click', openSettings);
   $('#openSettingsFromFootnote').addEventListener('click', openSettings);
@@ -1261,15 +1458,18 @@ function bindEvents() {
   $('#cancelSettings').addEventListener('click', closeSettings);
   $('#saveSettings').addEventListener('click', saveSettings);
   $('#resetLocalData').addEventListener('click', clearLocalData);
-  $('#exportConversations').addEventListener('click', exportConversations);
-  $('#importConversations').addEventListener('click', () => $('#conversationImportFile').click());
-  $('#conversationImportFile').addEventListener('change', (event) => { importConversations(event.target.files[0]); event.target.value = ''; });
+  $('#closeToast').addEventListener('click', closeToast);
+  $('#exportWorkspace').addEventListener('click', exportWorkspace);
+  $('#importWorkspace').addEventListener('click', () => $('#workspaceImportFile').click());
+  $('#workspaceImportFile').addEventListener('change', (event) => { importWorkspace(event.target.files[0]); event.target.value = ''; });
   $('#loadChatModels').addEventListener('click', () => loadModels('chat'));
   $('#loadImageModels').addEventListener('click', () => loadModels('image'));
   $('#sendButton').addEventListener('click', sendMessage);
   $('#generateImage').addEventListener('click', generateImage);
   $('#imageUpload').addEventListener('change', handleAttachment);
+  $('#fileUpload').addEventListener('change', handleFileAttachment);
   $('#imageReferenceUpload').addEventListener('change', handleImageReference);
+  $('#imagePrompt').addEventListener('paste', handleImagePromptPaste);
   $('#cancelEdit').addEventListener('click', cancelMessageEdit);
   $('#closeLightbox').addEventListener('click', closeLightbox);
   $('#lightboxReuse').addEventListener('click', () => currentImage && applyImageConfig(currentImage));
@@ -1279,6 +1479,10 @@ function bindEvents() {
   $('#openSidebar').addEventListener('click', () => $('#sidebar').classList.add('open'));
   $('#closeSidebar').addEventListener('click', () => $('#sidebar').classList.remove('open'));
   $('#messageInput').addEventListener('input', (event) => autoResizeTextarea(event.target));
+  $('#messageInput').addEventListener('paste', handleMessagePaste);
+  $('#chatModelQuick').addEventListener('change', updateChatModelQuick);
+  $('#chatModelQuick').addEventListener('blur', updateChatModelQuick);
+  $('#reasoningEffortQuick').addEventListener('change', updateReasoningQuick);
   $('#messageInput').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }
   });
