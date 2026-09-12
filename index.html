@@ -81,12 +81,17 @@
             <div class="image-generator-panel">
               <div class="panel-label-row"><span>描述你想要的画面</span><span class="panel-label-hint">支持中文</span></div>
               <textarea id="imagePrompt" rows="4" placeholder="例如: 雨后的上海街头, 霓虹倒影, 35mm 胶片质感, 电影感构图"></textarea>
-              <div class="reference-row"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" hidden></label><span class="panel-label-hint">参考图会发送到图片编辑接口</span></div>
+              <div class="reference-row"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><span class="panel-label-hint">最多 16 张, 会发送到图片编辑接口</span></div>
               <div class="image-reference-preview" id="imageReferencePreview" hidden></div>
               <div class="image-controls">
-                <label class="select-control"><span>比例</span><select id="imageRatio"><option value="1:1">1:1 方形</option><option value="16:9">16:9 横向</option><option value="9:16">9:16 竖向</option></select></label>
-                <button class="primary-button" id="generateImage"><span>✦</span> 生成图片</button>
+                <label class="select-control"><span>尺寸</span><select id="imageRatio"><option value="auto">自动</option><option value="1:1">1:1 方形</option><option value="16:9">16:9 横向</option><option value="9:16">9:16 竖向</option></select></label>
+                <label class="select-control"><span>质量</span><select id="imageQuality"><option value="auto">自动</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option><option value="standard">标准, DALL-E</option><option value="hd">HD, DALL-E</option></select></label>
+                <label class="select-control"><span>格式</span><select id="imageFormat"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></label>
+                <label class="select-control"><span>背景</span><select id="imageBackground"><option value="auto">自动</option><option value="opaque">不透明</option><option value="transparent">透明</option></select></label>
+                <label class="select-control"><span>审核</span><select id="imageModeration"><option value="auto">自动</option><option value="low">宽松</option></select></label>
+                <label class="select-control count-control"><span>数量</span><input id="imageCount" type="number" min="1" max="10" value="1"></label>
               </div>
+              <div class="image-controls-foot"><span class="panel-label-hint">图片参数遵循 OpenAI Images API, 其他服务商可能忽略或拒绝部分字段</span><button class="primary-button" id="generateImage"><span>✦</span> 生成图片</button></div>
             </div>
           </div>
           <div class="image-result" id="imageResult">
@@ -124,6 +129,14 @@
         <div class="composer-footnote">AI 可能会犯错, 请核对重要信息 <span>·</span> <button id="openSettingsFromFootnote">配置你的接口</button></div>
       </footer>
     </main>
+  </div>
+
+  <div class="image-lightbox" id="imageLightbox" hidden>
+    <section class="lightbox-panel" role="dialog" aria-modal="true" aria-labelledby="lightboxTitle">
+      <div class="lightbox-header"><div><div class="eyebrow">Image preview</div><h2 id="lightboxTitle">生成图片</h2></div><button class="icon-button" id="closeLightbox" title="关闭全图" aria-label="关闭全图">×</button></div>
+      <div class="lightbox-image-wrap"><img id="lightboxImage" src="" alt="生成图片全图"></div>
+      <div class="lightbox-footer"><span id="lightboxPrompt"></span><div class="lightbox-actions"><button class="secondary-button" id="lightboxReuse" title="复制提示词, 参数和原参考图">复制配置</button><button class="secondary-button" id="lightboxCopyImage">复制图片</button><button class="secondary-button" id="lightboxCopyChat">发到对话</button><button class="primary-button" id="lightboxEdit" title="只把输出图带到新的生图任务">编辑输出</button></div></div>
+    </section>
   </div>
 
   <div class="modal-backdrop" id="settingsBackdrop" hidden>
