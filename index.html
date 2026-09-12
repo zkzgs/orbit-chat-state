@@ -450,7 +450,11 @@ function createId() {
 }
 
 function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    // file:// 在部分浏览器禁止持久化时, 保留当前页面内状态
+  }
 }
 
 function openImageDb() {
@@ -474,7 +478,11 @@ async function saveImageHistory(image) {
 
 async function saveChatImage(src, name) {
   const record = { id: createId(), src, name, type: 'chat', createdAt: Date.now() };
-  await saveImageHistory(record);
+  try {
+    await saveImageHistory(record);
+  } catch (error) {
+    // 当前页面仍可使用图片, 仅跳过持久化
+  }
   storedImages.set(record.id, record);
   return record.id;
 }
@@ -499,26 +507,34 @@ async function loadImageHistory() {
 
 async function deleteImageHistory(id) {
   if (!window.confirm('删除这条生成图片记录?')) return;
-  const db = await openImageDb();
-  await new Promise((resolve, reject) => {
-    const request = db.transaction(IMAGE_STORE_NAME, 'readwrite').objectStore(IMAGE_STORE_NAME).delete(id);
-    request.onsuccess = resolve;
-    request.onerror = () => reject(request.error);
-  });
-  db.close();
+  try {
+    const db = await openImageDb();
+    await new Promise((resolve, reject) => {
+      const request = db.transaction(IMAGE_STORE_NAME, 'readwrite').objectStore(IMAGE_STORE_NAME).delete(id);
+      request.onsuccess = resolve;
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+  } catch (error) {
+    // file:// 不支持 IndexedDB 时, 同步清理当前页面记录
+  }
   imageHistory = imageHistory.filter((item) => item.id !== id);
   storedImages.delete(id);
   renderImageHistory();
 }
 
 async function clearStoredImages() {
-  const db = await openImageDb();
-  await new Promise((resolve, reject) => {
-    const request = db.transaction(IMAGE_STORE_NAME, 'readwrite').objectStore(IMAGE_STORE_NAME).clear();
-    request.onsuccess = resolve;
-    request.onerror = () => reject(request.error);
-  });
-  db.close();
+  try {
+    const db = await openImageDb();
+    await new Promise((resolve, reject) => {
+      const request = db.transaction(IMAGE_STORE_NAME, 'readwrite').objectStore(IMAGE_STORE_NAME).clear();
+      request.onsuccess = resolve;
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+  } catch (error) {
+    // file:// 不支持 IndexedDB 时, 同步清理当前页面记录
+  }
   storedImages.clear();
   imageHistory = [];
 }
