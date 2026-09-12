@@ -9,6 +9,7 @@ const defaultState = {
     imageApiKey: '',
     imageModel: 'gpt-image-1',
     systemPrompt: '你是一位简洁, 直接的中文助手',
+    reasoningEffort: 'auto',
     demoMode: true
   },
   contextMode: 'client',
@@ -19,6 +20,11 @@ const defaultState = {
 let state = loadState();
 let pendingAttachment = null;
 let toastTimer = null;
+let requestController = null;
+let imageHistory = [];
+
+const IMAGE_DB_NAME = 'orbit-chat-images-v1';
+const IMAGE_STORE_NAME = 'generations';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -55,6 +61,67 @@ function persist() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function openImageDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(IMAGE_DB_NAME, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(IMAGE_STORE_NAME, { keyPath: 'id' });
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveImageHistory(image) {
+  const db = await openImageDb();
+  await new Promise((resolve, reject) => {
+    const request = db.transaction(IMAGE_STORE_NAME, 'readwrite').objectStore(IMAGE_STORE_NAME).put(image);
+    request.onsuccess = resolve;
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+}
+
+async function loadImageHistory() {
+  try {
+    const db = await openImageDb();
+    const items = await new Promise((resolve, reject) => {
+      const request = db.transaction(IMAGE_STORE_NAME, 'readonly').objectStore(IMAGE_STORE_NAME).getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    imageHistory = items.sort((a, b) => b.createdAt - a.createdAt);
+    renderImageHistory();
+  } catch (error) {
+    imageHistory = [];
+  }
+}
+
+async function deleteImageHistory(id) {
+  const db = await openImageDb();
+  await new Promise((resolve, reject) => {
+    const request = db.transaction(IMAGE_STORE_NAME, 'readwrite').objectStore(IMAGE_STORE_NAME).delete(id);
+    request.onsuccess = resolve;
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  imageHistory = imageHistory.filter((item) => item.id !== id);
+  renderImageHistory();
+}
+
+function renderImageHistory() {
+  const section = $('#imageHistorySection');
+  const list = $('#imageHistory');
+  if (!section || !list) return;
+  section.hidden = imageHistory.length === 0;
+  $('#imageHistoryCount').textContent = imageHistory.length;
+  list.innerHTML = imageHistory.map((item) => `<article class="history-item"><button class="history-delete" data-history-id="${item.id}" title="删除记录" aria-label="删除记录">×</button><button class="history-image-button" data-history-image="${item.id}" aria-label="查看生成图片"><img src="${item.src}" alt="${escapeHtml(item.prompt)}"></button><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(item.prompt)}</div><time class="history-item-time">${formatTime(item.createdAt)}</time></div></article>`).join('');
+  $$('.history-delete').forEach((button) => button.addEventListener('click', () => deleteImageHistory(button.dataset.historyId)));
+  $$('.history-image-button').forEach((button) => button.addEventListener('click', () => {
+    const item = imageHistory.find((entry) => entry.id === button.dataset.historyImage);
+    if (item) showImage(item.src);
+  }));
+}
+
 function activeConversation() {
   return state.conversations.find((conversation) => conversation.id === state.activeConversationId) || state.conversations[0];
 }
@@ -84,6 +151,7 @@ function render() {
   $('#modelBadge').textContent = state.settings.chatModel || 'gpt-4o-mini';
   renderConnection();
   $$('.context-option').forEach((button) => button.classList.toggle('active', button.dataset.context === state.contextMode));
+  $('#contextDescription').textContent = state.contextMode === 'client' ? '每次请求带上本会话历史' : '每次只发送当前问题';
 }
 
 function renderConversations() {
@@ -167,6 +235,12 @@ function buildApiEndpoint(input, suffix) {
   return value;
 }
 
+function buildModelsEndpoint(input) {
+  const value = input.trim().replace(/\/$/, '').replace(/\/(chat\/completions|images\/generations|models)$/, '');
+  if (!value) return '';
+  return value.endsWith('/v1') || value.endsWith('/api') ? `${value}/models` : `${value}/models`;
+}
+
 function buildRequestMessages() {
   const conversation = activeConversation();
   const source = state.contextMode === 'single' ? conversation.messages.slice(-1) : conversation.messages;
@@ -198,6 +272,8 @@ async function sendMessage() {
   } catch (error) {
     showToast(error.message || '请求失败, 请检查接口设置');
   } finally {
+    requestController?.abort();
+    requestController = null;
     $('#sendButton').disabled = false;
     $('#typingIndicator').hidden = true;
     renderConnection();
@@ -216,7 +292,19 @@ function demoReply(content, hasImage) {
 
 async function requestChat() {
   const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
-  const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify({ model: state.settings.chatModel, messages: buildRequestMessages(), temperature: 0.7, stream: false }) });
+  requestController = new AbortController();
+  const timeout = window.setTimeout(() => requestController.abort(), 60000);
+  const body = { model: state.settings.chatModel, messages: buildRequestMessages(), temperature: 0.7, stream: false };
+  if (state.settings.reasoningEffort && state.settings.reasoningEffort !== 'auto') body.reasoning_effort = state.settings.reasoningEffort;
+  let response;
+  try {
+    response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('请求超时或已中断, 请检查接口地址和网络');
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
   const payload = await response.json();
   if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
   const content = payload?.choices?.[0]?.message?.content;
@@ -246,7 +334,8 @@ async function generateImage() {
       if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
       const imageData = payload?.data?.[0]?.url || (payload?.data?.[0]?.b64_json ? `data:image/png;base64,${payload.data[0].b64_json}` : '');
       if (!imageData) throw new Error('接口没有返回图片地址');
-      showImage(imageData);
+       showImage(imageData);
+       await saveGeneratedImage(imageData, prompt);
     }
   } catch (error) {
     showToast(error.message || '生图失败, 请检查接口设置');
@@ -266,9 +355,67 @@ function showImage(src) {
   result.innerHTML = `<img class="generated-image" src="${src}" alt="生成的图片">`;
 }
 
+async function saveGeneratedImage(src, prompt) {
+  try {
+    let storedSrc = src;
+    if (!src.startsWith('data:')) {
+      try {
+        storedSrc = await downloadImageAsDataUrl(src);
+      } catch (error) {
+        // 某些生图服务的临时地址禁止跨域下载, 仍保留原地址供当前会话查看
+      }
+    }
+    await saveImageHistory({ id: createId(), src: storedSrc, prompt, createdAt: Date.now() });
+    await loadImageHistory();
+  } catch (error) {
+    showToast('图片已显示, 但无法写入本地历史');
+  }
+}
+
+async function downloadImageAsDataUrl(src) {
+  const response = await fetch(src);
+  if (!response.ok) throw new Error('无法下载图片');
+  const blob = await response.blob();
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function loadModels(kind) {
+  const isChat = kind === 'chat';
+  const button = isChat ? $('#loadChatModels') : $('#loadImageModels');
+  const endpoint = buildModelsEndpoint(isChat ? $('#chatBaseUrl').value : $('#imageBaseUrl').value);
+  const apiKey = isChat ? $('#chatApiKey').value.trim() : $('#imageApiKey').value.trim();
+  if (!endpoint || !apiKey) {
+    showToast('请先填写对应的接口地址和 API Key');
+    return;
+  }
+  button.disabled = true;
+  button.textContent = '获取中';
+  try {
+    const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${apiKey}` } });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
+    const models = Array.isArray(payload?.data) ? payload.data.map((item) => item.id).filter(Boolean) : [];
+    if (!models.length) throw new Error('接口没有返回可用模型列表');
+    $(`#${isChat ? 'chatModelOptions' : 'imageModelOptions'}`).innerHTML = models.map((model) => `<option value="${escapeHtml(model)}"></option>`).join('');
+    showToast(`已获取 ${models.length} 个模型`);
+  } catch (error) {
+    showToast(error.message || '获取模型失败, 也可以直接手动填写模型名');
+  } finally {
+    button.disabled = false;
+    button.textContent = '获取模型';
+  }
+}
+
 function showDemoImage(prompt) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760"><rect width="1200" height="760" fill="#152536"/><circle cx="925" cy="160" r="125" fill="#e6f36b" opacity=".85"/><path d="M0 590 285 360l176 125 170-203 369 308H0Z" fill="#2d5960"/><path d="M0 670 260 488l185 115 155-124 367 191H0Z" fill="#173a4a"/><rect x="45" y="55" width="430" height="72" rx="10" fill="#0d1725" opacity=".83"/><text x="78" y="101" fill="#ecf2f9" font-family="sans-serif" font-size="24">${escapeHtml(prompt.slice(0, 27))}</text><text x="78" y="711" fill="#94a8b8" font-family="sans-serif" font-size="16">Orbit Image Studio · Demo preview</text></svg>`;
-  showImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+  const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  showImage(src);
+  saveGeneratedImage(src, prompt);
   showToast('已生成演示预览, 配置生图接口后可获得真实图片');
 }
 
@@ -280,6 +427,7 @@ function openSettings() {
   $('#imageApiKey').value = state.settings.imageApiKey;
   $('#imageModel').value = state.settings.imageModel;
   $('#systemPrompt').value = state.settings.systemPrompt;
+  $('#reasoningEffort').value = state.settings.reasoningEffort || 'auto';
   $('#demoMode').checked = state.settings.demoMode;
   $('#settingsBackdrop').hidden = false;
 }
@@ -289,7 +437,7 @@ function closeSettings() {
 }
 
 function saveSettings() {
-  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel: $('#imageModel').value.trim() || 'gpt-image-1', systemPrompt: $('#systemPrompt').value.trim(), demoMode: $('#demoMode').checked };
+  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel: $('#imageModel').value.trim() || 'gpt-image-1', systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, demoMode: $('#demoMode').checked };
   persist();
   closeSettings();
   render();
@@ -371,7 +519,8 @@ function bindEvents() {
   $('#cancelSettings').addEventListener('click', closeSettings);
   $('#saveSettings').addEventListener('click', saveSettings);
   $('#resetLocalData').addEventListener('click', clearLocalData);
-  $('#settingsBackdrop').addEventListener('click', (event) => { if (event.target === $('#settingsBackdrop')) closeSettings(); });
+  $('#loadChatModels').addEventListener('click', () => loadModels('chat'));
+  $('#loadImageModels').addEventListener('click', () => loadModels('image'));
   $('#sendButton').addEventListener('click', sendMessage);
   $('#generateImage').addEventListener('click', generateImage);
   $('#imageUpload').addEventListener('change', handleAttachment);
@@ -390,3 +539,4 @@ function bindEvents() {
 
 bindEvents();
 render();
+loadImageHistory();

@@ -90,6 +90,10 @@
           <div class="image-result" id="imageResult">
             <div class="result-placeholder"><div class="result-placeholder-mark">✦</div><span>生成结果会显示在这里</span><small>你可以先在设置里填写独立的生图接口</small></div>
           </div>
+          <section class="image-history-section" id="imageHistorySection" hidden>
+            <div class="history-heading"><div><span class="eyebrow">Saved locally</span><h3>生成历史</h3></div><span class="history-count" id="imageHistoryCount">0</span></div>
+            <div class="image-history" id="imageHistory"></div>
+          </section>
         </div>
       </section>
 
@@ -97,8 +101,9 @@
         <div class="context-toolbar">
           <div class="context-mode" role="group" aria-label="上下文策略">
             <span class="toolbar-label">上下文</span>
-            <button class="context-option active" data-context="client">客户端拼接</button>
-            <button class="context-option" data-context="single">单轮请求</button>
+            <button class="context-option active" data-context="client" title="每次请求都带上本会话的历史消息">客户端拼接</button>
+            <button class="context-option" data-context="single" title="每次只发送当前问题和系统提示词">单轮请求</button>
+            <span class="context-description" id="contextDescription">每次请求带上本会话历史</span>
           </div>
           <div class="model-badge" id="modelBadge">gpt-4o-mini</div>
         </div>
@@ -125,12 +130,13 @@
         <div class="settings-section">
           <div class="section-title"><span class="section-number">01</span><div><strong>对话接口</strong><small>兼容 OpenAI Chat Completions 格式</small></div></div>
           <label class="field-label">接口地址<input id="chatBaseUrl" type="url" placeholder="https://api.openai.com/v1/chat/completions"></label>
-          <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="chatApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="chatApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="chatModel" type="text" placeholder="gpt-4o-mini"></label></div>
+          <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="chatApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="chatApiKey" type="button">显示</button></div></label><label class="field-label"><span class="field-label-heading">模型 <button class="field-action" id="loadChatModels" type="button">获取模型</button></span><input id="chatModel" list="chatModelOptions" type="text" placeholder="gpt-4o-mini"><datalist id="chatModelOptions"></datalist></label></div>
+          <label class="field-label">思考程度 <select id="reasoningEffort"><option value="auto">默认, 由模型决定</option><option value="none">关闭</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select><small class="field-help">仅支持 reasoning_effort 的推理模型会使用此项</small></label>
         </div>
         <div class="settings-section">
           <div class="section-title"><span class="section-number">02</span><div><strong>生图接口</strong><small>可以使用和对话不同的服务商或密钥</small></div></div>
           <label class="field-label">接口地址<input id="imageBaseUrl" type="url" placeholder="https://api.openai.com/v1/images/generations"></label>
-          <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="imageApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="imageApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="imageModel" type="text" placeholder="gpt-image-1"></label></div>
+          <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="imageApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="imageApiKey" type="button">显示</button></div></label><label class="field-label"><span class="field-label-heading">模型 <button class="field-action" id="loadImageModels" type="button">获取模型</button></span><input id="imageModel" list="imageModelOptions" type="text" placeholder="gpt-image-1"><datalist id="imageModelOptions"></datalist></label></div>
         </div>
         <div class="settings-section compact-section">
           <div class="section-title"><span class="section-number">03</span><div><strong>本地偏好</strong><small>不会发送到任何接口</small></div></div>
