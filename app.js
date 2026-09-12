@@ -112,6 +112,7 @@ async function loadImageHistory() {
 }
 
 async function deleteImageHistory(id) {
+  if (!window.confirm('删除这条生成图片记录?')) return;
   const db = await openImageDb();
   await new Promise((resolve, reject) => {
     const request = db.transaction(IMAGE_STORE_NAME, 'readwrite').objectStore(IMAGE_STORE_NAME).delete(id);
@@ -140,9 +141,9 @@ function renderImageHistory() {
   const section = $('#imageHistorySection');
   const list = $('#imageHistory');
   if (!section || !list) return;
-  section.hidden = imageHistory.length === 0;
+  section.hidden = false;
   $('#imageHistoryCount').textContent = imageHistory.length;
-  list.innerHTML = imageHistory.map((item) => `<article class="history-item"><button class="history-delete" data-history-id="${item.id}" title="删除记录" aria-label="删除记录">×</button><button class="history-image-button" data-history-image="${item.id}" aria-label="查看生成图片"><img src="${item.src}" alt="${escapeHtml(item.prompt)}"></button><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(item.prompt)}</div><time class="history-item-time">${formatTime(item.createdAt)}</time></div><div class="history-actions"><button data-history-action="config" data-history-id="${item.id}" title="复制提示词, 参数和原参考图">复制配置</button><button data-history-action="copy" data-history-id="${item.id}">复制图片</button><button data-history-action="edit" data-history-id="${item.id}" title="只把输出图带到新的生图任务">编辑输出</button><button data-history-action="new-chat" data-history-id="${item.id}">发到对话</button></div></article>`).join('');
+  list.innerHTML = imageHistory.length ? imageHistory.map((item) => `<article class="history-item"><button class="history-delete" data-history-id="${item.id}" title="删除记录" aria-label="删除记录">×</button><button class="history-image-button" data-history-image="${item.id}" aria-label="查看生成图片"><img src="${item.src}" alt="${escapeHtml(item.prompt)}"></button><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(item.prompt)}</div><time class="history-item-time">${formatTime(item.createdAt)}</time></div><div class="history-actions"><button data-history-action="config" data-history-id="${item.id}" title="复制提示词, 参数和原参考图">复制配置</button><button data-history-action="copy" data-history-id="${item.id}">复制图片</button><button data-history-action="edit" data-history-id="${item.id}" title="只把输出图带到新的生图任务">编辑输出</button><button data-history-action="new-chat" data-history-id="${item.id}">发到对话</button></div></article>`).join('') : '<div class="history-empty">生成后的图片会显示在这里</div>';
   $$('.history-delete').forEach((button) => button.addEventListener('click', () => deleteImageHistory(button.dataset.historyId)));
   $$('.history-image-button').forEach((button) => button.addEventListener('click', () => {
     const item = imageHistory.find((entry) => entry.id === button.dataset.historyImage);
@@ -183,7 +184,7 @@ function render() {
   ensureActiveConversation();
   renderConversations();
   renderMessages();
-  $('#workspaceTitle').textContent = activeConversation().title;
+  $('#workspaceTitle').textContent = $('#imageView').hidden ? activeConversation().title : '生图工作区';
   $('#modelBadge').textContent = state.settings.chatModel || 'gpt-4o-mini';
   renderConnection();
   $$('.context-option').forEach((button) => button.classList.toggle('active', button.dataset.context === state.contextMode));
@@ -197,7 +198,7 @@ function renderConversations() {
   list.innerHTML = state.conversations
     .slice()
     .sort((a, b) => b.createdAt - a.createdAt)
-    .map((conversation) => `<button class="conversation-item ${conversation.id === state.activeConversationId ? 'active' : ''}" data-conversation-id="${conversation.id}"><span class="conversation-icon">${conversation.id === state.activeConversationId ? '●' : '○'}</span><span class="conversation-title">${escapeHtml(conversation.title)}</span></button>`)
+    .map((conversation) => `<div class="conversation-row"><button class="conversation-item ${conversation.id === state.activeConversationId ? 'active' : ''}" data-conversation-id="${conversation.id}"><span class="conversation-icon">${conversation.id === state.activeConversationId ? '●' : '○'}</span><span class="conversation-title">${escapeHtml(conversation.title)}</span></button><div class="conversation-actions"><button class="conversation-action rename-conversation" data-conversation-id="${conversation.id}" title="重命名对话" aria-label="重命名对话">✎</button><button class="conversation-action delete-conversation" data-conversation-id="${conversation.id}" title="删除对话" aria-label="删除对话">×</button></div></div>`)
     .join('');
   $$('.conversation-item').forEach((button) => button.addEventListener('click', () => {
     state.activeConversationId = button.dataset.conversationId;
@@ -205,6 +206,29 @@ function renderConversations() {
     render();
     $('#sidebar').classList.remove('open');
   }));
+  $$('.rename-conversation').forEach((button) => button.addEventListener('click', () => renameConversation(button.dataset.conversationId)));
+  $$('.delete-conversation').forEach((button) => button.addEventListener('click', () => deleteConversation(button.dataset.conversationId)));
+}
+
+function renameConversation(id) {
+  const conversation = state.conversations.find((entry) => entry.id === id);
+  if (!conversation) return;
+  const title = window.prompt('请输入对话名称', conversation.title);
+  if (title === null) return;
+  conversation.title = title.trim() || '新对话';
+  persist();
+  render();
+}
+
+function deleteConversation(id) {
+  const conversation = state.conversations.find((entry) => entry.id === id);
+  if (!conversation || !window.confirm(`删除对话“${conversation.title}”?`)) return;
+  state.conversations = state.conversations.filter((entry) => entry.id !== id);
+  if (state.activeConversationId === id) state.activeConversationId = state.conversations[0]?.id || null;
+  ensureActiveConversation();
+  persist();
+  render();
+  showToast('对话已删除');
 }
 
 function renderMessages() {
@@ -293,13 +317,12 @@ async function applyImageConfig(item) {
 
 async function copyImageToNewChat(item) {
   const imageHistoryId = item.id || await saveChatImage(item.src, 'generated-image');
-  const conversation = { id: createId(), title: '图片对话', createdAt: Date.now(), messages: [] };
-  state.conversations.push(conversation);
-  state.activeConversationId = conversation.id;
-  addMessage(createMessage('user', '请分析这张图片', '', imageHistoryId));
+  const imageSrc = storedImages.get(imageHistoryId)?.src || item.src;
+  setChatAttachment(imageSrc, '生成图片', imageHistoryId);
   closeLightbox();
   setView('chat');
-  showToast('图片已复制到新对话');
+  $('#messageInput').focus();
+  showToast('图片已放入当前对话输入框, 发送后才会进入记录');
 }
 
 function openLightbox(src, prompt = '', item = null) {
@@ -363,6 +386,10 @@ function setView(view) {
   $('#chatView').hidden = view !== 'chat';
   $('#imageView').hidden = view !== 'image';
   $('#composerWrap').hidden = view !== 'chat';
+  $('.app-shell').classList.toggle('image-mode', view === 'image');
+  $('#clearConversation').hidden = view === 'image';
+  $('#openSidebar').hidden = view === 'image';
+  $('#workspaceTitle').textContent = view === 'image' ? '生图工作区' : activeConversation().title;
 }
 
 function createMessage(role, content, image = '', imageHistoryId = '') {
@@ -713,6 +740,7 @@ function newConversation() {
   state.activeConversationId = conversation.id;
   persist();
   render();
+  setView('chat');
   $('#messageInput').focus();
   $('#sidebar').classList.remove('open');
 }
@@ -739,6 +767,53 @@ async function clearLocalData() {
   $('#attachmentPreview').hidden = true;
   render();
   showToast('本地数据已清除');
+}
+
+async function exportConversations() {
+  const conversations = state.conversations.map((conversation) => ({
+    ...conversation,
+    messages: conversation.messages.map((message) => {
+      const image = message.image || storedImages.get(message.imageHistoryId)?.src || '';
+      return { ...message, image, imageHistoryId: '' };
+    })
+  }));
+  const payload = JSON.stringify({ version: 2, exportedAt: Date.now(), contextMode: state.contextMode, conversations }, null, 2);
+  const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `orbit-conversations-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast('对话记录已导出');
+}
+
+async function importConversations(file) {
+  if (!file) return;
+  try {
+    const payload = JSON.parse(await file.text());
+    if (!Array.isArray(payload.conversations)) throw new Error('文件中没有对话记录');
+    if (!window.confirm(`导入 ${payload.conversations.length} 个对话并替换当前记录?`)) return;
+    const conversations = [];
+    for (const source of payload.conversations) {
+      const messages = [];
+      for (const message of Array.isArray(source.messages) ? source.messages : []) {
+        let imageHistoryId = '';
+        if (message.image) imageHistoryId = await saveChatImage(message.image, 'imported-image');
+        messages.push({ ...message, image: '', imageHistoryId });
+      }
+      conversations.push({ ...source, id: createId(), messages });
+    }
+    state.conversations = conversations;
+    state.contextMode = payload.contextMode === 'single' ? 'single' : 'client';
+    state.activeConversationId = conversations[0]?.id || null;
+    ensureActiveConversation();
+    persist();
+    render();
+    await loadImageHistory();
+    showToast('对话记录已导入');
+  } catch (error) {
+    showToast(error.message || '导入失败, 请选择有效的 JSON 文件');
+  }
 }
 
 function handleAttachment(event) {
@@ -784,6 +859,9 @@ function bindEvents() {
   $('#cancelSettings').addEventListener('click', closeSettings);
   $('#saveSettings').addEventListener('click', saveSettings);
   $('#resetLocalData').addEventListener('click', clearLocalData);
+  $('#exportConversations').addEventListener('click', exportConversations);
+  $('#importConversations').addEventListener('click', () => $('#conversationImportFile').click());
+  $('#conversationImportFile').addEventListener('change', (event) => { importConversations(event.target.files[0]); event.target.value = ''; });
   $('#loadChatModels').addEventListener('click', () => loadModels('chat'));
   $('#loadImageModels').addEventListener('click', () => loadModels('image'));
   $('#sendButton').addEventListener('click', sendMessage);
