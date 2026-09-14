@@ -735,8 +735,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <div class="field-grid"><label class="field-label">数量请求方式<select id="imageCountModeSetting"><option value="parameter">单次请求，使用 n 参数</option><option value="parallel">并发请求，每次 n=1</option></select><small class="field-help">官方标准是 n；并发是客户端策略，会把一批请求关联到同一条记录。</small></label><label class="field-label">透明背景实现<select id="imageBackgroundModeSetting"><option value="parameter">使用 background 参数</option><option value="prompt">追加到提示词</option></select><small class="field-help">官方标准是 background；提示词拼接仅作为手动兼容策略。</small></label></div>
         </div>
         <div class="settings-section compact-section">
-          <div class="section-title"><span class="section-number">03</span><div><strong>本地偏好</strong><small>不会发送到任何接口</small></div></div>
-          <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手"></textarea></label>
+          <div class="section-title"><span class="section-number">03</span><div><strong>提示词偏好</strong><small>系统提示词随对话请求发送；润色要求仅在生成润色建议时发送</small></div></div>
+          <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手"></textarea><small class="field-help">作为对话请求中的 system 消息发送, 不会拼接到生图关键词</small></label>
+          <label class="field-label">生图润色要求<textarea id="imagePolishInstructionSetting" rows="4" placeholder="例如: 保留原始创作意图, 补充主体、构图和光影细节"></textarea><small class="field-help">点击“润色关键词”时, 会和原始关键词一起发送给对话接口；普通对话和直接生图不会发送</small></label>
           <label class="toggle-row"><span><strong>演示模式</strong><small>不填写 Key 时也能体验完整交互</small></span><input type="checkbox" id="demoMode"><span class="toggle-ui"></span></label>
         </div>
         <div class="settings-section compact-section data-management-section">
@@ -2745,6 +2746,7 @@ function selectPolishTemplate(templateId) {
   if (template) {
     state.settings.imagePolishInstruction = template.instruction;
     $('#polishInstruction').value = template.instruction;
+    $('#imagePolishInstructionSetting').value = template.instruction;
     resetPolishSuggestion();
   }
   persist();
@@ -2766,6 +2768,7 @@ function savePolishTemplate() {
   if (existing) templates[templates.indexOf(existing)] = template;
   else templates.push(template);
   state.settings.imagePolishInstruction = instruction;
+  $('#imagePolishInstructionSetting').value = instruction;
   state.settings.activeImagePolishTemplateId = template.id;
   persist();
   renderPolishTemplates();
@@ -2781,6 +2784,7 @@ function updatePolishTemplate() {
   template.instruction = instruction;
   template.updatedAt = Date.now();
   state.settings.imagePolishInstruction = instruction;
+  $('#imagePolishInstructionSetting').value = instruction;
   persist();
   renderPolishTemplates();
   showToast(`“${template.name}”已更新`);
@@ -2799,6 +2803,7 @@ function deletePolishTemplate() {
 
 function savePolishInstructionDraft() {
   state.settings.imagePolishInstruction = $('#polishInstruction').value;
+  $('#imagePolishInstructionSetting').value = state.settings.imagePolishInstruction;
   persist();
 }
 
@@ -2811,7 +2816,7 @@ function openPromptPolish() {
   const input = $('#imagePrompt');
   const prompt = input.value.trim();
   $('#polishSourcePrompt').value = prompt;
-  $('#polishInstruction').value = state.settings.imagePolishInstruction || '保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。';
+  $('#polishInstruction').value = state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction;
   renderPolishTemplates();
   $('#polishUseReferences').checked = imageReferences.length > 0;
   renderPolishReferencePreview();
@@ -3121,6 +3126,7 @@ function openSettings() {
   $('#imageCountModeSetting').value = state.settings.imageCountMode || 'parameter';
   $('#imageBackgroundModeSetting').value = state.settings.imageBackgroundMode || 'parameter';
   $('#systemPrompt').value = state.settings.systemPrompt;
+  $('#imagePolishInstructionSetting').value = state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction;
   $('#reasoningEffort').value = state.settings.reasoningEffort || 'auto';
   $('#chatWebSearch').checked = Boolean(state.settings.chatWebSearch);
   $('#demoMode').checked = state.settings.demoMode;
@@ -3138,7 +3144,7 @@ function saveSettings() {
     if (profile && !connectionProfileMatches(kind, profile)) state.activeConnectionProfiles[kind] = '';
   });
   const imageModel = $('#imageModel').value.trim() || 'gpt-image-1';
-  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel }, imageCountMode: $('#imageCountModeSetting').value || 'parameter', imageBackgroundMode: $('#imageBackgroundModeSetting').value || 'parameter', systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishInstruction: state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction, imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', demoMode: $('#demoMode').checked };
+  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel }, imageCountMode: $('#imageCountModeSetting').value || 'parameter', imageBackgroundMode: $('#imageBackgroundModeSetting').value || 'parameter', systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishInstruction: $('#imagePolishInstructionSetting').value.trim(), imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', demoMode: $('#demoMode').checked };
   persist();
   closeSettings();
   render();
