@@ -770,7 +770,7 @@ const defaultState = {
     imagePolishInstruction: '保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。',
     imagePolishTemplates: [],
     activeImagePolishTemplateId: '',
-    demoMode: true
+    demoMode: false
   },
   connectionProfiles: { chat: [], image: [] },
   activeConnectionProfiles: { chat: '', image: '' },
@@ -790,6 +790,7 @@ let imageReferences = [];
 let currentImage = null;
 let imageTasks = [];
 let imageTaskTimer = null;
+let localDataGeneration = 0;
 let imageHistoryView = 'group';
 let imageSizeDraft = null;
 let imageSizeOriginalConfig = null;
@@ -882,51 +883,29 @@ async function saveImageHistory(image) {
 }
 
 function createStoredBatch(batch) {
-  const imageIds = getBatchImages(batch).map((image) => image.id).filter(Boolean);
+  const imageIds = Array.isArray(batch.imageIds) ? [...batch.imageIds] : getBatchImages(batch).map((image) => image.id).filter(Boolean);
   const responseMeta = batch.responseMeta ? { ...batch.responseMeta } : {};
-  if (!responseMeta.apiResponse) {
-    const sourceImage = getBatchImages(batch).find((image) => image.responseMeta?.apiResponse);
-    if (sourceImage) Object.assign(responseMeta, sourceImage.responseMeta);
-  }
-  return { ...batch, src: '', images: undefined, imageIds, responseMeta };
+  return { id: batch.id, batchId: batch.batchId || batch.id, type: 'generation-batch', prompt: batch.prompt || '', config: batch.config || {}, imageIds, referenceImageIds: Array.isArray(batch.referenceImageIds) ? [...batch.referenceImageIds] : [], responseMeta, imageCount: imageIds.length, startedAt: batch.startedAt, createdAt: batch.createdAt, completedAt: batch.completedAt, durationMs: batch.durationMs };
 }
 
 function createStoredImage(record) {
-  const { referenceSources, ...imageFields } = record;
   const responseMeta = record.responseMeta ? { ...record.responseMeta } : undefined;
   if (responseMeta) delete responseMeta.apiResponse;
-  return { ...imageFields, responseMeta };
+  return { ...record, type: 'image', responseMeta };
 }
 
 function hydrateGenerationBatches(items) {
-  const imageRecords = new Map(items.filter((item) => item.type === 'generation-image').map((item) => [item.id, item]));
   return items
-    .filter((item) => item.type === 'generation-batch' || item.type === 'generation')
-    .map((item) => {
-      const storedImages = Array.isArray(item.imageIds)
-        ? item.imageIds.map((id) => imageRecords.get(id)).filter(Boolean)
-        : items.filter((image) => image.type === 'generation-image' && image.batchId === item.id).sort((left, right) => left.createdAt - right.createdAt);
-      const legacyImages = Array.isArray(item.images) ? item.images.filter((image) => image?.src) : [];
-      const images = storedImages.length ? storedImages : legacyImages;
-      return normalizeImageHistoryItem({ ...item, images: images.length ? images : undefined });
-    })
+    .filter((item) => item.type === 'generation-batch')
+    .map((item) => normalizeImageHistoryItem(item))
     .filter((batch) => getBatchImages(batch).length)
     .sort((left, right) => right.createdAt - left.createdAt);
 }
 
-async function migrateLegacyGenerationStorage(items, batches) {
-  const writes = [];
-  items.filter((item) => (item.type === 'generation-batch' || item.type === 'generation') && Array.isArray(item.images)).forEach((item) => {
-    const batch = batches.find((entry) => entry.id === item.id);
-    if (!batch) return;
-    writes.push(saveImageHistory(createStoredBatch(batch)));
-    getBatchImages(batch).forEach((image) => writes.push(saveImageHistory(createStoredImage(image))));
-  });
-  if (writes.length) await Promise.allSettled(writes);
-}
-
 async function saveChatImage(src, name) {
-  const record = { id: createId(), src, name, type: 'chat', createdAt: Date.now() };
+  const existing = [...storedImages.values()].find((record) => record.type === 'image' && record.src === src);
+  if (existing) return existing.id;
+  const record = { id: createId(), src, name, type: 'image', createdAt: Date.now() };
   try {
     await saveImageHistory(record);
   } catch (error) {
@@ -934,6 +913,35 @@ async function saveChatImage(src, name) {
   }
   storedImages.set(record.id, record);
   return record.id;
+}
+
+async function saveImageResource(src, name, type = 'image', generationToken = localDataGeneration) {
+  if (generationToken !== localDataGeneration) return '';
+  const id = await saveChatImage(src, name);
+  if (generationToken !== localDataGeneration) {
+    await deleteStoredImageRecord(id);
+    return '';
+  }
+  const record = storedImages.get(id);
+  if (record) {
+    record.type = type;
+    await saveImageHistory(createStoredImage(record));
+  }
+  return id;
+}
+
+async function deleteStoredImageRecord(id) {
+  if (!id) return;
+  try {
+    const db = await openImageDb();
+    await new Promise((resolve, reject) => {
+      const request = db.transaction(IMAGE_STORE_NAME, 'readwrite').objectStore(IMAGE_STORE_NAME).delete(id);
+      request.onsuccess = resolve;
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+  } catch { }
+  storedImages.delete(id);
 }
 
 async function loadImageHistory() {
@@ -947,7 +955,6 @@ async function loadImageHistory() {
     db.close();
     storedImages = new Map(items.map((item) => [item.id, item]));
     imageHistory = hydrateGenerationBatches(items);
-    migrateLegacyGenerationStorage(items, imageHistory);
     renderImageHistory();
     renderMessages();
   } catch (error) {
@@ -958,14 +965,12 @@ async function loadImageHistory() {
 async function deleteImageHistory(id) {
   if (!window.confirm('删除这条生成图片记录?')) return;
   const deletedBatch = imageHistory.find((item) => item.id === id);
-  const referencedImageIds = getReferencedImageIds();
-  const batchImageIds = getBatchImages(deletedBatch).map((image) => image.id).filter(Boolean);
+  if (!deletedBatch) return;
   try {
     const db = await openImageDb();
     await new Promise((resolve, reject) => {
       const store = db.transaction(IMAGE_STORE_NAME, 'readwrite').objectStore(IMAGE_STORE_NAME);
-      if (!referencedImageIds.has(id)) store.delete(id);
-      batchImageIds.filter((imageId) => !referencedImageIds.has(imageId)).forEach((imageId) => store.delete(imageId));
+      store.delete(id);
       store.transaction.oncomplete = resolve;
       store.transaction.onerror = () => reject(store.transaction.error);
     });
@@ -974,8 +979,7 @@ async function deleteImageHistory(id) {
     // file:// 不支持 IndexedDB 时, 同步清理当前页面记录
   }
   imageHistory = imageHistory.filter((item) => item.id !== id);
-  batchImageIds.filter((imageId) => !referencedImageIds.has(imageId)).forEach((imageId) => storedImages.delete(imageId));
-  if (!referencedImageIds.has(id)) storedImages.delete(id);
+  await removeUnreferencedImages();
   renderImageHistory();
 }
 
@@ -1008,7 +1012,7 @@ function renderImageHistory() {
   list.innerHTML = items.length ? items.map(({ batch, image, index }) => {
     const images = getBatchImages(batch);
     const isGroup = imageHistoryView === 'group' && images.length > 1;
-    const thumbs = isGroup ? `<div class="history-item-thumb-grid">${images.slice(0, 4).map((entry) => `<img src="${entry.src}" alt="${escapeHtml(batch.prompt || '')}" draggable="false">`).join('')}</div>` : `<img src="${image?.src || ''}" alt="${escapeHtml(batch.prompt || '')}" draggable="false">`;
+    const thumbs = isGroup ? `<div class="history-item-thumb-grid">${images.slice(0, 4).map((entry) => `<img src="${escapeHtml(entry.src)}" alt="${escapeHtml(batch.prompt || '')}" draggable="false">`).join('')}</div>` : `<img src="${escapeHtml(image?.src || '')}" alt="${escapeHtml(batch.prompt || '')}" draggable="false">`;
     const countText = `<span class="history-item-batch">数量 ${images.length}</span>`;
     const actions = isGroup ? `${historyActionButton('config', '复制配置', '配置', batch.id)}${historyActionButton('download', '下载首图', '下载', batch.id)}${historyActionButton('download-all', '下载全部', '全下', batch.id)}${historyActionButton('edit', '编辑输出', '编辑', batch.id)}${historyActionButton('new-chat', '放入对话', '对话', batch.id)}` : `${historyActionButton('config', '复制配置', '配置', batch.id)}${historyActionButton('download', '下载原图', '下载', batch.id, index)}${historyActionButton('edit', '编辑输出', '编辑', batch.id)}${historyActionButton('new-chat', '放入对话', '对话', batch.id, index)}`;
     return `<article class="history-item ${isGroup ? 'group-card' : 'single-card'} ${selectedHistoryKeys.has(entryKey(batch, index)) ? 'selected' : ''}" data-history-key="${entryKey(batch, index)}"><input class="history-select" type="checkbox" data-history-key="${entryKey(batch, index)}" ${selectedHistoryKeys.has(entryKey(batch, index)) ? 'checked' : ''} aria-label="选择历史图片"><button class="history-delete" data-history-id="${batch.id}" title="删除记录" aria-label="删除记录">×</button><button class="history-image-button" data-history-id="${batch.id}" data-history-image-index="${index}" aria-label="查看生成图片">${thumbs}</button><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(batch.prompt || image?.prompt || '')}</div><time class="history-item-time">${formatTime(batch.createdAt)} · ${formatDuration(batch.durationMs)} · ${countText}</time></div><div class="history-actions">${actions}</div></article>`;
@@ -1067,7 +1071,6 @@ async function deleteSelectedHistory() {
   if (!entries.length) return;
   const imageCount = imageHistoryView === 'group' ? entries.reduce((count, entry) => count + getBatchImages(entry.batch).length, 0) : entries.length;
   if (!window.confirm(`删除已选择的 ${imageCount} 张图片?`)) return;
-  const referencedImageIds = getReferencedImageIds();
   const touchedBatches = new Map();
   entries.forEach((entry) => {
     if (imageHistoryView === 'group') touchedBatches.set(entry.batch.id, { batch: entry.batch, indexes: null, removedImages: [] });
@@ -1077,52 +1080,44 @@ async function deleteSelectedHistory() {
       touchedBatches.set(entry.batch.id, current);
     }
   });
-  const dbDeletes = [];
   touchedBatches.forEach((current) => {
     const { batch, indexes } = current;
     if (indexes === null) {
-      if (!referencedImageIds.has(batch.id)) dbDeletes.push(batch.id);
-      getBatchImages(batch).map((image) => image.id).filter((imageId) => !referencedImageIds.has(imageId)).forEach((imageId) => dbDeletes.push(imageId));
+      current.deleteBatch = true;
       return;
     }
     const originalImages = getBatchImages(batch).slice();
     const removedImages = originalImages.filter((image, index) => indexes.has(index));
     const remaining = originalImages.filter((image, index) => !indexes.has(index));
     if (!remaining.length) {
-      if (!referencedImageIds.has(batch.id)) dbDeletes.push(batch.id);
-      originalImages.map((image) => image.id).filter((imageId) => !referencedImageIds.has(imageId)).forEach((imageId) => dbDeletes.push(imageId));
       current.deleteBatch = true;
     }
     else {
-      batch.images = remaining;
-      batch.imageCount = remaining.length;
-      batch.src = remaining[0].src;
-      dbDeletes.push(...removedImages.map((image) => image.id));
-      saveImageHistory(createStoredBatch(batch)).catch(() => {});
+      batch.imageIds = remaining.map((image) => image.id);
+      batch.imageCount = batch.imageIds.length;
     }
     current.removedImages = removedImages;
   });
+  const deletedBatchIds = new Set();
+  touchedBatches.forEach(({ batch, deleteBatch }) => {
+    if (deleteBatch) deletedBatchIds.add(batch.id);
+  });
+  imageHistory = imageHistory.filter((entry) => !deletedBatchIds.has(entry.id));
   try {
     const db = await openImageDb();
     await new Promise((resolve, reject) => {
       const transaction = db.transaction(IMAGE_STORE_NAME, 'readwrite');
       const store = transaction.objectStore(IMAGE_STORE_NAME);
-      dbDeletes.forEach((id) => store.delete(id));
+      touchedBatches.forEach(({ batch, deleteBatch }) => {
+        if (deleteBatch) store.delete(batch.id);
+        else store.put(createStoredBatch(batch));
+      });
       transaction.oncomplete = resolve;
       transaction.onerror = () => reject(transaction.error);
     });
     db.close();
   } catch { }
-  touchedBatches.forEach(({ batch, indexes, removedImages, deleteBatch }) => {
-    if (indexes === null || deleteBatch || !getBatchImages(batch).length) {
-      imageHistory = imageHistory.filter((entry) => entry.id !== batch.id);
-      if (!referencedImageIds.has(batch.id)) storedImages.delete(batch.id);
-      getBatchImages(batch).filter((image) => !referencedImageIds.has(image.id)).forEach((image) => storedImages.delete(image.id));
-      removedImages.filter((image) => !referencedImageIds.has(image.id)).forEach((image) => storedImages.delete(image.id));
-    } else {
-      removedImages.forEach((image) => storedImages.delete(image.id));
-    }
-  });
+  await removeUnreferencedImages();
   selectedHistoryKeys.clear();
   renderImageHistory();
 }
@@ -1131,20 +1126,42 @@ function activeConversation() {
   return state.conversations.find((conversation) => conversation.id === state.activeConversationId) || state.conversations[0];
 }
 
-function getReferencedImageIds() {
+function getReferencedImageIds(excludedBatchIds = new Set()) {
   const ids = new Set();
   state.conversations.forEach((conversation) => conversation.messages.forEach((message) => {
-    const imageIds = message.imageHistoryIds || (message.imageHistoryId ? [message.imageHistoryId] : []);
-    imageIds.filter(Boolean).forEach((id) => ids.add(id));
+    (message.imageIds || []).filter(Boolean).forEach((id) => ids.add(id));
   }));
+  imageHistory.forEach((batch) => {
+    if (excludedBatchIds.has(batch.id)) return;
+    (batch.imageIds || []).concat(batch.referenceImageIds || []).filter(Boolean).forEach((id) => ids.add(id));
+  });
+  imageTasks.forEach((task) => {
+    (task.referenceImageIds || []).filter(Boolean).forEach((id) => ids.add(id));
+  });
+  pendingAttachments.map((attachment) => attachment.imageId).filter(Boolean).forEach((id) => ids.add(id));
   return ids;
 }
 
+async function removeUnreferencedImages() {
+  const referencedImageIds = getReferencedImageIds();
+  const removableIds = [...storedImages.values()].filter((record) => record.type === 'image' && !referencedImageIds.has(record.id)).map((record) => record.id);
+  if (!removableIds.length) return;
+  try {
+    const db = await openImageDb();
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction(IMAGE_STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(IMAGE_STORE_NAME);
+      removableIds.forEach((id) => store.delete(id));
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+    });
+    db.close();
+  } catch { }
+  removableIds.forEach((id) => storedImages.delete(id));
+}
+
 function getMessageImageRecords(message) {
-  const imageIds = message.imageHistoryIds || (message.imageHistoryId ? [message.imageHistoryId] : []);
-  const records = imageIds.map((id) => storedImages.get(id)).filter((record) => record?.src);
-  if (message.image && !records.length) records.push({ src: message.image, name: '图片' });
-  return records;
+  return (message.imageIds || []).map((id) => storedImages.get(id)).filter((record) => record?.src);
 }
 
 function formatConversationTranscript(conversation) {
@@ -1251,14 +1268,15 @@ function formatDuration(milliseconds) {
 }
 
 function normalizeImageHistoryItem(item) {
-  if (Array.isArray(item.images)) {
-    return { ...item, type: 'generation-batch', images: item.images.map((image, index) => ({ ...image, id: image.id || `${item.id}-${index}`, prompt: image.prompt || item.prompt, config: image.config || item.config, referenceSources: image.referenceSources || item.referenceSources, createdAt: image.createdAt || item.createdAt })) };
-  }
-  return { ...item, type: 'generation-batch', batchId: item.batchId || item.id, imageCount: 1, images: [{ id: item.id, src: item.src, prompt: item.prompt, config: item.config, referenceSources: item.referenceSources, responseMeta: item.responseMeta, createdAt: item.createdAt }] };
+  return { ...item, type: 'generation-batch', batchId: item.batchId || item.id, imageIds: Array.isArray(item.imageIds) ? [...item.imageIds] : [], referenceImageIds: Array.isArray(item.referenceImageIds) ? [...item.referenceImageIds] : [] };
 }
 
 function getBatchImages(batch) {
-  return Array.isArray(batch?.images) ? batch.images : [];
+  return (batch?.imageIds || []).map((id) => storedImages.get(id)).filter((image) => image?.src);
+}
+
+function getBatchReferenceSources(batch) {
+  return (batch?.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean);
 }
 
 function getHistorySelectionKey(batchId, imageIndex = 0) {
@@ -1498,7 +1516,7 @@ function renameConversation(id) {
   render();
 }
 
-function deleteConversation(id) {
+async function deleteConversation(id) {
   const conversation = state.conversations.find((entry) => entry.id === id);
   if (!conversation || !window.confirm(`删除对话“${conversation.title}”?`)) return;
   if (state.activeConversationId === id) resetComposerDraft();
@@ -1506,6 +1524,7 @@ function deleteConversation(id) {
   if (state.activeConversationId === id) state.activeConversationId = state.conversations[0]?.id || null;
   ensureActiveConversation();
   persist();
+  await removeUnreferencedImages();
   render();
   showToast('对话已删除');
 }
@@ -1519,7 +1538,7 @@ function renderMessages() {
   $('#welcomePanel').hidden = hasMessages;
   list.innerHTML = conversation.messages.map((message) => {
     const imageSources = getMessageImageRecords(message).map((record) => record.src);
-  const image = imageSources.map((src, index) => `<button class="message-image-button" data-message-image="${encodeURIComponent(src)}" aria-label="预览消息图片"><img class="message-image" src="${src}" alt="用户上传的图片 ${index + 1}"></button>`).join('');
+  const image = imageSources.map((src, index) => `<button class="message-image-button" data-message-image="${encodeURIComponent(src)}" aria-label="预览消息图片"><img class="message-image" src="${escapeHtml(src)}" alt="用户上传的图片 ${index + 1}"></button>`).join('');
     const editAction = message.role === 'user' ? `<button class="message-action edit-message" data-message-id="${message.id}">修改</button>` : '';
     return `<article class="message ${message.role}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div><div class="message-text markdown-body">${renderMarkdown(message.content)}</div>${image}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
   }).join('');
@@ -1542,13 +1561,14 @@ function renderMessages() {
   if (hasMessages) requestAnimationFrame(() => { stage.scrollTop = stage.scrollHeight; });
 }
 
-function deleteMessage(messageId) {
+async function deleteMessage(messageId) {
   const conversation = activeConversation();
   const index = conversation.messages.findIndex((message) => message.id === messageId);
   if (index < 0 || !window.confirm('删除这条消息?')) return;
   if (editingMessageId === messageId) cancelMessageEdit();
   conversation.messages.splice(index, 1);
   persist();
+  await removeUnreferencedImages();
   render();
   showToast('消息已删除');
 }
@@ -1560,9 +1580,7 @@ function beginMessageEdit(messageId) {
   $('#messageInput').value = message.content;
   autoResizeTextarea($('#messageInput'));
   clearAttachment();
-  const imageIds = message.imageHistoryIds || (message.imageHistoryId ? [message.imageHistoryId] : []);
-  const imageSources = imageIds.map((id) => ({ data: storedImages.get(id)?.src, name: '原消息图片', imageHistoryId: id })).filter((item) => item.data);
-  if (message.image && !imageSources.length) imageSources.push({ data: message.image, name: '原消息图片' });
+  const imageSources = (message.imageIds || []).map((id) => ({ data: storedImages.get(id)?.src, name: '原消息图片', imageId: id })).filter((item) => item.data);
   if (imageSources.length) setChatAttachments(imageSources);
   $('#editingBanner').hidden = false;
   $('#messageInput').focus();
@@ -1583,7 +1601,7 @@ function resetComposerDraft() {
 function setChatAttachments(items) {
   pendingAttachments = items.filter((item) => item?.data).slice(0, 16);
   $('#attachmentPreview').hidden = false;
-  $('#attachmentPreview').innerHTML = pendingAttachments.map((item, index) => `<div class="attachment-item"><img src="${item.data}" alt="待发送的图片 ${index + 1}" data-attachment-index="${index}"><button type="button" class="remove-attachment" data-attachment-index="${index}" aria-label="移除图片">×</button></div>`).join('');
+  $('#attachmentPreview').innerHTML = pendingAttachments.map((item, index) => `<div class="attachment-item"><img src="${escapeHtml(item.data)}" alt="待发送的图片 ${index + 1}" data-attachment-index="${index}"><button type="button" class="remove-attachment" data-attachment-index="${index}" aria-label="移除图片">×</button></div>`).join('');
   $$('.remove-attachment').forEach((button) => button.addEventListener('click', () => {
     pendingAttachments.splice(Number(button.dataset.attachmentIndex), 1);
     renderAttachmentPreview();
@@ -1594,8 +1612,8 @@ function setChatAttachments(items) {
   }));
 }
 
-function setChatAttachment(data, name, imageHistoryId = '') {
-  setChatAttachments([{ data, name, imageHistoryId }]);
+function setChatAttachment(data, name, imageId = '') {
+  setChatAttachments([{ data, name, imageId }]);
 }
 
 function renderAttachmentPreview() {
@@ -1760,7 +1778,7 @@ function saveImageSize() {
 async function applyImageConfig(item) {
   $('#imagePrompt').value = item.prompt || '';
   setImageConfig(item.config);
-  await setImageReferencesFromSources(item.referenceSources || item.batch?.referenceSources || []);
+  await setImageReferencesFromSources(getBatchReferenceSources(item.batch || item));
   setView('image');
   closeLightbox();
   $('#imagePrompt').focus();
@@ -1770,9 +1788,8 @@ async function applyImageConfig(item) {
 async function copyImageToNewChat(item) {
   const image = item?.src ? item : getBatchImages(item)[0];
   if (!image?.src) return;
-  const imageHistoryId = await saveChatImage(image.src, 'generated-image');
-  const imageSrc = storedImages.get(imageHistoryId)?.src || image.src;
-  setChatAttachment(imageSrc, '生成图片', imageHistoryId);
+  const imageId = image.id || await saveChatImage(image.src, 'generated-image');
+  setChatAttachment(image.src, '生成图片', imageId);
   closeLightbox();
   setView('chat');
   $('#messageInput').focus();
@@ -1952,7 +1969,7 @@ function renderImageMetadata(image) {
   const actualBackground = image.hasTransparency === true ? 'transparent' : image.hasTransparency === false ? 'opaque' : '';
   const rawResponse = response.apiResponse ? JSON.stringify(response.apiResponse, null, 2) : '';
   const responseDataKind = response.delivery === 'b64_json' ? (response.providedUrl ? 'b64_json（同时返回 URL）' : 'b64_json') : response.delivery === 'url' ? (image.src.startsWith('data:') ? '接口 URL（已保存为本地 Base64）' : '接口 URL') : image.src.startsWith('data:') ? '本地 Base64 数据' : '本地对象';
-  const referenceSources = Array.isArray(image.referenceSources) ? image.referenceSources : Array.isArray(batch.referenceSources) ? batch.referenceSources : [];
+  const referenceSources = getBatchReferenceSources(batch);
   return `<div class="metadata-card full"><dt>请求 / 实际模型</dt><dd>${renderComparison(config.model || state.settings.imageModel || '未知', actualModel, actualModel || '响应未提供')}</dd></div><div class="metadata-card full"><dt>来源</dt><dd>${escapeHtml(source)}</dd></div><div class="metadata-card"><dt>请求 / 实际尺寸</dt><dd>${renderComparison(requestSize, actualSize, actualSize || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际比例</dt><dd>${renderComparison(requestRatio || '自动', actualRatio, actualRatio || '响应未提供', true)}</dd></div><div class="metadata-card"><dt>请求 / 实际格式</dt><dd>${renderComparison(config.format || 'png', actualFormat, actualFormat || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际数量</dt><dd>${renderComparison(String(requestedCount), String(actualCount), String(actualCount))}</dd></div><div class="metadata-card"><dt>质量</dt><dd>${escapeHtml(config.quality || 'auto')}</dd></div><div class="metadata-card"><dt>压缩</dt><dd>${escapeHtml(['jpeg', 'webp'].includes(config.format) ? (config.compression === undefined || config.compression === 'auto' ? 'auto' : `${config.compression}%`) : 'PNG 不支持')}</dd></div><div class="metadata-card"><dt>请求 / 实际背景</dt><dd>${renderComparison(requestBackground, actualBackground, actualBackground || '未检测')}</dd></div><div class="metadata-card"><dt>审核</dt><dd>${escapeHtml(moderationDisplay)}</dd></div><div class="metadata-card"><dt>参考图</dt><dd>${escapeHtml(`${referenceSources.length} 张`)}</dd></div><div class="metadata-card"><dt>数据来源</dt><dd>${escapeHtml(responseDataKind)}</dd></div><div class="metadata-card"><dt>文件大小</dt><dd>${escapeHtml(formatBytes(image.fileSize || 0))}</dd></div><div class="metadata-card"><dt>创建时间</dt><dd>${escapeHtml(formatTime(batch.startedAt || batch.createdAt || image.createdAt))}</dd></div><div class="metadata-card"><dt>耗时</dt><dd>${escapeHtml(formatDuration(batch.durationMs || 0))}</dd></div><div class="metadata-card full"><dt>完整请求配置</dt><dd>${escapeHtml(formatImageConfig(config, response.requestType, image.prompt || batch.prompt || ''))}</dd></div>${response.revised_prompt ? `<div class="metadata-card full"><dt>接口修订提示词</dt><dd>${escapeHtml(response.revised_prompt)}</dd></div>` : ''}<div class="metadata-card full"><dt>接口响应</dt><dd>${escapeHtml(JSON.stringify(responseSummary))}</dd>${rawResponse ? `<details class="metadata-disclosure"><summary>查看</summary><pre>${escapeHtml(rawResponse)}</pre></details>` : ''}</div>`;
 }
 
@@ -2032,12 +2049,12 @@ function openHistoryDetail(batch, index = 0) {
   const safeIndex = Math.min(Math.max(0, index), images.length - 1);
   const selected = images[safeIndex];
   openLightbox(selected.src, batch.prompt, { ...selected, batchId: batch.id, batch, images, batchIndex: safeIndex });
-  $('#lightboxThumbnails').innerHTML = images.map((image, imageIndex) => `<button class="lightbox-thumb ${imageIndex === safeIndex ? 'active' : ''}" data-lightbox-index="${imageIndex}" type="button"><img src="${image.src}" alt="第 ${imageIndex + 1} 张生成图片" draggable="false"></button>`).join('');
+  $('#lightboxThumbnails').innerHTML = images.map((image, imageIndex) => `<button class="lightbox-thumb ${imageIndex === safeIndex ? 'active' : ''}" data-lightbox-index="${imageIndex}" type="button"><img src="${escapeHtml(image.src)}" alt="第 ${imageIndex + 1} 张生成图片" draggable="false"></button>`).join('');
   $$('.lightbox-thumb').forEach((button) => button.addEventListener('click', () => openHistoryDetail(batch, Number(button.dataset.lightboxIndex))));
-  const references = Array.isArray(batch.referenceSources) ? batch.referenceSources : [];
+  const references = getBatchReferenceSources(batch);
   if (references.length) {
     $('#lightboxReferenceSection').hidden = false;
-    $('#lightboxReferenceThumbnails').innerHTML = references.map((src, referenceIndex) => `<button class="lightbox-reference-button" type="button" data-reference-index="${referenceIndex}" title="预览参考图 ${referenceIndex + 1}"><img src="${src}" alt="参考图 ${referenceIndex + 1}" draggable="false"></button>`).join('');
+    $('#lightboxReferenceThumbnails').innerHTML = references.map((src, referenceIndex) => `<button class="lightbox-reference-button" type="button" data-reference-index="${referenceIndex}" title="预览参考图 ${referenceIndex + 1}"><img src="${escapeHtml(src)}" alt="参考图 ${referenceIndex + 1}" draggable="false"></button>`).join('');
     $$('.lightbox-reference-button').forEach((button) => button.addEventListener('click', () => {
       const index = Number(button.dataset.referenceIndex) || 0;
       openChatImageViewer(references[index], references, index);
@@ -2196,8 +2213,8 @@ function setView(view) {
   $('#workspaceTitle').textContent = view === 'image' ? '生图工作区' : activeConversation().title;
 }
 
-function createMessage(role, content, image = '', imageHistoryId = '', imageHistoryIds = []) {
-  return { id: createId(), role, content, image, imageHistoryId, imageHistoryIds, createdAt: Date.now() };
+function createMessage(role, content, imageIds = []) {
+  return { id: createId(), role, content, imageIds: [...imageIds], createdAt: Date.now() };
 }
 
 function addMessage(message) {
@@ -2227,9 +2244,8 @@ function buildRequestMessages() {
   const conversation = activeConversation();
   const source = state.contextMode === 'single' ? conversation.messages.slice(-1) : conversation.messages;
   const messages = source.map((message) => {
-    const imageIds = message.imageHistoryIds || (message.imageHistoryId ? [message.imageHistoryId] : []);
+    const imageIds = message.imageIds || [];
     const imageSources = imageIds.map((id) => storedImages.get(id)?.src).filter(Boolean);
-    if (message.image && !imageSources.length) imageSources.push(message.image);
     if (!imageSources.length) return { role: message.role, content: message.content };
     return { role: message.role, content: [{ type: 'text', text: message.content }, ...imageSources.map((imageSrc) => ({ type: 'image_url', image_url: { url: imageSrc } }))] };
   });
@@ -2253,9 +2269,9 @@ async function sendMessage() {
     $('#editingBanner').hidden = true;
     persist();
   }
-  const imageHistoryIds = [];
-  for (const attachment of attachments) imageHistoryIds.push(attachment.imageHistoryId || await saveChatImage(attachment.data, attachment.name));
-  addMessage(createMessage('user', content || '请分析这些图片', '', '', imageHistoryIds));
+  const imageIds = [];
+  for (const attachment of attachments) imageIds.push(attachment.imageId || await saveChatImage(attachment.data, attachment.name));
+  addMessage(createMessage('user', content || '请分析这些图片', imageIds));
   $('#sendButton').disabled = true;
   $('#typingIndicator').hidden = false;
   renderConnection('loading');
@@ -2365,18 +2381,22 @@ async function generateImage() {
     return;
   }
   const taskId = createId();
+  const generation = localDataGeneration;
   const startedAt = Date.now();
   const countMode = config.countMode || 'parameter';
   const requestCount = countMode === 'parallel' ? 1 : config.count;
   config.submittedPrompt = buildImagePrompt(prompt, config);
   let taskResultDetail = '';
   const references = imageReferences.map((reference) => ({ data: reference.data, file: reference.file }));
-  imageTasks.unshift({ id: taskId, title: prompt.slice(0, 48), detail: countMode === 'parallel' ? `并发生成 ${config.count} 张` : '生成中', prompt, config: { ...config }, referenceSources: references.map((reference) => reference.data), startedAt, status: 'running' });
+  const referenceImageIds = [];
+  for (const reference of references) referenceImageIds.push(await saveImageResource(reference.data, 'task-reference'));
+  imageTasks.unshift({ id: taskId, title: prompt.slice(0, 48), detail: countMode === 'parallel' ? `并发生成 ${config.count} 张` : '生成中', prompt, config: { ...config }, referenceImageIds, startedAt, status: 'running' });
   startImageTaskTimer();
   renderImageTasks();
   try {
     if (state.settings.demoMode || !state.settings.imageApiKey || !state.settings.imageBaseUrl) {
       await new Promise((resolve) => setTimeout(resolve, 1100));
+      if (generation !== localDataGeneration) return;
       await showDemoImage(prompt, config, references.map((reference) => reference.data));
     } else {
       const hasReference = references.length > 0;
@@ -2387,7 +2407,7 @@ async function generateImage() {
       if (config.background !== 'auto' && config.backgroundMode === 'parameter') request.background = config.background;
       if (config.format !== 'png') request.output_format = config.format;
       if (config.compression !== 'auto' && ['jpeg', 'webp'].includes(config.format)) request.output_compression = Number(config.compression);
-      if (!hasReference) request.moderation = config.moderation || 'auto';
+      request.moderation = config.moderation || 'auto';
       let fetchOptions;
       if (hasReference) {
         const form = new FormData();
@@ -2399,7 +2419,7 @@ async function generateImage() {
         if (request.background) form.append('background', request.background);
         if (request.output_format) form.append('output_format', request.output_format);
         if (request.output_compression !== undefined) form.append('output_compression', String(request.output_compression));
-        if (request.moderation && !hasReference) form.append('moderation', request.moderation);
+        if (request.moderation) form.append('moderation', request.moderation);
         references.forEach((reference) => form.append('image[]', reference.file, reference.file.name));
         fetchOptions = { method: 'POST', headers: { Authorization: `Bearer ${state.settings.imageApiKey}` }, body: form };
       } else {
@@ -2412,16 +2432,19 @@ async function generateImage() {
         const imageDataList = successful.flatMap((result) => result.images.map((image) => ({ ...image, responseMeta: { ...result.meta, ...(image.responseMeta || {}) } })));
         if (!imageDataList.length) throw new Error(results.map((result) => result.reason?.message).filter(Boolean).join('；') || '接口没有返回图片地址');
         const failed = results.length - successful.length;
-      presentGeneratedImages(imageDataList, prompt, config, referenceSources, { ...(successful[0]?.meta || {}), source: endpoint, requestType: hasReference ? 'edit' : 'generation', parallel: true, requestedCount: config.count, failedCount: failed }, startedAt);
+        if (generation !== localDataGeneration) return;
+        await presentGeneratedImages(imageDataList, prompt, config, referenceSources, { ...(successful[0]?.meta || {}), source: endpoint, requestType: hasReference ? 'edit' : 'generation', parallel: true, requestedCount: config.count, failedCount: failed }, startedAt, generation);
         if (failed) { taskResultDetail = `部分完成 ${successful.length}/${config.count} 个 · ${formatDuration(Date.now() - startedAt)}`; showErrorToast(`并发请求完成 ${successful.length}/${config.count} 个，${failed} 个失败`); }
       } else {
         const result = await parseImageResponse(await fetch(endpoint, fetchOptions), endpoint, hasReference);
         if (!result.images.length) throw new Error('接口没有返回图片地址');
-        presentGeneratedImages(result.images, prompt, config, referenceSources, result.meta, startedAt);
+        if (generation !== localDataGeneration) return;
+        await presentGeneratedImages(result.images, prompt, config, referenceSources, result.meta, startedAt, generation);
       }
     }
     updateImageTask(taskId, { status: 'success', finishedAt: Date.now(), detail: taskResultDetail || `已完成 · ${formatDuration(Date.now() - startedAt)}` });
   } catch (error) {
+    if (generation !== localDataGeneration) return;
     const detail = error.message || '生图失败, 请检查接口设置';
     updateImageTask(taskId, { status: 'error', finishedAt: Date.now(), detail: `${detail} · ${formatDuration(Date.now() - startedAt)}` });
     showErrorToast(detail);
@@ -2456,21 +2479,28 @@ function dataUrlToFile(dataUrl, name) {
   return new File([bytes], name, { type: mime });
 }
 
-async function saveGeneratedImage(record) {
+async function saveGeneratedImage(record, generationToken = localDataGeneration) {
+  if (generationToken !== localDataGeneration) return record;
   let storedRecord = record;
   if (!record.src.startsWith('data:')) {
     try { storedRecord = { ...record, src: await downloadImageAsDataUrl(record.src) }; } catch (error) { /* 保留临时地址 */ }
   }
+  if (generationToken !== localDataGeneration) return record;
   try { storedRecord = { ...storedRecord, ...(await readImageDetails(storedRecord.src)) }; } catch { }
+  if (generationToken !== localDataGeneration) return record;
   const storageRecord = createStoredImage(storedRecord);
   await saveImageHistory(storageRecord);
+  if (generationToken !== localDataGeneration) {
+    await deleteStoredImageRecord(storedRecord.id);
+    return record;
+  }
   storedImages.set(storedRecord.id, storedRecord);
   const batch = imageHistory.find((entry) => entry.id === storedRecord.batchId);
-  const imageIndex = batch ? getBatchImages(batch).findIndex((image) => image.id === storedRecord.id) : -1;
+  const imageIndex = batch ? (batch.imageIds || []).indexOf(storedRecord.id) : -1;
   if (batch && imageIndex >= 0) {
-    batch.images[imageIndex] = storedRecord;
-    batch.src = batch.images[0]?.src || batch.src;
+    batch.imageIds[imageIndex] = storedRecord.id;
     await saveImageHistory(createStoredBatch(batch));
+    if (generationToken !== localDataGeneration) return record;
     if (currentImage?.id === storedRecord.id) {
       Object.assign(currentImage, storedRecord, { batch });
       $('#imageMetadata').innerHTML = renderImageMetadata(currentImage);
@@ -2522,7 +2552,8 @@ async function detectTransparency(image) {
   return false;
 }
 
-function presentGeneratedImages(imageDataList, prompt, config, referenceSources, responseMeta = {}, startedAt = Date.now()) {
+async function presentGeneratedImages(imageDataList, prompt, config, referenceSources, responseMeta = {}, startedAt = Date.now(), generationToken = localDataGeneration) {
+  if (generationToken !== localDataGeneration) return;
   const createdAt = Date.now();
   const batchId = createId();
   const { apiResponse, ...sharedImageResponseMeta } = responseMeta || {};
@@ -2530,17 +2561,23 @@ function presentGeneratedImages(imageDataList, prompt, config, referenceSources,
     const src = typeof entry === 'string' ? entry : entry.src;
     const imageResponseMeta = { ...sharedImageResponseMeta, ...(typeof entry === 'object' ? entry.responseMeta : {}) };
     delete imageResponseMeta.apiResponse;
-    return { id: `${batchId}-${index + 1}`, src, prompt, config, referenceSources, responseMeta: imageResponseMeta, batchId, type: 'generation-image', createdAt: createdAt - index };
+    return { id: `${batchId}-${index + 1}`, src, prompt, config, responseMeta: imageResponseMeta, batchId, type: 'image', createdAt: createdAt - index };
   });
-  const batch = { id: batchId, batchId, src: records[0].src, prompt, config, referenceSources, responseMeta, type: 'generation-batch', images: records, imageCount: records.length, startedAt, createdAt, completedAt: createdAt, durationMs: createdAt - startedAt };
+  const referenceImageIds = [];
+  for (const source of referenceSources || []) {
+    if (generationToken !== localDataGeneration) return;
+    const referenceId = await saveImageResource(source, 'generation-reference', 'image', generationToken);
+    if (generationToken !== localDataGeneration) return;
+    if (referenceId) referenceImageIds.push(referenceId);
+  }
+  const batch = { id: batchId, batchId, prompt, config, referenceImageIds, responseMeta, type: 'generation-batch', imageIds: records.map((record) => record.id), imageCount: records.length, startedAt, createdAt, completedAt: createdAt, durationMs: createdAt - startedAt };
   imageHistory.unshift(batch);
-  storedImages.set(batch.id, batch);
   saveImageHistory(createStoredBatch(batch)).catch(() => showErrorToast('图片已生成, 但批次记录无法写入本地历史'));
   records.forEach((record) => storedImages.set(record.id, record));
   renderImageHistory();
 
   // 缩略图先显示, 大图继续在后台写入本地历史
-  Promise.allSettled(records.map(saveGeneratedImage)).then((results) => {
+  Promise.allSettled(records.map((record) => saveGeneratedImage(record, generationToken))).then((results) => {
     if (results.some((result) => result.status === 'rejected')) showErrorToast('图片已生成, 但部分图片无法写入本地历史');
   });
 }
@@ -2820,13 +2857,13 @@ function applyPolishResult() {
   showToast('已使用润色结果');
 }
 
-function showDemoImage(prompt, config = getImageConfig(), referenceSources = imageReferences.map((reference) => reference.data)) {
+async function showDemoImage(prompt, config = getImageConfig(), referenceSources = imageReferences.map((reference) => reference.data)) {
   const images = Array.from({ length: config.count }, (_, index) => {
     const accent = ['#e6f36b', '#74d4cb', '#f4b96b', '#aeb9ff'][index % 4];
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760"><rect width="1200" height="760" fill="#152536"/><circle cx="${925 - index * 35}" cy="${160 + index * 22}" r="125" fill="${accent}" opacity=".85"/><path d="M0 590 285 360l176 125 170-203 369 308H0Z" fill="#2d5960"/><path d="M0 670 260 488l185 115 155-124 367 191H0Z" fill="#173a4a"/><rect x="45" y="55" width="510" height="72" rx="10" fill="#0d1725" opacity=".83"/><text x="78" y="101" fill="#ecf2f9" font-family="sans-serif" font-size="24">${escapeHtml(prompt.slice(0, 27))} · ${index + 1}</text><text x="78" y="711" fill="#94a8b8" font-family="sans-serif" font-size="16">Orbit Image Studio · Demo preview</text></svg>`;
     return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, responseMeta: { source: '演示模式', model: '', size: config.size, format: 'svg+xml', requestType: referenceSources.length ? 'edit' : 'generation' } };
   });
-  presentGeneratedImages(images, prompt, config, referenceSources, {}, Date.now() - 1100);
+  await presentGeneratedImages(images, prompt, config, referenceSources, {}, Date.now() - 1100);
   showToast('已生成演示预览, 配置生图接口后可获得真实图片');
 }
 
@@ -2868,7 +2905,7 @@ function fileToDataUrl(file) {
 function renderImageReferences() {
   const preview = $('#imageReferencePreview');
   preview.hidden = imageReferences.length === 0;
-  preview.innerHTML = imageReferences.map((reference, index) => `<div class="reference-preview-item"><img src="${reference.data}" alt="生图参考图 ${index + 1}"><button type="button" class="remove-reference" data-reference-index="${index}" aria-label="移除参考图">×</button></div>`).join('');
+  preview.innerHTML = imageReferences.map((reference, index) => `<div class="reference-preview-item"><img src="${escapeHtml(reference.data)}" alt="生图参考图 ${index + 1}"><button type="button" class="remove-reference" data-reference-index="${index}" aria-label="移除参考图">×</button></div>`).join('');
   preview.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
   $$('.remove-reference').forEach((button) => button.addEventListener('click', () => {
     imageReferences.splice(Number(button.dataset.referenceIndex), 1);
@@ -2886,13 +2923,14 @@ function renderImageTasks() {
     event.stopPropagation();
     imageTasks = imageTasks.filter((task) => task.id !== button.dataset.taskId);
     renderImageTasks();
+    removeUnreferencedImages();
   }));
   $$('.image-task').forEach((node) => node.addEventListener('click', () => {
     const task = imageTasks.find((entry) => entry.id === node.dataset.taskId);
     if (!task) return;
     $('#imagePrompt').value = task.prompt || '';
     setImageConfig(task.config || {});
-    setImageReferencesFromSources(task.referenceSources || []);
+    setImageReferencesFromSources((task.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean));
     setView('image');
     $('#imagePrompt').focus();
     showToast(task.status === 'error' ? '已恢复失败任务, 可以修改关键词后重试' : '已同步这条生成配置');
@@ -3123,58 +3161,45 @@ function newConversation() {
 }
 
 async function clearLocalData() {
-  if (!window.confirm('清除所有本地对话和接口设置?')) return;
+  if (!window.confirm('清除当前服务下的全部本地数据?\n\n包括对话、生图历史、图片缓存、接口配置和模板。')) return;
   localStorage.removeItem(STORAGE_KEY);
+  localDataGeneration += 1;
+  requestController?.abort();
+  requestController = null;
   await clearStoredImages();
   state = createInitialState();
   imageTasks = [];
+  stopImageTaskTimerIfIdle();
   closeSettings();
   pendingAttachments = [];
   clearImageReferences();
+  selectedHistoryKeys.clear();
+  closeLightbox();
   $('#attachmentPreview').hidden = true;
   render();
+  renderImageHistory();
+  renderImageTasks();
   showToast('本地数据已清除');
 }
 
 async function exportWorkspace() {
   const includeApiConfig = window.confirm('是否同时导出配置？\n\n配置包含 API Key、接口地址、模型、接口模板和润色模板，请妥善保管导出的文件。');
-  const exportImages = new Map();
-  storedImages.forEach((image) => {
-    if (image.type === 'chat' || image.type === 'generation-image') exportImages.set(image.id, createStoredImage(image));
-  });
-  imageHistory.forEach((batch) => {
-    const batchImages = getBatchImages(batch);
-    const isLegacySingleImage = batchImages.length === 1 && batch.id === batchImages[0].id;
-    if (isLegacySingleImage) {
-      // 旧版图片 ID 同时作为记录 ID, 导出时不能再写入同 ID 的空批次覆盖图片
-      const legacyImage = batchImages[0];
-      exportImages.set(legacyImage.id, { ...createStoredImage(legacyImage), type: 'generation', referenceSources: legacyImage.referenceSources });
-      return;
-    }
-    batchImages.forEach((image) => exportImages.set(image.id, createStoredImage(image)));
-    exportImages.set(batch.id, createStoredBatch(batch));
-  });
-  const images = [...exportImages.values()];
+  const draftReferenceIds = [];
+  for (const reference of imageReferences) draftReferenceIds.push(await saveImageResource(reference.data, 'draft-reference'));
   const conversations = state.conversations.map((conversation) => ({
     ...conversation,
-    messages: conversation.messages.map((message) => {
-      let imageHistoryId = message.imageHistoryId || '';
-      if (message.image && !imageHistoryId) {
-        imageHistoryId = createId();
-        if (!exportImages.has(imageHistoryId)) images.push({ id: imageHistoryId, src: message.image, name: 'chat-image', type: 'chat', createdAt: message.createdAt || Date.now() });
-      }
-      return { ...message, image: '', imageHistoryId, imageHistoryIds: message.imageHistoryIds || (imageHistoryId ? [imageHistoryId] : []) };
-    })
+    messages: conversation.messages.map((message) => ({ ...message, imageIds: Array.isArray(message.imageIds) ? [...message.imageIds] : [] }))
   }));
   const workspace = {
-    version: 6,
+    version: 7,
     exportedAt: Date.now(),
     contextMode: state.contextMode,
     activeConversationId: state.activeConversationId,
     imageOptions: state.settings.imageOptions,
-    imageDraft: { prompt: $('#imagePrompt').value, references: imageReferences.map((reference) => reference.data), config: getImageConfig() },
+    imageDraft: { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() },
     conversations,
-    images
+    images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src).map(createStoredImage),
+    imageHistory: imageHistory.map(createStoredBatch)
   };
   if (includeApiConfig) workspace.apiConfig = {
     settings: { ...state.settings },
@@ -3213,29 +3238,24 @@ async function importWorkspace(file) {
     const payload = JSON.parse(await file.text());
     if (!Array.isArray(payload.conversations)) throw new Error('文件中没有对话记录');
     const sourceImages = Array.isArray(payload.images) ? payload.images : [];
-    if (!window.confirm(`导入 ${payload.conversations.length} 个对话和 ${sourceImages.filter((image) => image.type === 'generation-batch' || image.type === 'generation').length} 条生图记录并替换当前工作区?`)) return;
+    const sourceHistory = Array.isArray(payload.imageHistory) ? payload.imageHistory : [];
+    if (!window.confirm(`导入 ${payload.conversations.length} 个对话和 ${sourceHistory.length} 条生图记录并替换当前工作区?`)) return;
     const hasApiConfig = payload.apiConfig && typeof payload.apiConfig === 'object' && (payload.apiConfig.settings || payload.apiConfig.connectionProfiles);
     const importApiConfig = Boolean(hasApiConfig && window.confirm('这个文件包含接口配置和模板，是否应用？\n\n应用后会覆盖当前对话接口、生图接口及模板配置。'));
-    const images = sourceImages.filter((image) => image && image.id && (image.src || image.type === 'generation-batch')).map((image) => ({ ...image }));
-    const conversations = [];
-    for (const source of payload.conversations) {
-      const messages = [];
-      for (const message of Array.isArray(source.messages) ? source.messages : []) {
-        let imageHistoryId = message.imageHistoryId || '';
-        if (message.image && !imageHistoryId) {
-          imageHistoryId = createId();
-          images.push({ id: imageHistoryId, src: message.image, name: 'imported-image', type: 'chat', createdAt: message.createdAt || Date.now() });
-        }
-        messages.push({ ...message, image: '', imageHistoryId, imageHistoryIds: message.imageHistoryIds || (imageHistoryId ? [imageHistoryId] : []) });
-      }
-      conversations.push({ ...source, id: source.id || createId(), messages });
-    }
+    const images = sourceImages.filter((image) => image && image.id && image.src).map((image) => createStoredImage(image));
+    const batches = sourceHistory.filter((batch) => batch && batch.id).map((batch) => createStoredBatch(batch));
+    const conversations = payload.conversations.map((source) => ({
+      ...source,
+      id: source.id || createId(),
+      messages: (Array.isArray(source.messages) ? source.messages : []).map((message) => ({ ...message, imageIds: Array.isArray(message.imageIds) ? [...message.imageIds] : [] }))
+    }));
+    const records = [...images, ...batches];
     try {
-      await replaceStoredImages(images);
+      await replaceStoredImages(records);
     } catch (error) {
       // 某些 file:// 环境禁用 IndexedDB 时, 保留本次导入的页面内数据
-      storedImages = new Map(images.map((image) => [image.id, image]));
-      imageHistory = hydrateGenerationBatches(images);
+      storedImages = new Map(records.map((record) => [record.id, record]));
+      imageHistory = hydrateGenerationBatches(records);
     }
     state.conversations = conversations;
     state.contextMode = payload.contextMode === 'single' ? 'single' : 'client';
@@ -3269,7 +3289,8 @@ async function importWorkspace(file) {
     if (payload.imageDraft && typeof payload.imageDraft === 'object') {
       $('#imagePrompt').value = payload.imageDraft.prompt || '';
       setImageConfig(payload.imageDraft.config || state.settings.imageOptions);
-      await setImageReferencesFromSources(Array.isArray(payload.imageDraft.references) ? payload.imageDraft.references : []);
+      const draftSources = (payload.imageDraft.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean);
+      await setImageReferencesFromSources(draftSources);
     }
     renderImageHistory();
     renderMessages();
