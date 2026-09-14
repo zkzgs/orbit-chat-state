@@ -737,7 +737,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
         <div class="settings-section compact-section">
           <div class="section-title"><span class="section-number">03</span><div><strong>提示词偏好</strong><small>系统提示词随对话请求发送；润色要求仅在生成润色建议时发送</small></div></div>
           <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手"></textarea><small class="field-help">作为对话请求中的 system 消息发送, 不会拼接到生图关键词</small></label>
-          <label class="field-label">生图润色要求<textarea id="imagePolishInstructionSetting" rows="4" placeholder="例如: 保留原始创作意图, 补充主体、构图和光影细节"></textarea><small class="field-help">点击“润色关键词”时, 会和原始关键词一起发送给对话接口；普通对话和直接生图不会发送</small></label>
+          <label class="field-label">润色系统提示词<textarea id="imagePolishSystemPrompt" rows="4" placeholder="定义润色模型的角色和输出规则"></textarea><small class="field-help">作为润色请求中的 system 消息发送, 用于定义润色模型的角色和输出规则</small></label>
+          <label class="field-label">生图润色要求<textarea id="imagePolishInstructionSetting" rows="4" placeholder="例如: 保留原始创作意图, 补充主体、构图和光影细节"></textarea><small class="field-help">作为润色请求中的 user 内容发送, 普通对话和直接生图不会发送</small></label>
           <label class="toggle-row"><span><strong>演示模式</strong><small>不填写 Key 时也能体验完整交互</small></span><input type="checkbox" id="demoMode"><span class="toggle-ui"></span></label>
         </div>
         <div class="settings-section compact-section data-management-section">
@@ -772,6 +773,7 @@ const defaultState = {
     reasoningEffort: 'auto',
     chatWebSearch: false,
     imagePolishInstruction: '保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。',
+    imagePolishSystemPrompt: '你是专业的图像生成提示词编辑器。严格按照用户的润色要求处理原始关键词；如果收到参考图，请结合参考图中的主体、构图、色彩、风格和视觉特征定制提示词。只输出润色后的完整提示词，不要解释。',
     imagePolishTemplates: [],
     activeImagePolishTemplateId: '',
     demoMode: false
@@ -2845,7 +2847,7 @@ async function generatePolishResult() {
     } else {
       const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
       const userContent = [{ type: 'text', text: `原始关键词：\n${source}\n\n润色要求：\n${instruction}${referenceSources.length ? '\n\n请结合附带参考图定制提示词，描述并利用其中的主体、构图、色彩、风格和关键视觉特征。' : ''}` }, ...referenceSources.map((src) => ({ type: 'image_url', image_url: { url: src } }))];
-      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify({ model: state.settings.chatModel, stream: false, messages: [{ role: 'system', content: '你是专业的图像生成提示词编辑器。严格按照用户的润色要求处理原始关键词；如果收到参考图，请结合参考图中的主体、构图、色彩、风格和视觉特征定制提示词。只输出润色后的完整提示词，不要解释。' }, { role: 'user', content: userContent }] }) });
+      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify({ model: state.settings.chatModel, stream: false, messages: [{ role: 'system', content: state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt }, { role: 'user', content: userContent }] }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
       const content = payload?.choices?.[0]?.message?.content;
@@ -3126,6 +3128,7 @@ function openSettings() {
   $('#imageCountModeSetting').value = state.settings.imageCountMode || 'parameter';
   $('#imageBackgroundModeSetting').value = state.settings.imageBackgroundMode || 'parameter';
   $('#systemPrompt').value = state.settings.systemPrompt;
+  $('#imagePolishSystemPrompt').value = state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt;
   $('#imagePolishInstructionSetting').value = state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction;
   $('#reasoningEffort').value = state.settings.reasoningEffort || 'auto';
   $('#chatWebSearch').checked = Boolean(state.settings.chatWebSearch);
@@ -3144,7 +3147,7 @@ function saveSettings() {
     if (profile && !connectionProfileMatches(kind, profile)) state.activeConnectionProfiles[kind] = '';
   });
   const imageModel = $('#imageModel').value.trim() || 'gpt-image-1';
-  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel }, imageCountMode: $('#imageCountModeSetting').value || 'parameter', imageBackgroundMode: $('#imageBackgroundModeSetting').value || 'parameter', systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishInstruction: $('#imagePolishInstructionSetting').value.trim(), imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', demoMode: $('#demoMode').checked };
+  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel }, imageCountMode: $('#imageCountModeSetting').value || 'parameter', imageBackgroundMode: $('#imageBackgroundModeSetting').value || 'parameter', systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: $('#imagePolishInstructionSetting').value.trim(), imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', demoMode: $('#demoMode').checked };
   persist();
   closeSettings();
   render();
