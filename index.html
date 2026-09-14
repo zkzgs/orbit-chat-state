@@ -28,6 +28,8 @@
 html, body { height: 100%; }
 body { display: flex; flex-direction: column; margin: 0; background: #0c131f; color: var(--ink); font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; }
 button, input, textarea, select { font: inherit; }
+input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 button { color: inherit; cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -485,6 +487,26 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .lightbox-details { gap: 10px; }
 .select-control input { width: 100%; min-width: 0; padding: 7px 8px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #101a28; color: var(--ink); font-size: 11px; }
 .select-control input:focus { border-color: rgba(116,212,203,.55); }
+.custom-select-host { position: relative; min-width: 0; }
+.field-label > .custom-select-host, .profile-select-label > .custom-select-host, .select-control > .custom-select-host { width: 100%; }
+.quick-setting > .custom-select-host { width: 70px; flex: 0 0 70px; }
+.custom-select-native { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; clip-path: inset(50%) !important; opacity: 0 !important; pointer-events: none !important; }
+.custom-select-trigger { position: relative; display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; gap: 10px; padding: 7px 28px 7px 8px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #101a28; color: var(--ink); font-size: 11px; text-align: left; }
+.custom-select-trigger::after { position: absolute; right: 9px; color: var(--muted-2); content: "▾"; font-size: 11px; pointer-events: none; }
+.custom-select-trigger:hover, .custom-select-trigger[aria-expanded="true"] { border-color: rgba(116,212,203,.55); }
+.custom-select-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.custom-select-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.custom-select-menu { position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 120; max-height: min(280px, 45vh); overflow-y: auto; padding: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: #162235; box-shadow: 0 16px 36px rgba(0,0,0,.42); }
+.custom-select-host.open-up .custom-select-menu { top: auto; bottom: calc(100% + 4px); }
+.custom-select-menu[hidden] { display: none; }
+.custom-select-option { display: block; width: 100%; min-height: 30px; padding: 6px 8px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 11px; text-align: left; }
+.custom-select-option:hover, .custom-select-option:focus-visible { background: rgba(116,212,203,.1); color: var(--ink); outline: 0; }
+.custom-select-option.selected { background: rgba(230,243,107,.1); color: var(--accent); }
+.quick-setting .custom-select-trigger { width: 70px; height: 27px; min-height: 27px; padding: 0 20px 0 7px; font-size: 10px; }
+.quick-setting .custom-select-trigger::after { right: 6px; }
+.field-label .custom-select-trigger { padding: 9px 28px 9px 10px; font-size: 12px; }
+.profile-select-label .custom-select-trigger { padding: 8px 28px 8px 9px; font-size: 12px; }
+.image-controls .select-control .custom-select-trigger { width: 100%; min-width: 0; }
 .control-help { color: var(--muted-2); font-size: 9px; line-height: 1.3; }
 .image-history { user-select: none; touch-action: pan-y; }
 .image-history.is-selecting, .image-history.is-selecting * { user-select: none; }
@@ -954,16 +976,27 @@ function hydrateGenerationBatches(items) {
     .sort((left, right) => right.createdAt - left.createdAt);
 }
 
+function getImageIdentity(src) {
+  const separatorIndex = String(src).indexOf(',');
+  return String(src).startsWith('data:') && separatorIndex >= 0 ? String(src).slice(separatorIndex + 1) : String(src);
+}
+
+function findStoredImageBySource(src) {
+  const identity = getImageIdentity(src);
+  return [...storedImages.values()].find((record) => record.type === 'image' && getImageIdentity(record.src) === identity);
+}
+
 async function saveChatImage(src, name) {
-  const existing = [...storedImages.values()].find((record) => record.type === 'image' && record.src === src);
+  const existing = findStoredImageBySource(src);
   if (existing) return existing.id;
   const record = { id: createId(), src, name, type: 'image', createdAt: Date.now() };
+  // 先登记内存记录, 避免并发保存同一图片时各自创建 ID
+  storedImages.set(record.id, record);
   try {
     await saveImageHistory(record);
   } catch (error) {
     // 当前页面仍可使用图片, 仅跳过持久化
   }
-  storedImages.set(record.id, record);
   return record.id;
 }
 
@@ -1195,7 +1228,7 @@ function getReferencedImageIds(excludedBatchIds = new Set()) {
   });
   pendingAttachments.map((attachment) => attachment.imageId).filter(Boolean).forEach((id) => ids.add(id));
   imageReferences.forEach((reference) => {
-    const record = [...storedImages.values()].find((image) => image.type === 'image' && image.src === reference.data);
+    const record = findStoredImageBySource(reference.data);
     if (record) ids.add(record.id);
   });
   return ids;
@@ -1544,6 +1577,7 @@ function render() {
   setImageConfig(state.settings.imageOptions);
   renderImageReferences();
   renderImageTasks();
+  syncCustomSelects();
 }
 
 function renderConversations() {
@@ -1658,7 +1692,7 @@ function resetComposerDraft() {
 }
 
 function setChatAttachments(items) {
-  pendingAttachments = items.filter((item) => item?.data).slice(0, 16);
+  pendingAttachments = getUniqueImageItems(items).slice(0, 16);
   $('#attachmentPreview').hidden = false;
   $('#attachmentPreview').innerHTML = pendingAttachments.map((item, index) => `<div class="attachment-item"><img src="${escapeHtml(item.data)}" alt="待发送的图片 ${index + 1}" data-attachment-index="${index}"><button type="button" class="remove-attachment" data-attachment-index="${index}" aria-label="移除图片">×</button></div>`).join('');
   $$('.remove-attachment').forEach((button) => button.addEventListener('click', () => {
@@ -1720,6 +1754,7 @@ function setImageConfig(config = {}) {
   if (config.countMode) state.settings.imageCountMode = config.countMode;
   if (config.backgroundMode) state.settings.imageBackgroundMode = config.backgroundMode;
   updateImageSizeButton();
+  syncCustomSelects();
   if (config.model) persist();
 }
 
@@ -1812,6 +1847,7 @@ function openImageSize() {
   $('#imageResolution').value = imageSizeDraft.resolution;
   $('#imageWidth').value = imageSizeDraft.width;
   $('#imageHeight').value = imageSizeDraft.height;
+  syncCustomSelect($('#imageResolution'));
   renderRatioGrid();
   setSizeDialogMode(imageSizeDraft.sizeMode);
   $('#imageSizeBackdrop').hidden = false;
@@ -2748,6 +2784,167 @@ function closeModelDropdowns(event) {
   $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
 }
 
+function syncCustomSelect(select) {
+  const host = select.closest('.custom-select-host');
+  if (!host) return;
+  const trigger = host.querySelector('.custom-select-trigger');
+  const valueNode = host.querySelector('.custom-select-value');
+  const selected = [...select.options].find((option) => option.value === select.value);
+  if (valueNode) valueNode.textContent = selected?.textContent || select.value;
+  if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  host.querySelectorAll('.custom-select-option').forEach((option) => {
+    const selectedState = option.dataset.value === select.value;
+    option.classList.toggle('selected', selectedState);
+    option.setAttribute('aria-selected', selectedState ? 'true' : 'false');
+  });
+}
+
+function closeCustomSelects(except = null) {
+  $$('.custom-select-host').forEach((host) => {
+    if (host !== except) {
+      host.querySelector('.custom-select-menu')?.setAttribute('hidden', '');
+      host.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded', 'false');
+      host.classList.remove('open-up');
+    }
+  });
+}
+
+function positionCustomSelectMenu(host, menu) {
+  host.classList.remove('open-up');
+  const hostRect = host.getBoundingClientRect();
+  let boundaryTop = 8;
+  let boundaryBottom = window.innerHeight - 8;
+  for (let parent = host.parentElement; parent; parent = parent.parentElement) {
+    if (!/(auto|scroll|hidden|clip)/.test(getComputedStyle(parent).overflowY)) continue;
+    const parentRect = parent.getBoundingClientRect();
+    boundaryTop = Math.max(boundaryTop, parentRect.top + 4);
+    boundaryBottom = Math.min(boundaryBottom, parentRect.bottom - 4);
+  }
+  const desiredHeight = Math.min(menu.scrollHeight, window.innerHeight * .45, 280);
+  const spaceBelow = Math.max(0, boundaryBottom - hostRect.bottom - 4);
+  const spaceAbove = Math.max(0, hostRect.top - boundaryTop - 4);
+  const openUp = spaceBelow < desiredHeight && spaceAbove > spaceBelow;
+  host.classList.toggle('open-up', openUp);
+  menu.style.maxHeight = `${Math.max(60, Math.min(desiredHeight, openUp ? spaceAbove : spaceBelow))}px`;
+}
+
+function renderCustomSelectMenu(select) {
+  const host = select.closest('.custom-select-host');
+  const menu = host?.querySelector('.custom-select-menu');
+  if (!menu) return;
+  menu.replaceChildren(...[...select.options].map((option) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'custom-select-option';
+    item.dataset.value = option.value;
+    item.textContent = option.textContent;
+    item.setAttribute('role', 'option');
+    item.setAttribute('aria-selected', option.value === select.value ? 'true' : 'false');
+    return item;
+  }));
+  syncCustomSelect(select);
+}
+
+function chooseCustomSelectOption(select, option) {
+  if (!option) return;
+  select.value = option.dataset.value;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+  const host = select.closest('.custom-select-host');
+  closeCustomSelects();
+  host?.querySelector('.custom-select-trigger')?.focus();
+}
+
+function enhanceCustomSelect(select) {
+  if (!select || select.hidden || select.dataset.customSelectEnhanced === 'true') return;
+  select.dataset.customSelectEnhanced = 'true';
+  const host = document.createElement('div');
+  host.className = 'custom-select-host';
+  select.parentNode.insertBefore(host, select);
+  host.appendChild(select);
+  select.classList.add('custom-select-native');
+  select.hidden = true;
+  select.tabIndex = -1;
+  select.setAttribute('aria-hidden', 'true');
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'custom-select-trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  const valueNode = document.createElement('span');
+  valueNode.className = 'custom-select-value';
+  trigger.appendChild(valueNode);
+  const menu = document.createElement('div');
+  menu.className = 'custom-select-menu';
+  menu.hidden = true;
+  menu.setAttribute('role', 'listbox');
+  menu.id = `${select.id}-custom-menu`;
+  trigger.setAttribute('aria-controls', menu.id);
+  host.insertBefore(trigger, select);
+  host.appendChild(menu);
+  renderCustomSelectMenu(select);
+  trigger.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const willOpen = menu.hidden;
+    closeCustomSelects(willOpen ? host : null);
+    if (willOpen) {
+      renderCustomSelectMenu(select);
+      menu.hidden = false;
+      positionCustomSelectMenu(host, menu);
+      trigger.setAttribute('aria-expanded', 'true');
+      menu.querySelector('.custom-select-option.selected')?.focus();
+    } else {
+      menu.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  });
+  trigger.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      trigger.click();
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeCustomSelects();
+    }
+  });
+  menu.addEventListener('click', (event) => {
+    const option = event.target.closest('.custom-select-option');
+    if (option) chooseCustomSelectOption(select, option);
+  });
+  menu.addEventListener('keydown', (event) => {
+    const options = [...menu.querySelectorAll('.custom-select-option')];
+    const currentIndex = options.indexOf(document.activeElement);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!options.length) return;
+      const offset = event.key === 'ArrowDown' ? 1 : -1;
+      options[(currentIndex + offset + options.length) % options.length].focus();
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      options[event.key === 'Home' ? 0 : options.length - 1]?.focus();
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      chooseCustomSelectOption(select, document.activeElement?.closest('.custom-select-option'));
+    } else if (event.key === 'Escape' || event.key === 'Tab') {
+      closeCustomSelects();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        trigger.focus();
+      }
+    }
+  });
+  select.addEventListener('change', () => syncCustomSelect(select));
+}
+
+function enhanceCustomSelects() {
+  $$('select').forEach(enhanceCustomSelect);
+}
+
+function syncCustomSelects() {
+  $$('.custom-select-host select').forEach(syncCustomSelect);
+}
+
 function getPolishTemplates() {
   state.settings.imagePolishTemplates = normalizePolishTemplates(state.settings.imagePolishTemplates);
   return state.settings.imagePolishTemplates;
@@ -2760,6 +2957,7 @@ function renderPolishTemplates() {
   const select = $('#polishTemplateSelect');
   select.innerHTML = `<option value="">临时模板（未保存）</option>${templates.map((template) => `<option value="${escapeHtml(template.id)}">${escapeHtml(template.name)}</option>`).join('')}`;
   select.value = hasActiveTemplate ? activeId : '';
+  renderCustomSelectMenu(select);
   $('#updatePolishTemplate').disabled = !hasActiveTemplate;
   $('#deletePolishTemplate').disabled = !hasActiveTemplate;
 }
@@ -2811,9 +3009,33 @@ function renderPolishReferencePreview() {
   });
 }
 
+function getUniqueImageItems(items) {
+  const sources = new Set();
+  return items.filter((item) => {
+    if (!item?.data) return false;
+    const identity = getImageIdentity(item.data);
+    if (sources.has(identity)) return false;
+    sources.add(identity);
+    return true;
+  });
+}
+
+function appendUniqueImageItems(current, incoming, limit = 16) {
+  const merged = getUniqueImageItems([...current, ...incoming]);
+  return {
+    items: merged.slice(0, limit),
+    duplicateCount: current.length + incoming.length - merged.length
+  };
+}
+
 async function appendPolishReferenceFiles(event, references, renderPreview) {
   const files = [...event.target.files].slice(0, 16 - references.length);
-  if (files.length) references.push(...await Promise.all(files.map(async (file) => ({ file, data: await fileToDataUrl(file) }))));
+  if (files.length) {
+    const incoming = await Promise.all(files.map(async (file) => ({ file, data: await fileToDataUrl(file) })));
+    const result = appendUniqueImageItems(references, incoming);
+    references.splice(0, references.length, ...result.items);
+    if (result.duplicateCount) showWarningToast(`已忽略 ${result.duplicateCount} 张重复图片`);
+  }
   renderPreview();
   resetPolishSuggestion();
   event.target.value = '';
@@ -2827,21 +3049,29 @@ async function handlePolishReference(event) {
   await appendPolishReferenceFiles(event, polishReferences, renderPolishReferencePreview);
 }
 
-async function addPolishReferenceFile(file) {
-  if (!file || polishReferences.length >= 16) {
-    showErrorToast('润色参考图最多添加 16 张');
+async function addPolishReferenceFile(file, target = 'polish') {
+  const references = target === 'generation' ? polishGenerationReferences : polishReferences;
+  const renderPreview = target === 'generation' ? renderPolishGenerationReferencePreview : renderPolishReferencePreview;
+  const label = target === 'generation' ? '生成参考图' : '润色参考图';
+  if (!file || references.length >= 16) {
+    showErrorToast(`${label}最多添加 16 张`);
     return;
   }
-  polishReferences.push({ file, data: await fileToDataUrl(file) });
-  renderPolishReferencePreview();
+  const reference = { file, data: await fileToDataUrl(file) };
+  if (references.some((item) => item.data === reference.data)) {
+    showWarningToast(`这张图片已在${label}中`);
+    return;
+  }
+  references.push(reference);
+  renderPreview();
   resetPolishSuggestion();
 }
 
-function handlePolishReferencePaste(event) {
+function handlePolishReferencePaste(event, target) {
   const item = [...(event.clipboardData?.items || [])].find((entry) => entry.kind === 'file' && entry.type.startsWith('image/'));
   if (!item) return;
   event.preventDefault();
-  addPolishReferenceFile(item.getAsFile());
+  addPolishReferenceFile(item.getAsFile(), target);
 }
 
 function clearPolishReferences() {
@@ -2876,11 +3106,14 @@ function selectPolishTemplate(templateId) {
   const template = getPolishTemplates().find((item) => item.id === templateId);
   state.settings.activeImagePolishTemplateId = template?.id || '';
   if (template) {
-    state.settings.imagePolishInstruction = template.instruction;
     $('#polishInstruction').value = template.instruction;
     setPolishReferencesFromIds(template.referenceImageIds);
-    resetPolishSuggestion();
+  } else {
+    $('#polishInstruction').value = state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction;
+    polishReferences = [];
+    renderPolishReferencePreview();
   }
+  resetPolishSuggestion();
   persist();
   renderPolishTemplates();
 }
@@ -2917,7 +3150,6 @@ async function updatePolishTemplate() {
   template.instruction = instruction;
   template.referenceImageIds = await getStoredPolishReferenceIds();
   template.updatedAt = Date.now();
-  state.settings.imagePolishInstruction = instruction;
   persist();
   await removeUnreferencedImages();
   renderPolishTemplates();
@@ -2937,6 +3169,7 @@ async function deletePolishTemplate() {
 }
 
 function savePolishInstructionDraft() {
+  if (state.settings.activeImagePolishTemplateId) return;
   state.settings.imagePolishInstruction = $('#polishInstruction').value;
   persist();
 }
@@ -2952,7 +3185,7 @@ function openPromptPolish() {
   const prompt = input.value.trim();
   const activeTemplate = getPolishTemplates().find((template) => template.id === state.settings.activeImagePolishTemplateId);
   $('#polishSourcePrompt').value = prompt;
-  $('#polishInstruction').value = state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction;
+  $('#polishInstruction').value = activeTemplate?.instruction || state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction;
   renderPolishTemplates();
   polishGenerationReferences = imageReferences.map((reference) => ({ ...reference }));
   $('#polishUseGenerationReferences').checked = false;
@@ -2991,8 +3224,7 @@ async function generatePolishResult() {
   const button = $('#generatePolishResult');
   if (!source && !referenceCount) { showErrorToast('请填写关键词, 添加润色参考图或勾选生成参考图参与润色'); $('#polishSourcePrompt').focus(); return; }
   if (!instruction) { showErrorToast('请填写润色要求'); $('#polishInstruction').focus(); return; }
-  state.settings.imagePolishInstruction = instruction;
-  persist();
+  savePolishInstructionDraft();
   button.disabled = true;
   button.textContent = '生成中';
   $('#polishStatus').textContent = '请求中';
@@ -3048,8 +3280,10 @@ async function handleImageReference(event) {
   const files = [...event.target.files].slice(0, 16 - imageReferences.length);
   if (!files.length) return;
   const references = await Promise.all(files.map(async (file) => ({ file, data: await fileToDataUrl(file) })));
-  imageReferences.push(...references);
+  const result = appendUniqueImageItems(imageReferences, references);
+  imageReferences = result.items;
   renderImageReferences();
+  if (result.duplicateCount) showWarningToast(`已忽略 ${result.duplicateCount} 张重复图片`);
   event.target.value = '';
 }
 
@@ -3058,7 +3292,12 @@ async function addImageReferenceFile(file) {
     showErrorToast('参考图最多添加 16 张');
     return;
   }
-  imageReferences.push({ file, data: await fileToDataUrl(file) });
+  const reference = { file, data: await fileToDataUrl(file) };
+  if (imageReferences.some((item) => item.data === reference.data)) {
+    showWarningToast('这张图片已在生成参考图中');
+    return;
+  }
+  imageReferences.push(reference);
   renderImageReferences();
   showToast('参考图已添加');
 }
@@ -3137,7 +3376,7 @@ function updateImageTask(id, patch) {
 
 async function setImageReferencesFromSources(sources, replace = true) {
   const incoming = sources.slice(0, 16).map((data, index) => ({ data, file: dataUrlToFile(data, `reference-${Date.now()}-${index}.png`) }));
-  imageReferences = replace ? incoming : [...imageReferences, ...incoming].slice(0, 16);
+  imageReferences = appendUniqueImageItems(replace ? [] : imageReferences, incoming).items;
   renderImageReferences();
 }
 
@@ -3157,6 +3396,7 @@ function setConnectionProfileFields(kind, profile) {
     $('#chatApiKey').value = profile.apiKey || '';
     $('#chatModel').value = profile.model || 'gpt-4o-mini';
     $('#reasoningEffort').value = profile.reasoningEffort || 'auto';
+    syncCustomSelect($('#reasoningEffort'));
     return;
   }
   $('#imageBaseUrl').value = profile.baseUrl || '';
@@ -3164,6 +3404,8 @@ function setConnectionProfileFields(kind, profile) {
   $('#imageModel').value = profile.model || 'gpt-image-1';
   $('#imageCountModeSetting').value = profile.countMode || 'parameter';
   $('#imageBackgroundModeSetting').value = profile.backgroundMode || 'parameter';
+  syncCustomSelect($('#imageCountModeSetting'));
+  syncCustomSelect($('#imageBackgroundModeSetting'));
 }
 
 function applyConnectionProfileToSettings(kind, profile) {
@@ -3173,6 +3415,8 @@ function applyConnectionProfileToSettings(kind, profile) {
     state.settings.chatModel = profile.model || 'gpt-4o-mini';
     state.settings.reasoningEffort = profile.reasoningEffort || 'auto';
     $('#chatModelQuick').value = state.settings.chatModel;
+    $('#reasoningEffortQuick').value = state.settings.reasoningEffort;
+    syncCustomSelect($('#reasoningEffortQuick'));
   } else {
     state.settings.imageBaseUrl = profile.baseUrl || '';
     state.settings.imageApiKey = profile.apiKey || '';
@@ -3195,6 +3439,7 @@ function renderConnectionProfiles(kind) {
   const activeId = state.activeConnectionProfiles[kind];
   select.innerHTML = `<option value="">临时配置（未保存）</option>${profiles.map((profile) => `<option value="${profile.id}">${escapeHtml(profile.name)}</option>`).join('')}`;
   select.value = profiles.some((profile) => profile.id === activeId) ? activeId : '';
+  renderCustomSelectMenu(select);
   $(`#update${kind === 'chat' ? 'Chat' : 'Image'}Profile`).disabled = !select.value;
   $(`#delete${kind === 'chat' ? 'Chat' : 'Image'}Profile`).disabled = !select.value;
 }
@@ -3289,6 +3534,7 @@ function openSettings() {
   $('#systemPrompt').value = state.settings.systemPrompt;
   $('#imagePolishSystemPrompt').value = state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt;
   $('#reasoningEffort').value = state.settings.reasoningEffort || 'auto';
+  syncCustomSelects();
   $('#chatWebSearch').checked = Boolean(state.settings.chatWebSearch);
   $('#demoMode').checked = state.settings.demoMode;
   renderAllConnectionProfiles();
@@ -3496,12 +3742,13 @@ function mergeImageResources(baseRecords, sourceRecords) {
   const records = new Map(baseRecords.map((record) => [record.id, record]));
   const idMap = new Map();
   sourceRecords.forEach((source) => {
+    const sourceIdentity = getImageIdentity(source.src);
     const sameId = records.get(source.id);
-    if (sameId?.src === source.src) {
+    if (sameId && getImageIdentity(sameId.src) === sourceIdentity) {
       idMap.set(source.id, sameId.id);
       return;
     }
-    const sameSource = [...records.values()].find((record) => record.src === source.src);
+    const sameSource = [...records.values()].find((record) => getImageIdentity(record.src) === sourceIdentity);
     if (sameSource) {
       idMap.set(source.id, sameSource.id);
       return;
@@ -3651,7 +3898,11 @@ async function importWorkspace(file) {
 function handleAttachment(event) {
   const files = [...event.target.files].slice(0, 16 - pendingAttachments.length);
   if (!files.length) return;
-  Promise.all(files.map(async (file) => ({ data: await fileToDataUrl(file), name: file.name }))).then((items) => setChatAttachments([...pendingAttachments, ...items]));
+  Promise.all(files.map(async (file) => ({ data: await fileToDataUrl(file), name: file.name }))).then((items) => {
+    const result = appendUniqueImageItems(pendingAttachments, items);
+    setChatAttachments(result.items);
+    if (result.duplicateCount) showWarningToast(`已忽略 ${result.duplicateCount} 张重复图片`);
+  });
   event.target.value = '';
 }
 
@@ -3673,7 +3924,9 @@ async function handleFileAttachment(event) {
 }
 
 async function handlePastedImage(file) {
-  setChatAttachments([...pendingAttachments, { data: await fileToDataUrl(file), name: file.name || '粘贴的图片' }]);
+  const result = appendUniqueImageItems(pendingAttachments, [{ data: await fileToDataUrl(file), name: file.name || '粘贴的图片' }]);
+  setChatAttachments(result.items);
+  if (result.duplicateCount) { showWarningToast('这张图片已在当前消息中'); return; }
   showToast('图片已放入当前消息');
 }
 
@@ -3682,7 +3935,11 @@ function handleMessagePaste(event) {
   const imageItems = items.filter((item) => item.kind === 'file' && item.type.startsWith('image/'));
   if (imageItems.length) {
     event.preventDefault();
-    Promise.all(imageItems.map((item) => fileToDataUrl(item.getAsFile()).then((data) => ({ data, name: '粘贴的图片' })))).then((attachments) => setChatAttachments([...pendingAttachments, ...attachments]));
+    Promise.all(imageItems.map((item) => fileToDataUrl(item.getAsFile()).then((data) => ({ data, name: '粘贴的图片' })))).then((attachments) => {
+      const result = appendUniqueImageItems(pendingAttachments, attachments);
+      setChatAttachments(result.items);
+      if (result.duplicateCount) showWarningToast(`已忽略 ${result.duplicateCount} 张重复图片`);
+    });
     return;
   }
   const textFileItem = items.find((item) => item.kind === 'file' && (item.type.startsWith('text/') || item.type === 'application/json'));
@@ -3762,6 +4019,7 @@ function bindEvents() {
   enhanceModelInput($('#chatModel'), 'chat');
   enhanceModelInput($('#chatModelQuick'), 'chat');
   enhanceModelInput($('#imageModel'), 'image');
+  enhanceCustomSelects();
   $('#newChatButton').addEventListener('click', newConversation);
   $('#openSettings').addEventListener('click', openSettings);
   $('#topbarSettings').addEventListener('click', openSettings);
@@ -3815,7 +4073,8 @@ function bindEvents() {
   $('#polishGenerationReferenceUpload').addEventListener('change', handlePolishGenerationReference);
   $('#polishReferenceUpload').addEventListener('change', handlePolishReference);
   $('#polishUseGenerationReferences').addEventListener('change', resetPolishSuggestion);
-  $('#promptPolishBackdrop').addEventListener('paste', handlePolishReferencePaste);
+  $('#polishSourcePrompt').addEventListener('paste', (event) => handlePolishReferencePaste(event, 'generation'));
+  $('#polishInstruction').addEventListener('paste', (event) => handlePolishReferencePaste(event, 'polish'));
   $('#imageSizeButton').addEventListener('click', openImageSize);
   $('#closeImageSize').addEventListener('click', closeImageSize);
   $('#cancelImageSize').addEventListener('click', closeImageSize);
@@ -3876,6 +4135,7 @@ function bindEvents() {
   $('#chatWebSearch').addEventListener('change', updateChatWebSearch);
   document.addEventListener('click', closeSidebarOnOutside);
   document.addEventListener('click', closeModelDropdowns);
+  document.addEventListener('click', () => closeCustomSelects());
   document.addEventListener('click', closeConversationExportMenu);
   bindCustomTooltips();
   document.addEventListener('dragstart', (event) => {
@@ -3896,6 +4156,7 @@ function bindEvents() {
       return;
     }
     if (event.key !== 'Escape') return;
+    if ($('.custom-select-menu:not([hidden])')) { event.preventDefault(); closeCustomSelects(); return; }
     if (!$('#chatImageViewer').hidden) { event.preventDefault(); event.stopPropagation(); closeChatImageViewer(); return; }
     if (!$('#conversationExportMenu').hidden) { event.preventDefault(); event.stopPropagation(); closeConversationExportMenu(); return; }
     if (!$('#imageLightbox').hidden) { event.preventDefault(); event.stopPropagation(); closeLightbox(); return; }
