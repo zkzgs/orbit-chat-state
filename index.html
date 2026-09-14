@@ -189,7 +189,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .toast.warning { border-left-color: var(--warm); }
 .toast.warning .toast-icon { color: var(--warm); }
 .toast { z-index: 200; }
-.data-management-actions { display: flex; gap: 8px; }
+.data-management-actions { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.data-management-select { display: grid; gap: 5px; min-width: 170px; color: var(--muted); font-size: 11px; }
+.data-management-select select { min-height: 36px; }
 .data-management-actions .secondary-button { flex: 1; }
 .profile-manager { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; margin: 0 0 17px; padding: 11px; border: 1px solid var(--line); border-radius: 7px; background: rgba(255,255,255,.025); }
 .profile-select-label { min-width: 0; display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 11px; }
@@ -739,11 +741,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
         </div>
         <div class="settings-section compact-section data-management-section">
           <div class="section-title"><span class="section-number">04</span><div><strong>数据管理</strong><small>导出时可选择是否包含 API Key 和各类模板</small></div></div>
-          <div class="data-management-actions"><button class="secondary-button" id="exportWorkspace" type="button">导出工作区</button><button class="secondary-button" id="importWorkspace" type="button">导入工作区</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
+          <div class="data-management-actions"><label class="data-management-select">导出范围<select id="exportScope"><option value="chat">对话工作区</option><option value="image">生图工作区</option><option value="workspace" selected>全部工作区</option><option value="config">配置</option></select></label><button class="secondary-button" id="exportWorkspace" type="button">导出</button><button class="secondary-button" id="importWorkspace" type="button">导入</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
+          <div class="data-management-actions"><label class="data-management-select">清除范围<select id="clearDataScope"><option value="chat">对话工作区</option><option value="image">生图工作区</option><option value="workspace">全部工作区</option><option value="config">配置</option><option value="all">全部数据</option></select></label></div>
         </div>
         <div class="security-callout"><span>⌁</span><p>Key、接口模板和润色模板默认只保存在当前浏览器；选择“包含配置”导出时才会写入文件。部署到公开环境前，建议通过自己的后端代理请求，避免在前端暴露密钥</p></div>
       </div>
-      <div class="modal-footer"><button class="text-button danger" id="resetLocalData">清除本地数据</button><div><button class="secondary-button" id="cancelSettings">取消</button><button class="primary-button" id="saveSettings">保存设置</button></div></div>
+      <div class="modal-footer"><button class="text-button danger" id="resetLocalData">清除所选数据</button><div><button class="secondary-button" id="cancelSettings">取消</button><button class="primary-button" id="saveSettings">保存设置</button></div></div>
     </section>
   </div>
 
@@ -1139,6 +1142,10 @@ function getReferencedImageIds(excludedBatchIds = new Set()) {
     (task.referenceImageIds || []).filter(Boolean).forEach((id) => ids.add(id));
   });
   pendingAttachments.map((attachment) => attachment.imageId).filter(Boolean).forEach((id) => ids.add(id));
+  imageReferences.forEach((reference) => {
+    const record = [...storedImages.values()].find((image) => image.type === 'image' && image.src === reference.data);
+    if (record) ids.add(record.id);
+  });
   return ids;
 }
 
@@ -2389,7 +2396,11 @@ async function generateImage() {
   let taskResultDetail = '';
   const references = imageReferences.map((reference) => ({ data: reference.data, file: reference.file }));
   const referenceImageIds = [];
-  for (const reference of references) referenceImageIds.push(await saveImageResource(reference.data, 'task-reference'));
+  for (const reference of references) {
+    const referenceId = await saveImageResource(reference.data, 'task-reference', 'image', generation);
+    if (generation !== localDataGeneration) return;
+    if (referenceId) referenceImageIds.push(referenceId);
+  }
   imageTasks.unshift({ id: taskId, title: prompt.slice(0, 48), detail: countMode === 'parallel' ? `并发生成 ${config.count} 张` : '生成中', prompt, config: { ...config }, referenceImageIds, startedAt, status: 'running' });
   startImageTaskTimer();
   renderImageTasks();
@@ -3160,61 +3171,106 @@ function newConversation() {
   $('#sidebar').classList.remove('open');
 }
 
+function cloneValue(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function getConversationImageIds(conversations = state.conversations) {
+  const ids = new Set();
+  conversations.forEach((conversation) => conversation.messages.forEach((message) => (message.imageIds || []).filter(Boolean).forEach((id) => ids.add(id))));
+  return ids;
+}
+
+function getImageWorkspaceImageIds(batches = imageHistory) {
+  const ids = new Set();
+  batches.forEach((batch) => [...(batch.imageIds || []), ...(batch.referenceImageIds || [])].filter(Boolean).forEach((id) => ids.add(id)));
+  return ids;
+}
+
+function getExportScopeLabel(scope) {
+  return { chat: '对话工作区', image: '生图工作区', workspace: '全部工作区', config: '配置' }[scope] || '工作区';
+}
+
+function getExportFilePrefix(scope) {
+  return { chat: 'orbit-chat-workspace', image: 'orbit-image-workspace', workspace: 'orbit-workspace', config: 'orbit-config' }[scope] || 'orbit-workspace';
+}
+
 async function clearLocalData() {
-  if (!window.confirm('清除当前服务下的全部本地数据?\n\n包括对话、生图历史、图片缓存、接口配置和模板。')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  localDataGeneration += 1;
-  requestController?.abort();
-  requestController = null;
-  await clearStoredImages();
-  state = createInitialState();
-  imageTasks = [];
-  stopImageTaskTimerIfIdle();
+  const scope = $('#clearDataScope').value;
+  const label = scope === 'all' ? '全部数据' : getExportScopeLabel(scope);
+  if (!window.confirm(`清除${label}?\n\n${scope === 'config' ? '会删除接口配置、模板和模型列表。' : scope === 'workspace' ? '会删除对话和生图记录, 保留接口配置。' : scope === 'chat' ? '会删除对话及其未被生图工作区引用的图片。' : scope === 'image' ? '会删除生图记录及其未被对话引用的图片。' : '会删除对话、生图记录、图片缓存、接口配置和模板。'}`)) return;
+  if (scope === 'image' || scope === 'workspace' || scope === 'all') localDataGeneration += 1;
+  if (scope === 'chat' || scope === 'workspace' || scope === 'all') {
+    requestController?.abort();
+    requestController = null;
+  }
+  if (scope === 'all') {
+    localStorage.removeItem(STORAGE_KEY);
+    await clearStoredImages();
+    state = createInitialState();
+    imageTasks = [];
+    stopImageTaskTimerIfIdle();
+    pendingAttachments = [];
+    clearImageReferences();
+    $('#imagePrompt').value = '';
+  } else if (scope === 'config') {
+    state.settings = { ...defaultState.settings, imageOptions: { ...defaultState.settings.imageOptions }, imagePolishTemplates: [] };
+    state.connectionProfiles = { chat: [], image: [] };
+    state.activeConnectionProfiles = { chat: '', image: '' };
+    modelCatalog.chat = [];
+    modelCatalog.image = [];
+  } else {
+    if (scope === 'chat' || scope === 'workspace') {
+      state.conversations = [];
+      state.activeConversationId = null;
+      ensureActiveConversation();
+      pendingAttachments = [];
+      resetComposerDraft();
+    }
+    if (scope === 'image' || scope === 'workspace') {
+      imageHistory = [];
+      imageTasks = [];
+      stopImageTaskTimerIfIdle();
+      clearImageReferences();
+      selectedHistoryKeys.clear();
+      closeLightbox();
+      $('#imagePrompt').value = '';
+    }
+    await removeUnreferencedImages();
+    await persistImageStore();
+  }
   closeSettings();
-  pendingAttachments = [];
-  clearImageReferences();
-  selectedHistoryKeys.clear();
-  closeLightbox();
-  $('#attachmentPreview').hidden = true;
+  persist();
   render();
   renderImageHistory();
   renderImageTasks();
-  showToast('本地数据已清除');
+  showToast(`${label}已清除`);
 }
 
 async function exportWorkspace() {
-  const includeApiConfig = window.confirm('是否同时导出配置？\n\n配置包含 API Key、接口地址、模型、接口模板和润色模板，请妥善保管导出的文件。');
+  const scope = $('#exportScope').value;
+  if (scope === 'config') {
+    if (!window.confirm('导出配置会包含 API Key、接口地址和模板, 请确认文件保存位置安全')) return;
+    const workspace = { version: 8, scope, exportedAt: Date.now(), apiConfig: { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
+    downloadFile(JSON.stringify(workspace, null, 2), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
+    showToast('配置已导出');
+    return;
+  }
+  const conversations = scope === 'image' ? [] : state.conversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
+  const batches = scope === 'chat' ? [] : imageHistory.map(createStoredBatch);
+  const imageIds = scope === 'chat' ? getConversationImageIds(conversations) : scope === 'image' ? getImageWorkspaceImageIds(batches) : new Set([...getConversationImageIds(conversations), ...getImageWorkspaceImageIds(batches)]);
   const draftReferenceIds = [];
-  for (const reference of imageReferences) draftReferenceIds.push(await saveImageResource(reference.data, 'draft-reference'));
-  const conversations = state.conversations.map((conversation) => ({
-    ...conversation,
-    messages: conversation.messages.map((message) => ({ ...message, imageIds: Array.isArray(message.imageIds) ? [...message.imageIds] : [] }))
-  }));
-  const workspace = {
-    version: 7,
-    exportedAt: Date.now(),
-    contextMode: state.contextMode,
-    activeConversationId: state.activeConversationId,
-    imageOptions: state.settings.imageOptions,
-    imageDraft: { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() },
-    conversations,
-    images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src).map(createStoredImage),
-    imageHistory: imageHistory.map(createStoredBatch)
-  };
-  if (includeApiConfig) workspace.apiConfig = {
-    settings: { ...state.settings },
-    connectionProfiles: JSON.parse(JSON.stringify(state.connectionProfiles)),
-    activeConnectionProfiles: { ...state.activeConnectionProfiles },
-    modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] }
-  };
-  const payload = JSON.stringify(workspace, null, 2);
-  const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `orbit-workspace-${new Date().toISOString().slice(0, 10)}.json`;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast(includeApiConfig ? '工作区已导出, 包含接口配置和模板' : '工作区已导出, 未包含接口配置');
+  if (scope !== 'chat') {
+    for (const reference of imageReferences) {
+      const id = await saveImageResource(reference.data, 'draft-reference');
+      if (id) { reference.imageId = id; draftReferenceIds.push(id); imageIds.add(id); }
+    }
+  }
+  const workspace = { version: 8, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches };
+  if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
+  const label = getExportScopeLabel(scope);
+  downloadFile(JSON.stringify(workspace, null, 2), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
+  showToast(`${label}已导出`);
 }
 
 async function replaceStoredImages(records) {
@@ -3232,69 +3288,159 @@ async function replaceStoredImages(records) {
   imageHistory = hydrateGenerationBatches(records);
 }
 
+async function persistImageStore() {
+  try {
+    await replaceStoredImages([...storedImages.values()].filter((record) => record.type === 'image' && record.src).concat(imageHistory.map(createStoredBatch)));
+  } catch {
+    // 当前环境禁用 IndexedDB 时, 保留内存中的工作区状态
+  }
+}
+
+function mergeImageResources(baseRecords, sourceRecords) {
+  const records = new Map(baseRecords.map((record) => [record.id, record]));
+  const idMap = new Map();
+  sourceRecords.forEach((source) => {
+    const sameId = records.get(source.id);
+    if (sameId?.src === source.src) {
+      idMap.set(source.id, sameId.id);
+      return;
+    }
+    const sameSource = [...records.values()].find((record) => record.src === source.src);
+    if (sameSource) {
+      idMap.set(source.id, sameSource.id);
+      return;
+    }
+    let id = source.id;
+    if (records.has(id)) id = createId();
+    idMap.set(source.id, id);
+    records.set(id, { ...source, id, type: 'image' });
+  });
+  return { records, idMap };
+}
+
+function remapImageIds(ids, idMap) {
+  return [...new Set((ids || []).map((id) => idMap.get(id) || id).filter(Boolean))];
+}
+
+function mergeConversations(existingConversations, incomingConversations) {
+  const conversations = existingConversations.map((conversation) => ({ ...conversation, messages: [...conversation.messages] }));
+  const byId = new Map(conversations.map((conversation) => [conversation.id, conversation]));
+  incomingConversations.forEach((incoming) => {
+    const current = byId.get(incoming.id);
+    if (!current) {
+      conversations.push(incoming);
+      byId.set(incoming.id, incoming);
+      return;
+    }
+    const messages = new Map(current.messages.map((message) => [message.id, message]));
+    incoming.messages.forEach((message) => {
+      const same = messages.get(message.id);
+      if (!same) messages.set(message.id, message);
+      else if (same.role !== message.role || same.content !== message.content || JSON.stringify(same.imageIds || []) !== JSON.stringify(message.imageIds || [])) {
+        const replacement = { ...message, id: createId() };
+        messages.set(replacement.id, replacement);
+      }
+    });
+    current.messages = [...messages.values()].sort((left, right) => left.createdAt - right.createdAt);
+    if (current.title === '新对话' && incoming.title !== '新对话') current.title = incoming.title;
+  });
+  return conversations;
+}
+
+function mergeImageBatches(existingBatches, incomingBatches) {
+  const batches = existingBatches.map((batch) => ({ ...batch, imageIds: [...(batch.imageIds || [])], referenceImageIds: [...(batch.referenceImageIds || [])] }));
+  const byId = new Map(batches.map((batch) => [batch.id, batch]));
+  incomingBatches.forEach((incoming) => {
+    const current = byId.get(incoming.id);
+    if (!current) {
+      batches.push(incoming);
+      byId.set(incoming.id, incoming);
+      return;
+    }
+    current.imageIds = [...new Set([...current.imageIds, ...(incoming.imageIds || [])])];
+    current.referenceImageIds = [...new Set([...current.referenceImageIds, ...(incoming.referenceImageIds || [])])];
+    current.imageCount = current.imageIds.length;
+  });
+  return batches;
+}
+
 async function importWorkspace(file) {
   if (!file) return;
   try {
     const payload = JSON.parse(await file.text());
-    if (!Array.isArray(payload.conversations)) throw new Error('文件中没有对话记录');
-    const sourceImages = Array.isArray(payload.images) ? payload.images : [];
-    const sourceHistory = Array.isArray(payload.imageHistory) ? payload.imageHistory : [];
-    if (!window.confirm(`导入 ${payload.conversations.length} 个对话和 ${sourceHistory.length} 条生图记录并替换当前工作区?`)) return;
-    const hasApiConfig = payload.apiConfig && typeof payload.apiConfig === 'object' && (payload.apiConfig.settings || payload.apiConfig.connectionProfiles);
-    const importApiConfig = Boolean(hasApiConfig && window.confirm('这个文件包含接口配置和模板，是否应用？\n\n应用后会覆盖当前对话接口、生图接口及模板配置。'));
-    const images = sourceImages.filter((image) => image && image.id && image.src).map((image) => createStoredImage(image));
-    const batches = sourceHistory.filter((batch) => batch && batch.id).map((batch) => createStoredBatch(batch));
-    const conversations = payload.conversations.map((source) => ({
+    const scope = ['chat', 'image', 'workspace', 'config'].includes(payload.scope) ? payload.scope : 'workspace';
+    const sourceImages = (Array.isArray(payload.images) ? payload.images : []).filter((image) => image && image.id && image.src).map((image) => createStoredImage(image));
+    const sourceHistory = (Array.isArray(payload.imageHistory) ? payload.imageHistory : []).filter((batch) => batch && batch.id).map((batch) => createStoredBatch(batch));
+    const sourceConversations = (Array.isArray(payload.conversations) ? payload.conversations : []).map((source) => ({
       ...source,
       id: source.id || createId(),
       messages: (Array.isArray(source.messages) ? source.messages : []).map((message) => ({ ...message, imageIds: Array.isArray(message.imageIds) ? [...message.imageIds] : [] }))
     }));
-    const records = [...images, ...batches];
-    try {
-      await replaceStoredImages(records);
-    } catch (error) {
-      // 某些 file:// 环境禁用 IndexedDB 时, 保留本次导入的页面内数据
-      storedImages = new Map(records.map((record) => [record.id, record]));
-      imageHistory = hydrateGenerationBatches(records);
-    }
-    state.conversations = conversations;
-    state.contextMode = payload.contextMode === 'single' ? 'single' : 'client';
-    if (importApiConfig && payload.apiConfig.settings && typeof payload.apiConfig.settings === 'object') {
+    const hasApiConfig = payload.apiConfig && typeof payload.apiConfig === 'object';
+    if (scope === 'config' && !hasApiConfig) throw new Error('文件中没有配置');
+    if (!window.confirm(`导入${getExportScopeLabel(scope)}: ${sourceConversations.length} 个对话, ${sourceHistory.length} 条生图记录?`)) return;
+    const modeInput = window.prompt('请选择导入方式:\n输入“覆盖”替换对应范围, 输入“合并”保留现有内容并去重', '覆盖');
+    if (modeInput === null) return;
+    const mode = String(modeInput).trim().toLowerCase();
+    if (!['覆盖', '合并', 'overwrite', 'merge'].includes(mode)) throw new Error('导入方式只能填写“覆盖”或“合并”');
+    const merge = mode === '合并' || mode === 'merge';
+    if (scope === 'config') {
       const importedSettings = payload.apiConfig.settings;
-      const hasImportedPolishTemplates = Array.isArray(importedSettings.imagePolishTemplates);
-      const imagePolishTemplates = hasImportedPolishTemplates ? normalizePolishTemplates(importedSettings.imagePolishTemplates) : getPolishTemplates();
-      const requestedPolishTemplateId = hasImportedPolishTemplates ? importedSettings.activeImagePolishTemplateId : state.settings.activeImagePolishTemplateId;
-      const activeImagePolishTemplateId = imagePolishTemplates.some((template) => template.id === requestedPolishTemplateId) ? requestedPolishTemplateId : '';
-      state.settings = { ...state.settings, ...importedSettings, imageOptions: { ...state.settings.imageOptions, ...(importedSettings.imageOptions || {}) }, imagePolishTemplates, activeImagePolishTemplateId };
-    }
-    if (importApiConfig && payload.apiConfig.connectionProfiles && typeof payload.apiConfig.connectionProfiles === 'object') {
-      state.connectionProfiles = { chat: Array.isArray(payload.apiConfig.connectionProfiles.chat) ? payload.apiConfig.connectionProfiles.chat : [], image: Array.isArray(payload.apiConfig.connectionProfiles.image) ? payload.apiConfig.connectionProfiles.image : [] };
-      state.activeConnectionProfiles = { ...state.activeConnectionProfiles, ...(payload.apiConfig.activeConnectionProfiles || {}) };
-    }
-    if (importApiConfig && payload.apiConfig.modelCatalog && typeof payload.apiConfig.modelCatalog === 'object') {
-      modelCatalog.chat = Array.isArray(payload.apiConfig.modelCatalog.chat) ? [...new Set(payload.apiConfig.modelCatalog.chat)] : [];
-      modelCatalog.image = Array.isArray(payload.apiConfig.modelCatalog.image) ? [...new Set(payload.apiConfig.modelCatalog.image)] : [];
-    } else if (importApiConfig) {
+      if (importedSettings && typeof importedSettings === 'object') {
+        const importedTemplates = Array.isArray(importedSettings.imagePolishTemplates) ? normalizePolishTemplates(importedSettings.imagePolishTemplates) : [];
+        const imagePolishTemplates = merge ? [...new Map([...state.settings.imagePolishTemplates, ...importedTemplates].map((template) => [template.id || template.name, template])).values()] : importedTemplates;
+        state.settings = { ...state.settings, ...importedSettings, imageOptions: { ...state.settings.imageOptions, ...(importedSettings.imageOptions || {}) }, imagePolishTemplates, activeImagePolishTemplateId: imagePolishTemplates.some((template) => template.id === importedSettings.activeImagePolishTemplateId) ? importedSettings.activeImagePolishTemplateId : state.settings.activeImagePolishTemplateId };
+      }
+      if (payload.apiConfig.connectionProfiles && typeof payload.apiConfig.connectionProfiles === 'object') {
+        const importedProfiles = payload.apiConfig.connectionProfiles;
+        state.connectionProfiles = ['chat', 'image'].reduce((result, kind) => {
+          const incoming = Array.isArray(importedProfiles[kind]) ? importedProfiles[kind] : [];
+          result[kind] = merge ? [...new Map([...state.connectionProfiles[kind], ...incoming].map((profile) => [profile.id || `${profile.baseUrl}|${profile.model}`, profile])).values()] : incoming;
+          return result;
+        }, { chat: [], image: [] });
+      }
+      state.activeConnectionProfiles = merge ? { ...state.activeConnectionProfiles, ...(payload.apiConfig.activeConnectionProfiles || {}) } : { chat: payload.apiConfig.activeConnectionProfiles?.chat || '', image: payload.apiConfig.activeConnectionProfiles?.image || '' };
+      if (payload.apiConfig.modelCatalog && typeof payload.apiConfig.modelCatalog === 'object') {
+        modelCatalog.chat = merge ? [...new Set([...modelCatalog.chat, ...(payload.apiConfig.modelCatalog.chat || [])])] : (Array.isArray(payload.apiConfig.modelCatalog.chat) ? [...new Set(payload.apiConfig.modelCatalog.chat)] : []);
+        modelCatalog.image = merge ? [...new Set([...modelCatalog.image, ...(payload.apiConfig.modelCatalog.image || [])])] : (Array.isArray(payload.apiConfig.modelCatalog.image) ? [...new Set(payload.apiConfig.modelCatalog.image)] : []);
+      }
       ['chat', 'image'].forEach((kind) => {
-        const profile = state.connectionProfiles[kind].find((item) => item.id === state.activeConnectionProfiles[kind]);
-        modelCatalog[kind] = [...(profile?.models || [])];
+        if (!state.connectionProfiles[kind].some((profile) => profile.id === state.activeConnectionProfiles[kind])) state.activeConnectionProfiles[kind] = '';
       });
+      persist();
+      render();
+      showToast('配置已导入');
+      return;
     }
-    if (payload.imageModel) state.settings.imageModel = payload.imageModel;
-    if (payload.imageOptions && typeof payload.imageOptions === 'object') state.settings.imageOptions = { ...state.settings.imageOptions, ...payload.imageOptions };
-    state.activeConversationId = conversations.some((conversation) => conversation.id === payload.activeConversationId) ? payload.activeConversationId : conversations[0]?.id || null;
+    const preservedIds = scope === 'workspace' ? new Set() : scope === 'chat' ? getImageWorkspaceImageIds() : getConversationImageIds();
+    const baseRecords = merge ? [...storedImages.values()].filter((record) => record.type === 'image') : [...storedImages.values()].filter((record) => preservedIds.has(record.id));
+    const mergedImages = mergeImageResources(baseRecords, sourceImages);
+    const mapBatch = (batch) => ({ ...batch, imageIds: remapImageIds(batch.imageIds, mergedImages.idMap), referenceImageIds: remapImageIds(batch.referenceImageIds, mergedImages.idMap) });
+    const batches = sourceHistory.map(mapBatch);
+    const conversations = sourceConversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: remapImageIds(message.imageIds, mergedImages.idMap) })) }));
+    if (scope === 'chat' || scope === 'workspace') {
+      state.conversations = merge ? mergeConversations(state.conversations, conversations) : conversations;
+      if (!merge) state.activeConversationId = conversations.some((conversation) => conversation.id === payload.activeConversationId) ? payload.activeConversationId : null;
+      state.contextMode = payload.contextMode === 'single' ? 'single' : state.contextMode;
+    }
+    if (scope === 'image' || scope === 'workspace') {
+      imageHistory = merge ? mergeImageBatches(imageHistory, batches) : batches;
+      if (!merge && payload.imageDraft && typeof payload.imageDraft === 'object') {
+        $('#imagePrompt').value = payload.imageDraft.prompt || '';
+        setImageConfig(payload.imageDraft.config || state.settings.imageOptions);
+        await setImageReferencesFromSources(remapImageIds(payload.imageDraft.referenceImageIds, mergedImages.idMap).map((id) => mergedImages.records.get(id)?.src).filter(Boolean));
+      }
+      if (!merge) { imageTasks = []; stopImageTaskTimerIfIdle(); }
+    }
+    storedImages = mergedImages.records;
     ensureActiveConversation();
+    await removeUnreferencedImages();
+    await persistImageStore();
     persist();
     render();
-    if (payload.imageDraft && typeof payload.imageDraft === 'object') {
-      $('#imagePrompt').value = payload.imageDraft.prompt || '';
-      setImageConfig(payload.imageDraft.config || state.settings.imageOptions);
-      const draftSources = (payload.imageDraft.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean);
-      await setImageReferencesFromSources(draftSources);
-    }
     renderImageHistory();
     renderMessages();
-    showToast(importApiConfig ? '工作区已导入, 接口配置和模板也已应用' : hasApiConfig ? '工作区已导入, 未应用接口配置' : '工作区已导入, 包含对话和生图历史');
+    showToast(`${getExportScopeLabel(scope)}已${merge ? '合并导入' : '覆盖导入'}`);
   } catch (error) {
     showErrorToast(error.message || '导入失败, 请选择有效的工作区 JSON 文件');
   }
