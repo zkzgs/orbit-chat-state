@@ -174,7 +174,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .panel-label-row { display: flex; justify-content: space-between; margin-bottom: 9px; color: #c5d2e0; font-size: 12px; font-weight: 600; }.panel-label-hint { color: var(--muted-2); font-size: 10px; font-weight: 400; }
 .panel-label-actions { display: flex; align-items: center; gap: 10px; }
 .image-generator-panel textarea { width: 100%; display: block; min-height: 100px; resize: vertical; padding: 11px; border: 1px solid var(--line); border-radius: 6px; outline: 0; background: #101a28; color: var(--ink); line-height: 1.6; }.image-generator-panel textarea:focus { border-color: rgba(116,212,203,.5); }
-.reference-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }.reference-upload { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 10px; cursor: pointer; }.reference-upload:hover { border-color: rgba(116,212,203,.45); color: var(--ink); }.reference-upload span { color: var(--cyan); font-size: 15px; }.image-reference-preview { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }.image-reference-preview[hidden] { display: none; }.reference-preview-item { position: relative; }.image-reference-preview img { width: 70px; height: 56px; border: 1px solid var(--line-strong); border-radius: 5px; object-fit: cover; }.remove-reference { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--panel-soft); border-radius: 50%; background: #314157; color: var(--ink); font-size: 13px; line-height: 14px; }
+.reference-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }.reference-upload { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 10px; cursor: pointer; }.reference-upload:hover { border-color: rgba(116,212,203,.45); color: var(--ink); }.reference-upload span { color: var(--cyan); font-size: 15px; }.reference-options { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }.reference-compression-toggle { display: inline-flex; align-items: center; gap: 5px; color: var(--muted-2); font-size: 9px; cursor: pointer; }.reference-compression-toggle input { width: 13px; height: 13px; margin: 0; accent-color: var(--cyan); }.image-reference-preview { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }.image-reference-preview[hidden] { display: none; }.reference-preview-item { position: relative; }.image-reference-preview img { width: 70px; height: 56px; border: 1px solid var(--line-strong); border-radius: 5px; object-fit: cover; }.reference-preview-index { position: absolute; bottom: 4px; left: 4px; min-width: 16px; height: 16px; display: grid; place-items: center; padding: 0 4px; border: 1px solid rgba(255,255,255,.18); border-radius: 3px; background: rgba(5,10,17,.78); color: #fff; font-size: 9px; line-height: 1; pointer-events: none; }.remove-reference { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--panel-soft); border-radius: 50%; background: #314157; color: var(--ink); font-size: 13px; line-height: 14px; }
 .image-controls { display: flex; align-items: end; justify-content: space-between; gap: 15px; padding-top: 12px; }.select-control { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 10px; }.select-control select { min-width: 130px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #101a28; color: var(--ink); font-size: 11px; }.primary-button, .secondary-button { min-height: 34px; padding: 0 13px; border-radius: 6px; font-size: 12px; font-weight: 650; }.primary-button { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }.primary-button:hover { background: #f1fc88; }.secondary-button { border: 1px solid var(--line-strong); background: transparent; color: var(--ink); }.secondary-button:hover { background: rgba(255,255,255,.05); }
 .image-history-section { margin-top: 35px; }.history-heading { display: flex; align-items: end; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--line); }.history-heading h3 { margin: 5px 0 0; font-size: 16px; letter-spacing: -.02em; }.history-count { min-width: 21px; padding: 2px 6px; border-radius: 10px; background: rgba(255,255,255,.06); color: var(--muted); text-align: center; font-size: 10px; }.image-history { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding-top: 13px; }.history-item { position: relative; min-width: 0; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel-soft); text-align: left; }.history-item:hover { border-color: rgba(116,212,203,.5); }.history-item img { display: block; width: 100%; aspect-ratio: 1 / .78; object-fit: cover; }.history-item-info { padding: 7px 8px 8px; }.history-item-prompt { overflow: hidden; color: #c4cfdd; font-size: 10px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }.history-item-time { display: block; margin-top: 4px; overflow: hidden; color: var(--muted-2); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }.history-delete { position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: rgba(8,14,23,.75); color: #d6e0eb; font-size: 13px; opacity: 0; }.history-item:hover .history-delete { opacity: 1; }
 .history-image-button { display: block; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; }
@@ -226,11 +226,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .image-tasks { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .image-task { display: flex; align-items: flex-start; gap: 8px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 5px; background: rgba(255,255,255,.025); color: var(--muted); font-size: 10px; line-height: 1.45; }
 .image-task-icon { flex: 0 0 auto; color: var(--cyan); font-size: 12px; }
+.image-task.running .image-task-icon { width: 13px; height: 13px; margin-top: 1px; border: 2px solid rgba(244,185,107,.25); border-top-color: var(--warm); border-radius: 50%; font-size: 0; animation: task-spin .8s linear infinite; }
+@keyframes task-spin { to { transform: rotate(360deg); } }
 .image-task.error { border-color: rgba(255,150,150,.35); background: rgba(255,150,150,.06); }
 .image-task.error .image-task-icon { color: var(--danger); }
+.image-task.partial { border-color: rgba(244,185,107,.35); background: rgba(244,185,107,.06); }
+.image-task.partial .image-task-icon { color: var(--warm); }
 .image-task-body { min-width: 0; flex: 1; }
 .image-task-title { color: var(--ink); font-weight: 600; }
 .image-task-detail { margin-top: 2px; overflow-wrap: anywhere; }
+.image-task-log { margin-top: 5px; }
+.image-task-log summary { width: fit-content; color: var(--cyan); cursor: pointer; }
+.image-task-log pre { max-height: 180px; margin: 6px 0 0; overflow: auto; padding: 7px; border: 1px solid var(--line); border-radius: 4px; background: #0b121d; color: var(--muted); font-size: 9px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .image-task-close { width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted-2); }
 .image-task-close:hover { background: rgba(255,255,255,.08); color: var(--ink); }
 .count-control input { min-width: 0; padding: 7px 8px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #101a28; color: var(--ink); font-size: 11px; }
@@ -674,7 +681,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
               <div class="image-generator-panel">
                 <div class="panel-label-row"><span>描述你想要的画面</span><div class="panel-label-actions"><span class="panel-label-hint">支持中文, 可粘贴参考图</span><button class="field-action" id="polishImagePrompt" type="button">润色关键词</button></div></div>
                 <textarea id="imagePrompt" rows="4" placeholder="例如: 雨后的上海街头, 霓虹倒影, 35mm 胶片质感, 电影感构图"></textarea>
-                <div class="reference-row"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><span class="panel-label-hint" id="imageRequestMode">图片生成 · 无参考图</span></div>
+                <div class="reference-row"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><div class="reference-options"><label class="reference-compression-toggle" title="优先无损优化提交副本, 超过 10MB 时始终压缩"><input id="optimizeImageReferences" type="checkbox" checked><span>无损优化</span></label><span class="panel-label-hint" id="imageRequestMode">图片生成 · 无参考图</span></div></div>
                 <div class="image-reference-preview" id="imageReferencePreview" hidden></div>
                 <div class="image-controls">
                   <label class="select-control image-size-control"><span>尺寸</span><button class="size-button" id="imageSizeButton" type="button">自动 · 1K · 1:1</button><select id="imageRatio" hidden><option value="auto">自动</option><option value="1:1">1:1 方形</option><option value="3:2">3:2 横向</option><option value="2:3">2:3 竖向</option><option value="16:9">16:9 横向</option><option value="9:16">9:16 竖向</option><option value="4:3">4:3 横向</option><option value="3:4">3:4 竖向</option><option value="21:9">21:9 超宽</option></select></label>
@@ -830,7 +837,7 @@ const defaultState = {
     imageBaseUrl: 'https://aixor.cc/v1',
     imageApiKey: '',
     imageModel: 'gpt-image-2.5',
-    imageOptions: { sizeMode: 'auto', resolution: '1K', ratio: 'auto', width: 1024, height: 1024, quality: 'auto', format: 'png', compression: 0, background: 'auto', moderation: 'auto', count: 1 },
+    imageOptions: { sizeMode: 'auto', resolution: '1K', ratio: 'auto', width: 1024, height: 1024, quality: 'auto', format: 'png', compression: 0, background: 'auto', moderation: 'auto', count: 1, optimizeReferences: true },
     imageCountMode: 'parameter',
     imageBackgroundMode: 'parameter',
     systemPrompt: '你是一位简洁, 直接的中文助手',
@@ -877,6 +884,10 @@ const modelCatalog = {
 
 const IMAGE_DB_NAME = 'orbit-chat-images-v1';
 const IMAGE_STORE_NAME = 'generations';
+const REFERENCE_FORCE_COMPRESSION_BYTES = 10 * 1024 * 1024;
+const REFERENCE_TARGET_BYTES = 9 * 1024 * 1024;
+const REFERENCE_MAX_EDGE = 4096;
+const optimizedReferenceCache = new Map();
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -964,8 +975,15 @@ function createStoredBatch(batch) {
 
 function createStoredImage(record) {
   const responseMeta = record.responseMeta ? { ...record.responseMeta } : undefined;
-  if (responseMeta) delete responseMeta.apiResponse;
   return { ...record, type: 'image', responseMeta };
+}
+
+function createStoredImageTask(task) {
+  return { ...task, type: 'generation-task', requestPhases: Array.isArray(task.requestPhases) ? [...task.requestPhases] : [] };
+}
+
+function hydrateImageTasks(items, interruptRunning = true) {
+  return items.filter((item) => item.type === 'generation-task').map((item) => interruptRunning && item.status === 'running' ? { ...item, status: 'error', finishedAt: item.finishedAt || Date.now(), detail: '页面刷新后无法确认上次请求结果' } : item).sort((left, right) => right.startedAt - left.startedAt);
 }
 
 function hydrateGenerationBatches(items) {
@@ -1040,7 +1058,9 @@ async function loadImageHistory() {
     db.close();
     storedImages = new Map(items.map((item) => [item.id, item]));
     imageHistory = hydrateGenerationBatches(items);
+    imageTasks = hydrateImageTasks(items);
     renderImageHistory();
+    renderImageTasks();
     renderMessages();
   } catch (error) {
     imageHistory = [];
@@ -1732,6 +1752,7 @@ function getImageConfig() {
     background: $('#imageBackground').value,
     moderation: $('#imageModeration').value,
     count: Math.min(10, Math.max(1, Number($('#imageCount').value) || 1)),
+    optimizeReferences: $('#optimizeImageReferences').checked,
     countMode: state.settings.imageCountMode || state.settings.imageOptions.countMode || 'parameter',
     backgroundMode: state.settings.imageBackgroundMode || 'parameter'
   };
@@ -1751,6 +1772,7 @@ function setImageConfig(config = {}) {
   if (config.background) $('#imageBackground').value = config.background;
   if (config.moderation) $('#imageModeration').value = config.moderation;
   if (config.count) $('#imageCount').value = Math.min(10, Math.max(1, Number(config.count)));
+  $('#optimizeImageReferences').checked = config.optimizeReferences !== false;
   if (config.countMode) state.settings.imageCountMode = config.countMode;
   if (config.backgroundMode) state.settings.imageBackgroundMode = config.backgroundMode;
   updateImageSizeButton();
@@ -2062,10 +2084,12 @@ function renderImageMetadata(image) {
   const moderationDisplay = response.moderationSent === true ? requestModeration : response.moderationSent === false ? '演示模式未发送' : requestModeration;
   const responseSummary = { status: response.status || '', requestId: response.requestId || response.apiResponse?.requestId || '', id: response.id || response.apiResponse?.id || '', created: response.created || response.apiResponse?.created || '', model: actualModel, usage: response.usage || response.apiResponse?.usage || undefined };
   const actualBackground = image.hasTransparency === true ? 'transparent' : image.hasTransparency === false ? 'opaque' : '';
-  const rawResponse = response.apiResponse ? JSON.stringify(response.apiResponse, null, 2) : '';
+  const rawRequest = response.requestLog ? JSON.stringify(response.requestLog, null, 2) : '';
+  const rawResponseRecord = response.upstreamResponse || (response.responses?.length ? response.responses : response.apiResponse);
+  const rawResponse = rawResponseRecord ? JSON.stringify(rawResponseRecord, null, 2) : '';
   const responseDataKind = response.delivery === 'b64_json' ? (response.providedUrl ? 'b64_json（同时返回 URL）' : 'b64_json') : response.delivery === 'url' ? (image.src.startsWith('data:') ? '接口 URL（已保存为本地 Base64）' : '接口 URL') : image.src.startsWith('data:') ? '本地 Base64 数据' : '本地对象';
   const referenceSources = getBatchReferenceSources(batch);
-  return `<div class="metadata-card full"><dt>请求 / 实际模型</dt><dd>${renderComparison(config.model || state.settings.imageModel || '未知', actualModel, actualModel || '响应未提供')}</dd></div><div class="metadata-card full"><dt>来源</dt><dd>${escapeHtml(source)}</dd></div><div class="metadata-card"><dt>请求 / 实际尺寸</dt><dd>${renderComparison(requestSize, actualSize, actualSize || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际比例</dt><dd>${renderComparison(requestRatio || '自动', actualRatio, actualRatio || '响应未提供', true)}</dd></div><div class="metadata-card"><dt>请求 / 实际格式</dt><dd>${renderComparison(config.format || 'png', actualFormat, actualFormat || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际数量</dt><dd>${renderComparison(String(requestedCount), String(actualCount), String(actualCount))}</dd></div><div class="metadata-card"><dt>质量</dt><dd>${escapeHtml(config.quality || 'auto')}</dd></div><div class="metadata-card"><dt>压缩</dt><dd>${escapeHtml(['jpeg', 'webp'].includes(config.format) ? (config.compression === undefined || config.compression === 'auto' ? 'auto' : `${config.compression}%`) : 'PNG 不支持')}</dd></div><div class="metadata-card"><dt>请求 / 实际背景</dt><dd>${renderComparison(requestBackground, actualBackground, actualBackground || '未检测')}</dd></div><div class="metadata-card"><dt>审核</dt><dd>${escapeHtml(moderationDisplay)}</dd></div><div class="metadata-card"><dt>参考图</dt><dd>${escapeHtml(`${referenceSources.length} 张`)}</dd></div><div class="metadata-card"><dt>数据来源</dt><dd>${escapeHtml(responseDataKind)}</dd></div><div class="metadata-card"><dt>文件大小</dt><dd>${escapeHtml(formatBytes(image.fileSize || 0))}</dd></div><div class="metadata-card"><dt>创建时间</dt><dd>${escapeHtml(formatTime(batch.startedAt || batch.createdAt || image.createdAt))}</dd></div><div class="metadata-card"><dt>耗时</dt><dd>${escapeHtml(formatDuration(batch.durationMs || 0))}</dd></div><div class="metadata-card full"><dt>完整请求配置</dt><dd>${escapeHtml(formatImageConfig(config, response.requestType, image.prompt || batch.prompt || ''))}</dd></div>${response.revised_prompt ? `<div class="metadata-card full"><dt>接口修订提示词</dt><dd>${escapeHtml(response.revised_prompt)}</dd></div>` : ''}<div class="metadata-card full"><dt>接口响应</dt><dd>${escapeHtml(JSON.stringify(responseSummary))}</dd>${rawResponse ? `<details class="metadata-disclosure"><summary>查看</summary><pre>${escapeHtml(rawResponse)}</pre></details>` : ''}</div>`;
+  return `<div class="metadata-card full"><dt>请求 / 实际模型</dt><dd>${renderComparison(config.model || state.settings.imageModel || '未知', actualModel, actualModel || '响应未提供')}</dd></div><div class="metadata-card full"><dt>来源</dt><dd>${escapeHtml(source)}</dd></div><div class="metadata-card"><dt>请求 / 实际尺寸</dt><dd>${renderComparison(requestSize, actualSize, actualSize || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际比例</dt><dd>${renderComparison(requestRatio || '自动', actualRatio, actualRatio || '响应未提供', true)}</dd></div><div class="metadata-card"><dt>请求 / 实际格式</dt><dd>${renderComparison(config.format || 'png', actualFormat, actualFormat || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际数量</dt><dd>${renderComparison(String(requestedCount), String(actualCount), String(actualCount))}</dd></div><div class="metadata-card"><dt>质量</dt><dd>${escapeHtml(config.quality || 'auto')}</dd></div><div class="metadata-card"><dt>压缩</dt><dd>${escapeHtml(['jpeg', 'webp'].includes(config.format) ? (config.compression === undefined || config.compression === 'auto' ? 'auto' : `${config.compression}%`) : 'PNG 不支持')}</dd></div><div class="metadata-card"><dt>请求 / 实际背景</dt><dd>${renderComparison(requestBackground, actualBackground, actualBackground || '未检测')}</dd></div><div class="metadata-card"><dt>审核</dt><dd>${escapeHtml(moderationDisplay)}</dd></div><div class="metadata-card"><dt>参考图</dt><dd>${escapeHtml(`${referenceSources.length} 张`)}</dd></div><div class="metadata-card"><dt>数据来源</dt><dd>${escapeHtml(responseDataKind)}</dd></div><div class="metadata-card"><dt>文件大小</dt><dd>${escapeHtml(formatBytes(image.fileSize || 0))}</dd></div><div class="metadata-card"><dt>创建时间</dt><dd>${escapeHtml(formatTime(batch.startedAt || batch.createdAt || image.createdAt))}</dd></div><div class="metadata-card"><dt>耗时</dt><dd>${escapeHtml(formatDuration(batch.durationMs || 0))}</dd></div><div class="metadata-card full"><dt>完整请求配置</dt><dd>${escapeHtml(formatImageConfig(config, response.requestType, image.prompt || batch.prompt || ''))}</dd>${rawRequest ? `<details class="metadata-disclosure"><summary>查看实际请求</summary><pre>${escapeHtml(rawRequest)}</pre></details>` : ''}</div>${response.revised_prompt ? `<div class="metadata-card full"><dt>接口修订提示词</dt><dd>${escapeHtml(response.revised_prompt)}</dd></div>` : ''}<div class="metadata-card full"><dt>接口响应</dt><dd>${escapeHtml(JSON.stringify(responseSummary))}</dd>${rawResponse ? `<details class="metadata-disclosure"><summary>查看上游响应</summary><pre>${escapeHtml(rawResponse)}</pre></details>` : ''}</div>`;
 }
 
 function renderComparison(requested, actual, actualLabel, ratioMode = false) {
@@ -2091,6 +2115,7 @@ function formatImageConfig(config, requestType = '', prompt = '') {
     ['背景（background）', config.background || 'auto'],
     ['透明实现', config.backgroundMode === 'prompt' ? '提示词拼接' : 'background 参数'],
     ['审核', config.moderation || 'auto'],
+    ['参考图提交优化', config.optimizeReferences === false ? '关闭（超过 10MB 仍强制）' : '开启（优先无损）'],
     ['数量', config.count || 1],
     ['数量方式', config.countMode === 'parallel' ? '并发请求（每次 n=1）' : '单次请求（n=数量）']
   ];
@@ -2436,8 +2461,19 @@ async function requestChat() {
 async function parseImageResponse(response, endpoint, hasReference) {
   const raw = await response.text();
   let payload = {};
-  try { payload = raw ? JSON.parse(raw) : {}; } catch (error) { payload = {}; }
-  if (!response.ok) throw new Error(payload?.error?.message || payload?.message || payload?.detail || raw.slice(0, 500) || `接口返回 ${response.status}`);
+  let parsed = true;
+  try { payload = raw ? JSON.parse(raw) : {}; } catch (error) { payload = {}; parsed = false; }
+  const apiResponse = parsed ? { ...payload, data: Array.isArray(payload.data) ? payload.data.map((item) => {
+    if (typeof item === 'string') return abbreviateResponseValue(item);
+    if (!item || typeof item !== 'object') return item;
+    return { ...item, b64_json: item.b64_json ? abbreviateResponseValue(item.b64_json) : item.b64_json, delivery: item.b64_json ? 'b64_json' : item.url ? 'url' : 'unknown', base64Length: item.b64_json?.length || 0 };
+  }) : payload.data } : raw;
+  const upstreamResponse = { status: response.status, statusText: response.statusText || '', headers: Object.fromEntries(response.headers.entries()), body: apiResponse, receivedAt: Date.now() };
+  if (!response.ok) {
+    const error = new Error(payload?.error?.message || payload?.message || payload?.detail || raw.slice(0, 500) || `接口返回 ${response.status}`);
+    error.upstreamResponse = upstreamResponse;
+    throw error;
+  }
   const responseModel = payload.model || response.headers.get('x-model') || response.headers.get('x-openai-model') || '';
   const images = (payload?.data || []).map((item) => {
     const value = typeof item === 'string' ? item : item?.b64_json;
@@ -2445,12 +2481,7 @@ async function parseImageResponse(response, endpoint, hasReference) {
     const source = typeof item === 'string' ? `data:image/${detectedFormat};base64,${item}` : (value ? `data:image/${detectedFormat};base64,${value}` : item?.url || '');
     return { src: source, responseMeta: { id: item?.id, revised_prompt: item?.revised_prompt, model: responseModel || item?.model || '', created: payload.created || item?.created, output_format: item?.output_format || detectedFormat, size: item?.size, source: endpoint, requestType: hasReference ? 'edit' : 'generation', delivery: typeof item === 'string' || item?.b64_json ? 'b64_json' : item?.url ? 'url' : 'unknown', providedUrl: Boolean(item?.url) } };
   }).filter((item) => item.src);
-  const apiResponse = { ...payload, data: Array.isArray(payload.data) ? payload.data.map((item) => {
-    if (typeof item === 'string') return abbreviateResponseValue(item);
-    if (!item || typeof item !== 'object') return item;
-    return { ...item, b64_json: item.b64_json ? abbreviateResponseValue(item.b64_json) : item.b64_json, delivery: item.b64_json ? 'b64_json' : item.url ? 'url' : 'unknown', base64Length: item.b64_json?.length || 0 };
-  }) : payload.data };
-  return { images, meta: { source: endpoint, model: responseModel, created: payload.created, id: payload.id, usage: payload.usage, status: response.status, requestId: response.headers.get('x-request-id') || response.headers.get('request-id') || '', requestType: hasReference ? 'edit' : 'generation', moderationSent: !hasReference, apiResponse } };
+  return { images, meta: { source: endpoint, model: responseModel, created: payload.created, id: payload.id, usage: payload.usage, status: response.status, requestId: response.headers.get('x-request-id') || response.headers.get('request-id') || '', requestType: hasReference ? 'edit' : 'generation', moderationSent: true, apiResponse, upstreamResponse } };
 }
 
 function abbreviateResponseValue(value) {
@@ -2459,8 +2490,34 @@ function abbreviateResponseValue(value) {
   return `${text.slice(0, 42)}...${text.slice(-42)}（共 ${text.length} 个字符）`;
 }
 
-async function fetchImageRequest(endpoint, fetchOptions, hasReference) {
-  return parseImageResponse(await fetch(endpoint, fetchOptions), endpoint, hasReference);
+function sendImageEditRequest(endpoint, fetchOptions, onUploaded) {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    let responseReceived = false;
+    request.open(fetchOptions.method || 'POST', endpoint);
+    Object.entries(fetchOptions.headers || {}).forEach(([name, value]) => request.setRequestHeader(name, value));
+    request.upload.onloadend = () => { if (!responseReceived) onUploaded?.(); };
+    request.onerror = () => reject(new Error('网络请求失败, 请检查接口地址和跨域设置'));
+    request.onabort = () => reject(new Error('请求已中断'));
+    request.onload = () => {
+      responseReceived = true;
+      const headers = new Headers();
+      request.getAllResponseHeaders().trim().split(/[\r\n]+/).filter(Boolean).forEach((line) => {
+        const separator = line.indexOf(':');
+        if (separator > 0) headers.append(line.slice(0, separator).trim(), line.slice(separator + 1).trim());
+      });
+      resolve(new Response(request.responseText, { status: request.status, statusText: request.statusText, headers }));
+    };
+    request.send(fetchOptions.body);
+  });
+}
+
+async function fetchImageRequest(endpoint, fetchOptions, hasReference, onPhase) {
+  onPhase?.(hasReference ? 'uploading' : 'waiting');
+  const response = hasReference ? await sendImageEditRequest(endpoint, fetchOptions, () => onPhase?.('waiting')) : await fetch(endpoint, fetchOptions);
+  onPhase?.('parsing');
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
+  return parseImageResponse(response, endpoint, hasReference);
 }
 
 async function generateImage() {
@@ -2482,24 +2539,32 @@ async function generateImage() {
   const requestCount = countMode === 'parallel' ? 1 : config.count;
   config.submittedPrompt = buildImagePrompt(prompt, config);
   let taskResultDetail = '';
+  let taskFinalStatus = 'success';
   const references = imageReferences.map((reference) => ({ data: reference.data, file: reference.file }));
   const referenceImageIds = [];
-  for (const reference of references) {
-    const referenceId = await saveImageResource(reference.data, 'task-reference', 'image', generation);
-    if (generation !== localDataGeneration) return;
-    if (referenceId) referenceImageIds.push(referenceId);
-  }
-  imageTasks.unshift({ id: taskId, title: prompt.slice(0, 48), detail: countMode === 'parallel' ? `并发生成 ${config.count} 张` : '生成中', prompt, config: { ...config }, referenceImageIds, startedAt, status: 'running' });
+  const requestTotal = countMode === 'parallel' ? config.count : 1;
+  imageTasks.unshift({ id: taskId, title: prompt.slice(0, 48), detail: references.length ? '保存原始参考图' : '准备请求', prompt, config: { ...config }, referenceImageIds, requestPhases: Array(requestTotal).fill('preparing'), responses: [], startedAt, status: 'running' });
   startImageTaskTimer();
-  renderImageTasks();
+  updateImageTask(taskId, {});
   try {
+    for (let index = 0; index < references.length; index += 1) {
+      updateImageTask(taskId, { detail: `保存原始参考图 ${index + 1}/${references.length}` });
+      const referenceId = await saveImageResource(references[index].data, 'task-reference', 'image', generation);
+      if (generation !== localDataGeneration) return;
+      if (referenceId) referenceImageIds.push(referenceId);
+    }
+    updateImageTask(taskId, { referenceImageIds: [...referenceImageIds] });
     if (state.settings.demoMode || !state.settings.imageApiKey || !state.settings.imageBaseUrl) {
+      updateImageTask(taskId, { detail: '生成演示图片', requestLog: { mode: 'demo', config: { ...config }, createdAt: Date.now() } });
       await new Promise((resolve) => setTimeout(resolve, 1100));
       if (generation !== localDataGeneration) return;
+      updateImageRequestPhase(taskId, 0, 'saving');
       await showDemoImage(prompt, config, references.map((reference) => reference.data));
     } else {
       const hasReference = references.length > 0;
       const endpoint = buildApiEndpoint(state.settings.imageBaseUrl, hasReference ? '/images/edits' : '/images/generations');
+      const requestReferences = hasReference ? await prepareImageRequestReferences(references, config.optimizeReferences, (completed, total) => updateImageTask(taskId, { detail: `优化提交副本 ${completed}/${total}` })) : [];
+      if (generation !== localDataGeneration) return;
       const request = { model: config.model, prompt: config.submittedPrompt, n: requestCount };
       if (config.size !== 'auto') request.size = config.size;
       if (config.quality !== 'auto') request.quality = config.quality;
@@ -2519,33 +2584,67 @@ async function generateImage() {
         if (request.output_format) form.append('output_format', request.output_format);
         if (request.output_compression !== undefined) form.append('output_compression', String(request.output_compression));
         if (request.moderation) form.append('moderation', request.moderation);
-        references.forEach((reference) => form.append('image[]', reference.file, reference.file.name));
+        requestReferences.forEach((reference) => form.append('image[]', reference.file, reference.file.name));
         fetchOptions = { method: 'POST', headers: { Authorization: `Bearer ${state.settings.imageApiKey}` }, body: form };
       } else {
         fetchOptions = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.imageApiKey}` }, body: JSON.stringify(request) };
       }
+      const requestLog = { endpoint, method: 'POST', contentType: hasReference ? 'multipart/form-data' : 'application/json', body: { ...request, ...(hasReference ? { image: requestReferences.map((reference) => reference.submissionMeta) } : {}) }, parallelRequests: requestTotal, createdAt: Date.now() };
+      updateImageTask(taskId, { requestLog });
       const referenceSources = references.map((reference) => reference.data);
       if (countMode === 'parallel') {
-        const results = await Promise.allSettled(Array.from({ length: config.count }, () => fetchImageRequest(endpoint, fetchOptions, hasReference)));
-        const successful = results.filter((result) => result.status === 'fulfilled').map((result) => result.value);
+        const results = await Promise.allSettled(Array.from({ length: config.count }, (_, requestIndex) => (async () => {
+          try {
+            const result = await fetchImageRequest(endpoint, fetchOptions, hasReference, (phase) => updateImageRequestPhase(taskId, requestIndex, phase));
+            result.meta.requestIndex = requestIndex + 1;
+            result.meta.requestLog = requestLog;
+            recordImageTaskResponse(taskId, requestIndex, result.meta.upstreamResponse);
+            updateImageRequestPhase(taskId, requestIndex, 'done');
+            return result;
+          } catch (error) {
+            recordImageTaskResponse(taskId, requestIndex, error.upstreamResponse || { error: error.message, receivedAt: Date.now() });
+            updateImageRequestPhase(taskId, requestIndex, 'error');
+            throw error;
+          }
+        })()));
+        const successful = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
         const imageDataList = successful.flatMap((result) => result.images.map((image) => ({ ...image, responseMeta: { ...result.meta, ...(image.responseMeta || {}) } })));
-        if (!imageDataList.length) throw new Error(results.map((result) => result.reason?.message).filter(Boolean).join('；') || '接口没有返回图片地址');
+        if (!imageDataList.length) {
+          const error = new Error(results.map((result) => result.reason?.message).filter(Boolean).join('；') || '接口没有返回图片地址');
+          error.responsesRecorded = true;
+          throw error;
+        }
         const failed = results.length - successful.length;
         if (generation !== localDataGeneration) return;
-        await presentGeneratedImages(imageDataList, prompt, config, referenceSources, { ...(successful[0]?.meta || {}), source: endpoint, requestType: hasReference ? 'edit' : 'generation', parallel: true, requestedCount: config.count, failedCount: failed }, startedAt, generation);
-        if (failed) { taskResultDetail = `部分完成 ${successful.length}/${config.count} 个 · ${formatDuration(Date.now() - startedAt)}`; showErrorToast(`并发请求完成 ${successful.length}/${config.count} 个，${failed} 个失败`); }
+        const task = imageTasks.find((entry) => entry.id === taskId);
+        updateImageTask(taskId, { detail: '保存结果中' });
+        await presentGeneratedImages(imageDataList, prompt, config, referenceSources, { ...(successful[0]?.meta || {}), source: endpoint, requestType: hasReference ? 'edit' : 'generation', parallel: true, requestedCount: config.count, failedCount: failed, requestLog, responses: task?.responses || [] }, startedAt, generation);
+        if (failed) { taskFinalStatus = 'partial'; taskResultDetail = `部分完成 ${successful.length}/${config.count} 个 · ${formatDuration(Date.now() - startedAt)}`; showErrorToast(`并发请求完成 ${successful.length}/${config.count} 个，${failed} 个失败`); }
       } else {
-        const result = await parseImageResponse(await fetch(endpoint, fetchOptions), endpoint, hasReference);
+        let result;
+        try {
+          result = await fetchImageRequest(endpoint, fetchOptions, hasReference, (phase) => updateImageRequestPhase(taskId, 0, phase));
+          result.meta.requestIndex = 1;
+          result.meta.requestLog = requestLog;
+          recordImageTaskResponse(taskId, 0, result.meta.upstreamResponse);
+        } catch (error) {
+          recordImageTaskResponse(taskId, 0, error.upstreamResponse || { error: error.message, receivedAt: Date.now() });
+          updateImageRequestPhase(taskId, 0, 'error');
+          error.responsesRecorded = true;
+          throw error;
+        }
         if (!result.images.length) throw new Error('接口没有返回图片地址');
         if (generation !== localDataGeneration) return;
-        await presentGeneratedImages(result.images, prompt, config, referenceSources, result.meta, startedAt, generation);
+        updateImageRequestPhase(taskId, 0, 'saving');
+        await presentGeneratedImages(result.images, prompt, config, referenceSources, { ...result.meta, requestLog, responses: [result.meta.upstreamResponse] }, startedAt, generation);
       }
     }
-    updateImageTask(taskId, { status: 'success', finishedAt: Date.now(), detail: taskResultDetail || `已完成 · ${formatDuration(Date.now() - startedAt)}` });
+    updateImageTask(taskId, { status: taskFinalStatus, requestPhases: Array(requestTotal).fill('done'), finishedAt: Date.now(), detail: taskResultDetail || `已完成 · ${formatDuration(Date.now() - startedAt)}` });
   } catch (error) {
     if (generation !== localDataGeneration) return;
     const detail = error.message || '生图失败, 请检查接口设置';
-    updateImageTask(taskId, { status: 'error', finishedAt: Date.now(), detail: `${detail} · ${formatDuration(Date.now() - startedAt)}` });
+    if (!error.responsesRecorded && error.upstreamResponse) recordImageTaskResponse(taskId, 0, error.upstreamResponse);
+    updateImageTask(taskId, { status: 'error', finishedAt: Date.now(), detail: `${detail} · ${formatDuration(Date.now() - startedAt)}`, error: { message: detail, occurredAt: Date.now() } });
     showErrorToast(detail);
   } finally {
     stopImageTaskTimerIfIdle();
@@ -2576,6 +2675,75 @@ function dataUrlToFile(dataUrl, name) {
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
   return new File([bytes], name, { type: mime });
+}
+
+function canvasToImageBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('浏览器无法压缩这张参考图')), type, quality));
+}
+
+async function optimizeReferenceImage(reference, enabled) {
+  const originalFile = reference.file;
+  const forced = originalFile.size > REFERENCE_FORCE_COMPRESSION_BYTES;
+  if (!enabled && !forced) return { file: originalFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, optimized: false, forced: false } };
+  const cacheKey = `${getImageIdentity(reference.data)}|${forced ? 'force' : 'lossless'}`;
+  if (optimizedReferenceCache.has(cacheKey)) return optimizedReferenceCache.get(cacheKey);
+  const task = (async () => {
+    const bitmap = await createImageBitmap(originalFile);
+    const originalWidth = bitmap.width;
+    const originalHeight = bitmap.height;
+    const originalLongEdge = Math.max(originalWidth, originalHeight);
+    const shouldOptimize = forced || (originalFile.type === 'image/png' && originalFile.size > 2 * 1024 * 1024);
+    if (!shouldOptimize) {
+      bitmap.close();
+      return { file: originalFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, optimized: false, forced, strategy: 'original' } };
+    }
+    const outputType = ['image/png', 'image/jpeg', 'image/webp'].includes(originalFile.type) ? originalFile.type : 'image/png';
+    let scale = forced ? Math.min(1, REFERENCE_MAX_EDGE / originalLongEdge) : 1;
+    let quality = .94;
+    let submittedWidth = Math.max(1, Math.round(originalWidth * scale));
+    let submittedHeight = Math.max(1, Math.round(originalHeight * scale));
+    const encode = async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = submittedWidth;
+      canvas.height = submittedHeight;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, submittedWidth, submittedHeight);
+      return canvasToImageBlob(canvas, outputType, outputType === 'image/png' ? undefined : quality);
+    };
+    let blob = await encode();
+    while (forced && blob.size > REFERENCE_TARGET_BYTES && Math.max(submittedWidth, submittedHeight) > 768) {
+      scale = Math.min(.86, Math.sqrt(REFERENCE_TARGET_BYTES / blob.size) * .94);
+      submittedWidth = Math.max(1, Math.round(submittedWidth * scale));
+      submittedHeight = Math.max(1, Math.round(submittedHeight * scale));
+      quality = Math.max(.76, quality - .04);
+      blob = await encode();
+    }
+    bitmap.close();
+    if (!forced && blob.size >= originalFile.size && submittedWidth === originalWidth && submittedHeight === originalHeight) {
+      return { file: originalFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, optimized: false, forced } };
+    }
+    const extension = outputType === 'image/jpeg' ? 'jpg' : outputType.split('/')[1];
+    const submittedFile = new File([blob], `${originalFile.name.replace(/\.[^.]+$/, '') || 'reference'}-optimized.${extension}`, { type: outputType, lastModified: originalFile.lastModified });
+    return { file: submittedFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: submittedFile.size, originalType: originalFile.type, submittedType: submittedFile.type, originalWidth, originalHeight, submittedWidth, submittedHeight, optimized: true, forced, strategy: forced ? 'forced' : 'lossless' } };
+  })();
+  optimizedReferenceCache.set(cacheKey, task);
+  try {
+    return await task;
+  } catch (error) {
+    optimizedReferenceCache.delete(cacheKey);
+    if (forced) throw error;
+    return { file: originalFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, optimized: false, forced: false, optimizationError: error.message } };
+  }
+}
+
+async function prepareImageRequestReferences(references, optimize, onProgress) {
+  const prepared = [];
+  for (let index = 0; index < references.length; index += 1) {
+    onProgress?.(index, references.length);
+    const result = await optimizeReferenceImage(references[index], optimize);
+    prepared.push({ ...references[index], file: result.file, submissionMeta: result.meta });
+  }
+  onProgress?.(references.length, references.length);
+  return prepared;
 }
 
 async function saveGeneratedImage(record, generationToken = localDataGeneration) {
@@ -2659,7 +2827,6 @@ async function presentGeneratedImages(imageDataList, prompt, config, referenceSo
   const records = imageDataList.map((entry, index) => {
     const src = typeof entry === 'string' ? entry : entry.src;
     const imageResponseMeta = { ...sharedImageResponseMeta, ...(typeof entry === 'object' ? entry.responseMeta : {}) };
-    delete imageResponseMeta.apiResponse;
     return { id: `${batchId}-${index + 1}`, src, prompt, config, responseMeta: imageResponseMeta, batchId, type: 'image', createdAt: createdAt - index };
   });
   const referenceImageIds = [];
@@ -3321,7 +3488,7 @@ function fileToDataUrl(file) {
 function renderImageReferences() {
   const preview = $('#imageReferencePreview');
   preview.hidden = imageReferences.length === 0;
-  preview.innerHTML = imageReferences.map((reference, index) => `<div class="reference-preview-item"><img src="${escapeHtml(reference.data)}" alt="生图参考图 ${index + 1}"><button type="button" class="remove-reference" data-reference-index="${index}" aria-label="移除参考图">×</button></div>`).join('');
+  preview.innerHTML = imageReferences.map((reference, index) => `<div class="reference-preview-item"><img src="${escapeHtml(reference.data)}" alt="生图参考图 ${index + 1}"><span class="reference-preview-index">${index + 1}</span><button type="button" class="remove-reference" data-reference-index="${index}" aria-label="移除参考图">×</button></div>`).join('');
   preview.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
   $$('.remove-reference').forEach((button) => button.addEventListener('click', () => {
     imageReferences.splice(Number(button.dataset.referenceIndex), 1);
@@ -3334,14 +3501,23 @@ function renderImageReferences() {
 function renderImageTasks() {
   const list = $('#imageTasks');
   if (!list) return;
-  list.innerHTML = imageTasks.map((task) => { const elapsed = task.status === 'running' ? formatDuration(Date.now() - task.startedAt) : formatDuration((task.finishedAt || task.startedAt) - task.startedAt); return `<div class="image-task ${task.status === 'error' ? 'error' : ''} ${task.status === 'running' ? 'running' : ''}" data-task-id="${task.id}" title="点击恢复这条生成配置"><span class="image-task-icon">${task.status === 'error' ? '!' : task.status === 'running' ? '◌' : '✓'}</span><div class="image-task-body"><div class="image-task-title">${escapeHtml(task.title)}<span class="image-task-elapsed">${task.status === 'running' ? `等待 ${elapsed}` : elapsed}</span></div><div class="image-task-detail">${escapeHtml(task.detail)}</div></div>${task.status !== 'running' ? `<button class="image-task-close" data-task-id="${task.id}" title="关闭任务提示" aria-label="关闭任务提示">×</button>` : ''}</div>`; }).join('');
-  $$('.image-task-close').forEach((button) => button.addEventListener('click', (event) => {
+  list.innerHTML = imageTasks.map((task) => {
+    const elapsed = task.status === 'running' ? formatDuration(Date.now() - task.startedAt) : formatDuration((task.finishedAt || task.startedAt) - task.startedAt);
+    const requestRecord = task.requestLog || task.responses?.length ? { request: task.requestLog || null, responses: task.responses || [], error: task.error || null } : null;
+    const log = requestRecord ? `<details class="image-task-log"><summary>查看请求记录</summary><pre>${escapeHtml(JSON.stringify(requestRecord, null, 2))}</pre></details>` : '';
+    return `<div class="image-task ${task.status === 'error' ? 'error' : task.status === 'partial' ? 'partial' : ''} ${task.status === 'running' ? 'running' : ''}" data-task-id="${task.id}" title="点击恢复这条生成配置"><span class="image-task-icon">${task.status === 'error' || task.status === 'partial' ? '!' : task.status === 'running' ? '' : '✓'}</span><div class="image-task-body"><div class="image-task-title">${escapeHtml(task.title)}<span class="image-task-elapsed">${task.status === 'running' ? `已用时 ${elapsed}` : elapsed}</span></div><div class="image-task-detail">${escapeHtml(task.detail)}</div>${log}</div>${task.status !== 'running' ? `<button class="image-task-close" data-task-id="${task.id}" title="删除任务记录" aria-label="删除任务记录">×</button>` : ''}</div>`;
+  }).join('');
+  $$('.image-task-close').forEach((button) => button.addEventListener('click', async (event) => {
     event.stopPropagation();
+    if (!window.confirm('删除这条任务记录?\n\n请求和上游响应记录也会一并删除。')) return;
     imageTasks = imageTasks.filter((task) => task.id !== button.dataset.taskId);
+    await deleteStoredImageRecord(button.dataset.taskId);
     renderImageTasks();
-    removeUnreferencedImages();
+    await removeUnreferencedImages();
   }));
-  $$('.image-task').forEach((node) => node.addEventListener('click', () => {
+  $$('.image-task-log').forEach((details) => details.addEventListener('click', (event) => event.stopPropagation()));
+  $$('.image-task').forEach((node) => node.addEventListener('click', (event) => {
+    if (event.target.closest('.image-task-log, .image-task-close')) return;
     const task = imageTasks.find((entry) => entry.id === node.dataset.taskId);
     if (!task) return;
     $('#imagePrompt').value = task.prompt || '';
@@ -3371,7 +3547,29 @@ function updateImageTask(id, patch) {
   const task = imageTasks.find((entry) => entry.id === id);
   if (!task) return;
   Object.assign(task, patch);
+  const storedTask = createStoredImageTask(task);
+  storedImages.set(storedTask.id, storedTask);
+  saveImageHistory(storedTask).catch(() => {});
   renderImageTasks();
+}
+
+function updateImageRequestPhase(taskId, requestIndex, phase) {
+  const task = imageTasks.find((entry) => entry.id === taskId);
+  if (!task) return;
+  const phases = [...(task.requestPhases || [])];
+  phases[requestIndex] = phase;
+  const counts = phases.reduce((result, value) => ({ ...result, [value]: (result[value] || 0) + 1 }), {});
+  const labels = { preparing: '准备请求', uploading: '上传资源中', waiting: '等待上游中', parsing: '解析结果中', saving: '保存结果中', done: '已完成', error: '失败' };
+  const detail = phases.length === 1 ? labels[phase] : ['uploading', 'waiting', 'parsing', 'saving', 'done', 'error'].filter((key) => counts[key]).map((key) => `${labels[key]} ${counts[key]}`).join(' · ');
+  updateImageTask(taskId, { requestPhases: phases, detail: `${detail}${phases.length > 1 ? ` / 共 ${phases.length}` : ''}` });
+}
+
+function recordImageTaskResponse(taskId, requestIndex, response) {
+  const task = imageTasks.find((entry) => entry.id === taskId);
+  if (!task) return;
+  const responses = [...(task.responses || [])];
+  responses[requestIndex] = { requestIndex: requestIndex + 1, ...response };
+  updateImageTask(taskId, { responses });
 }
 
 async function setImageReferencesFromSources(sources, replace = true) {
@@ -3594,9 +3792,10 @@ function getConversationImageIds(conversations = state.conversations) {
   return ids;
 }
 
-function getImageWorkspaceImageIds(batches = imageHistory) {
+function getImageWorkspaceImageIds(batches = imageHistory, tasks = imageTasks) {
   const ids = new Set();
   batches.forEach((batch) => [...(batch.imageIds || []), ...(batch.referenceImageIds || [])].filter(Boolean).forEach((id) => ids.add(id)));
+  tasks.forEach((task) => (task.referenceImageIds || []).filter(Boolean).forEach((id) => ids.add(id)));
   return ids;
 }
 
@@ -3690,7 +3889,7 @@ async function exportWorkspace() {
     if (!window.confirm(`${scope === 'all' ? '导出全部数据' : '导出配置'}会包含 API Key、接口地址和模板, 请确认文件保存位置安全`)) return;
     if (scope === 'config') {
       const imageIds = getPolishTemplateImageIds();
-      const workspace = { version: 9, scope, exportedAt: Date.now(), images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), apiConfig: { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
+      const workspace = { version: 10, scope, exportedAt: Date.now(), images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), apiConfig: { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
       downloadFile(JSON.stringify(workspace, null, 2), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
       showToast('配置已导出');
       return;
@@ -3698,7 +3897,8 @@ async function exportWorkspace() {
   }
   const conversations = scope === 'image' ? [] : state.conversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
   const batches = scope === 'chat' ? [] : imageHistory.map(createStoredBatch);
-  const imageIds = scope === 'chat' ? getConversationImageIds(conversations) : scope === 'image' ? getImageWorkspaceImageIds(batches) : new Set([...getConversationImageIds(conversations), ...getImageWorkspaceImageIds(batches)]);
+  const tasks = scope === 'chat' ? [] : imageTasks.map(createStoredImageTask);
+  const imageIds = scope === 'chat' ? getConversationImageIds(conversations) : scope === 'image' ? getImageWorkspaceImageIds(batches, tasks) : new Set([...getConversationImageIds(conversations), ...getImageWorkspaceImageIds(batches, tasks)]);
   if (scope === 'all') getPolishTemplateImageIds().forEach((id) => imageIds.add(id));
   const draftReferenceIds = [];
   if (scope !== 'chat') {
@@ -3707,7 +3907,7 @@ async function exportWorkspace() {
       if (id) { reference.imageId = id; draftReferenceIds.push(id); imageIds.add(id); }
     }
   }
-  const workspace = { version: 9, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches };
+  const workspace = { version: 10, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches, imageTasks: tasks };
   if (scope === 'all') workspace.apiConfig = { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
   if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
   const label = getExportScopeLabel(scope);
@@ -3728,11 +3928,12 @@ async function replaceStoredImages(records) {
   db.close();
   storedImages = new Map(records.map((record) => [record.id, record]));
   imageHistory = hydrateGenerationBatches(records);
+  imageTasks = hydrateImageTasks(records, false);
 }
 
 async function persistImageStore() {
   try {
-    await replaceStoredImages([...storedImages.values()].filter((record) => record.type === 'image' && record.src).concat(imageHistory.map(createStoredBatch)));
+    await replaceStoredImages([...storedImages.values()].filter((record) => record.type === 'image' && record.src).concat(imageHistory.map(createStoredBatch), imageTasks.map(createStoredImageTask)));
   } catch {
     // 当前环境禁用 IndexedDB 时, 保留内存中的工作区状态
   }
@@ -3814,6 +4015,7 @@ async function importWorkspace(file) {
     const scope = ['chat', 'image', 'workspace', 'config', 'all'].includes(payload.scope) ? payload.scope : 'workspace';
     const sourceImages = (Array.isArray(payload.images) ? payload.images : []).filter((image) => image && image.id && image.src).map((image) => createStoredImage(image));
     const sourceHistory = (Array.isArray(payload.imageHistory) ? payload.imageHistory : []).filter((batch) => batch && batch.id).map((batch) => createStoredBatch(batch));
+    const sourceTasks = (Array.isArray(payload.imageTasks) ? payload.imageTasks : []).filter((task) => task && task.id).map((task) => createStoredImageTask(task));
     const sourceConversations = (Array.isArray(payload.conversations) ? payload.conversations : []).map((source) => ({
       ...source,
       id: source.id || createId(),
@@ -3821,7 +4023,7 @@ async function importWorkspace(file) {
     }));
     const hasApiConfig = payload.apiConfig && typeof payload.apiConfig === 'object';
     if ((scope === 'config' || scope === 'all') && !hasApiConfig) throw new Error('文件中没有配置');
-    if (!window.confirm(`导入${getExportScopeLabel(scope)}: ${sourceConversations.length} 个对话, ${sourceHistory.length} 条生图记录?`)) return;
+    if (!window.confirm(`导入${getExportScopeLabel(scope)}: ${sourceConversations.length} 个对话, ${sourceHistory.length} 条生图记录, ${sourceTasks.length} 条任务记录?`)) return;
     const modeInput = window.prompt('请选择导入方式:\n输入“覆盖”替换对应范围, 输入“合并”保留现有内容并去重', '覆盖');
     if (modeInput === null) return;
     const mode = String(modeInput).trim().toLowerCase();
@@ -3865,7 +4067,9 @@ async function importWorkspace(file) {
       }
     }
     const mapBatch = (batch) => ({ ...batch, imageIds: remapImageIds(batch.imageIds, mergedImages.idMap), referenceImageIds: remapImageIds(batch.referenceImageIds, mergedImages.idMap) });
+    const mapTask = (task) => ({ ...task, referenceImageIds: remapImageIds(task.referenceImageIds, mergedImages.idMap) });
     const batches = sourceHistory.map(mapBatch);
+    const tasks = sourceTasks.map(mapTask);
     const conversations = sourceConversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: remapImageIds(message.imageIds, mergedImages.idMap) })) }));
     if (scope === 'chat' || scope === 'workspace' || scope === 'all') {
       state.conversations = merge ? mergeConversations(state.conversations, conversations) : conversations;
@@ -3874,12 +4078,13 @@ async function importWorkspace(file) {
     }
     if (scope === 'image' || scope === 'workspace' || scope === 'all') {
       imageHistory = merge ? mergeImageBatches(imageHistory, batches) : batches;
+      imageTasks = merge ? [...new Map([...imageTasks, ...tasks].map((task) => [task.id, task])).values()].sort((left, right) => right.startedAt - left.startedAt) : tasks;
       if (!merge && payload.imageDraft && typeof payload.imageDraft === 'object') {
         $('#imagePrompt').value = payload.imageDraft.prompt || '';
         setImageConfig(payload.imageDraft.config || state.settings.imageOptions);
         await setImageReferencesFromSources(remapImageIds(payload.imageDraft.referenceImageIds, mergedImages.idMap).map((id) => mergedImages.records.get(id)?.src).filter(Boolean));
       }
-      if (!merge) { imageTasks = []; stopImageTaskTimerIfIdle(); }
+      stopImageTaskTimerIfIdle();
     }
     storedImages = mergedImages.records;
     ensureActiveConversation();
@@ -4062,6 +4267,10 @@ function bindEvents() {
   $('#fileUpload').addEventListener('change', handleFileAttachment);
   $('#imageReferenceUpload').addEventListener('change', handleImageReference);
   $('#imagePrompt').addEventListener('paste', handleImagePromptPaste);
+  $('#optimizeImageReferences').addEventListener('change', () => {
+    state.settings.imageOptions.optimizeReferences = $('#optimizeImageReferences').checked;
+    persist();
+  });
   $('#polishImagePrompt').addEventListener('click', openPromptPolish);
   $('#polishTemplateSelect').addEventListener('change', (event) => selectPolishTemplate(event.target.value));
   $('#savePolishTemplate').addEventListener('click', savePolishTemplate);
