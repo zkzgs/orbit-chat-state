@@ -191,7 +191,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .toast { z-index: 200; }
 .data-management-actions { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
 .data-management-select { display: grid; gap: 5px; min-width: 170px; color: var(--muted); font-size: 11px; }
-.data-management-select select { min-height: 36px; }
+.data-management-select select { width: 100%; min-height: 36px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; }
+.data-management-select select:focus { border-color: rgba(116,212,203,.55); }
 .data-management-actions .secondary-button { flex: 1; }
 .profile-manager { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; margin: 0 0 17px; padding: 11px; border: 1px solid var(--line); border-radius: 7px; background: rgba(255,255,255,.025); }
 .profile-select-label { min-width: 0; display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 11px; }
