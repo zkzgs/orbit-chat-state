@@ -431,22 +431,36 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .viewer-nav-prev { left: 12px; }
 .viewer-nav-next { right: 12px; }
 .viewer-meta { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 72px); min-width: 190px; overflow: hidden; padding: 6px 9px; border-radius: 5px; background: rgba(0,0,0,.58); color: rgba(255,255,255,.82); font-size: 11px; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
-.polish-modal { width: min(650px, 100%); }
+.polish-modal { width: min(720px, 100%); }
 .polish-body { overflow-y: auto; padding: 20px 25px 4px; }
 .polish-body .field-label { margin-bottom: 16px; }
 .polish-template-manager { margin-bottom: 16px; }
-.polish-reference-toggle { display: flex; align-items: center; gap: 8px; margin: -4px 0 12px; color: var(--muted); font-size: 11px; }
+.polish-reference-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: -4px 0 16px; }
+.polish-reference-group { min-width: 0; }
+.polish-reference-group + .polish-reference-group { padding-left: 16px; border-left: 1px solid var(--line); }
+.polish-reference-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.polish-reference-heading { min-width: 0; }
+.polish-reference-heading strong { display: block; color: var(--ink); font-size: 11px; }
+.polish-reference-heading .panel-label-hint { display: block; margin-top: 2px; color: var(--muted-2); font-size: 9px; }
+.polish-reference-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
+.polish-reference-toggle { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--muted); font-size: 10px; white-space: nowrap; }
 .polish-reference-toggle input { accent-color: var(--cyan); }
-.polish-reference-toggle small { color: var(--muted-2); font-size: 10px; }
-.polish-reference-preview { display: flex; flex-wrap: wrap; gap: 7px; margin: -3px 0 15px; }
+.polish-reference-preview { display: flex; flex-wrap: wrap; gap: 7px; min-height: 43px; }
 .polish-reference-preview[hidden] { display: none; }
-.polish-reference-preview button { width: 54px; height: 43px; padding: 0; border: 1px solid var(--line-strong); border-radius: 5px; background: transparent; overflow: hidden; cursor: zoom-in; }
-.polish-reference-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.polish-reference-item { position: relative; }
+.polish-reference-preview .polish-reference-thumb { width: 54px; height: 43px; padding: 0; border: 1px solid var(--line-strong); border-radius: 5px; background: transparent; overflow: hidden; cursor: zoom-in; }
+.polish-reference-preview .polish-reference-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.polish-reference-badge { position: absolute; left: 3px; bottom: 3px; max-width: 46px; overflow: hidden; padding: 1px 3px; border-radius: 2px; background: rgba(0,0,0,.7); color: #fff; font-size: 8px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+.remove-polish-reference { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--panel-soft); border-radius: 50%; background: #314157; color: var(--ink); font-size: 13px; line-height: 14px; }
 .polish-body textarea[readonly] { opacity: .85; }
 .polish-result-wrap { padding-top: 3px; }
 .polish-result-heading { display: flex; justify-content: space-between; margin-bottom: 6px; color: var(--muted); font-size: 11px; }
 .polish-result-heading + textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; line-height: 1.55; resize: vertical; }
 .polish-result-heading + textarea:focus { border-color: rgba(116,212,203,.55); }
+@media (max-width: 620px) {
+  .polish-reference-groups { grid-template-columns: 1fr; }
+  .polish-reference-group + .polish-reference-group { padding-top: 14px; padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
+}
 .image-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .metadata-card { min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.025); }
 .metadata-card.full { grid-column: 1 / -1; }
@@ -708,8 +722,24 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
   <div class="modal-backdrop" id="promptPolishBackdrop" hidden>
     <section class="settings-modal polish-modal" role="dialog" aria-modal="true" aria-labelledby="promptPolishTitle">
-      <div class="modal-header"><div><div class="eyebrow">Prompt assistant</div><h2 id="promptPolishTitle">润色生图关键词</h2><p class="modal-subtitle">先生成建议，确认后才会替换当前关键词</p></div><button class="icon-button" id="closePromptPolish" title="关闭润色" aria-label="关闭润色">×</button></div>
-      <div class="polish-body"><label class="field-label">当前关键词<textarea id="polishSourcePrompt" rows="4"></textarea></label><div class="profile-manager polish-template-manager"><label class="profile-select-label">润色模板<select id="polishTemplateSelect" aria-label="选择润色模板"><option value="">临时模板（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="savePolishTemplate" type="button">另存为</button><button class="secondary-button" id="updatePolishTemplate" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deletePolishTemplate" type="button" title="删除当前润色模板" aria-label="删除当前润色模板" disabled>×</button></div><small class="profile-help">选择模板后会替换下方润色要求；修改后可更新当前模板或另存为新模板。</small></div><label class="polish-reference-toggle"><input type="checkbox" id="polishUseReferences"><span>结合当前参考图</span><small id="polishReferenceHint">未添加参考图</small></label><div class="polish-reference-preview" id="polishReferencePreview" hidden></div><label class="field-label">润色要求<textarea id="polishInstruction" rows="4">保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。</textarea></label><div class="polish-result-wrap"><div class="polish-result-heading"><span>润色结果</span><span class="field-help" id="polishStatus">尚未生成</span></div><textarea id="polishResult" rows="6" placeholder="点击“生成建议”查看结果"></textarea></div></div>
+      <div class="modal-header"><div><div class="eyebrow">Prompt assistant</div><h2 id="promptPolishTitle">润色生图关键词</h2><p class="modal-subtitle">生成参考图随结果带回生图面板, 润色参考图仅用于生成关键词</p></div><button class="icon-button" id="closePromptPolish" title="关闭润色" aria-label="关闭润色">×</button></div>
+      <div class="polish-body">
+        <label class="field-label">当前关键词<textarea id="polishSourcePrompt" rows="4"></textarea></label>
+        <div class="profile-manager polish-template-manager"><label class="profile-select-label">润色模板<select id="polishTemplateSelect" aria-label="选择润色模板"><option value="">临时模板（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="savePolishTemplate" type="button">另存为</button><button class="secondary-button" id="updatePolishTemplate" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deletePolishTemplate" type="button" title="删除当前润色模板" aria-label="删除当前润色模板" disabled>×</button></div><small class="profile-help">模板保存润色要求和润色参考图, 不保存生成参考图</small></div>
+        <div class="polish-reference-groups">
+          <div class="polish-reference-group">
+            <div class="polish-reference-row"><div class="polish-reference-heading"><strong>生成参考图</strong><span class="panel-label-hint" id="polishGenerationReferenceHint">未添加参考图</span></div><label class="reference-upload"><span>⊕</span> 添加<input type="file" id="polishGenerationReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label></div>
+            <label class="polish-reference-toggle"><input type="checkbox" id="polishUseGenerationReferences"><span>润色时分析这组图片</span></label>
+            <div class="polish-reference-preview" id="polishGenerationReferencePreview" hidden></div>
+          </div>
+          <div class="polish-reference-group">
+            <div class="polish-reference-row"><div class="polish-reference-heading"><strong>润色参考图</strong><span class="panel-label-hint" id="polishReferenceHint">未添加参考图</span></div><label class="reference-upload"><span>⊕</span> 添加<input type="file" id="polishReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label></div>
+            <div class="polish-reference-preview" id="polishReferencePreview" hidden></div>
+          </div>
+        </div>
+        <label class="field-label">润色要求<textarea id="polishInstruction" rows="4">保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。</textarea></label>
+        <div class="polish-result-wrap"><div class="polish-result-heading"><span>润色结果</span><span class="field-help" id="polishStatus">尚未生成</span></div><textarea id="polishResult" rows="6" placeholder="点击“生成建议”查看结果"></textarea></div>
+      </div>
       <div class="modal-footer"><button class="secondary-button" id="cancelPromptPolish" type="button">取消</button><div><button class="secondary-button" id="generatePolishResult" type="button">生成建议</button><button class="primary-button" id="applyPolishResult" type="button" disabled>使用结果</button></div></div>
     </section>
   </div>
@@ -805,6 +835,8 @@ let imageHistory = [];
 let storedImages = new Map();
 let editingMessageId = null;
 let imageReferences = [];
+let polishGenerationReferences = [];
+let polishReferences = [];
 let currentImage = null;
 let imageTasks = [];
 let imageTaskTimer = null;
@@ -865,6 +897,7 @@ function normalizePolishTemplates(templates) {
     id: template.id || createId(),
     name: String(template.name).trim(),
     instruction: String(template.instruction).trim(),
+    referenceImageIds: Array.isArray(template.referenceImageIds) ? [...new Set(template.referenceImageIds.filter(Boolean))] : [],
     createdAt: Number(template.createdAt) || Date.now(),
     updatedAt: Number(template.updatedAt) || Number(template.createdAt) || Date.now()
   }));
@@ -1156,6 +1189,9 @@ function getReferencedImageIds(excludedBatchIds = new Set()) {
   });
   imageTasks.forEach((task) => {
     (task.referenceImageIds || []).filter(Boolean).forEach((id) => ids.add(id));
+  });
+  getPolishTemplates().forEach((template) => {
+    (template.referenceImageIds || []).filter(Boolean).forEach((id) => ids.add(id));
   });
   pendingAttachments.map((attachment) => attachment.imageId).filter(Boolean).forEach((id) => ids.add(id));
   imageReferences.forEach((reference) => {
@@ -2734,25 +2770,106 @@ function resetPolishSuggestion() {
   $('#applyPolishResult').disabled = true;
 }
 
-function getPolishReferenceSources() {
-  return $('#polishUseReferences').checked ? imageReferences.map((reference) => reference.data).filter(Boolean) : [];
+function getPolishRequestReferences() {
+  return {
+    generation: $('#polishUseGenerationReferences').checked ? polishGenerationReferences.map((reference) => reference.data).filter(Boolean) : [],
+    polish: polishReferences.map((reference) => reference.data).filter(Boolean)
+  };
 }
 
-function renderPolishReferencePreview() {
-  const sources = imageReferences.map((reference) => reference.data).filter(Boolean);
-  const toggle = $('#polishUseReferences');
-  const preview = $('#polishReferencePreview');
-  toggle.disabled = sources.length === 0;
-  if (!sources.length) toggle.checked = false;
-  $('#polishReferenceHint').textContent = sources.length ? `${sources.length} 张参考图，仅用于本次润色` : '未添加参考图';
-  const activeSources = toggle.checked ? sources : [];
-  preview.hidden = activeSources.length === 0;
-  preview.innerHTML = activeSources.map((src, index) => `<button type="button" data-polish-reference-index="${index}" title="预览参考图 ${index + 1}" aria-label="预览参考图 ${index + 1}"><img src="${escapeHtml(src)}" alt="参考图 ${index + 1}" draggable="false"></button>`).join('');
+function renderPolishReferenceList(references, previewSelector, hintSelector, label, onRemove) {
+  const sources = references.map((reference) => reference.data).filter(Boolean);
+  const preview = $(previewSelector);
+  $(hintSelector).textContent = sources.length ? `${sources.length} 张参考图` : '未添加参考图';
+  preview.hidden = sources.length === 0;
+  preview.innerHTML = sources.map((src, index) => `<div class="polish-reference-item"><button class="polish-reference-thumb" type="button" data-polish-reference-index="${index}" title="预览${label} ${index + 1}" aria-label="预览${label} ${index + 1}"><img src="${escapeHtml(src)}" alt="${label} ${index + 1}" draggable="false"><span class="polish-reference-badge">${label.replace('参考图', '')} ${index + 1}</span></button><button class="remove-polish-reference" type="button" data-polish-reference-remove="${index}" aria-label="移除${label}">×</button></div>`).join('');
   preview.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
   preview.querySelectorAll('[data-polish-reference-index]').forEach((button) => button.addEventListener('click', () => {
     const index = Number(button.dataset.polishReferenceIndex) || 0;
-    openChatImageViewer(activeSources[index], activeSources, index);
+    openChatImageViewer(sources[index], sources, index);
   }));
+  preview.querySelectorAll('[data-polish-reference-remove]').forEach((button) => button.addEventListener('click', () => {
+    onRemove(Number(button.dataset.polishReferenceRemove));
+    resetPolishSuggestion();
+  }));
+}
+
+function renderPolishGenerationReferencePreview() {
+  renderPolishReferenceList(polishGenerationReferences, '#polishGenerationReferencePreview', '#polishGenerationReferenceHint', '生成参考图', (index) => {
+    polishGenerationReferences.splice(index, 1);
+    renderPolishGenerationReferencePreview();
+  });
+  const toggle = $('#polishUseGenerationReferences');
+  toggle.disabled = polishGenerationReferences.length === 0;
+  if (!polishGenerationReferences.length) toggle.checked = false;
+}
+
+function renderPolishReferencePreview() {
+  renderPolishReferenceList(polishReferences, '#polishReferencePreview', '#polishReferenceHint', '润色参考图', (index) => {
+    polishReferences.splice(index, 1);
+    renderPolishReferencePreview();
+  });
+}
+
+async function appendPolishReferenceFiles(event, references, renderPreview) {
+  const files = [...event.target.files].slice(0, 16 - references.length);
+  if (files.length) references.push(...await Promise.all(files.map(async (file) => ({ file, data: await fileToDataUrl(file) }))));
+  renderPreview();
+  resetPolishSuggestion();
+  event.target.value = '';
+}
+
+async function handlePolishGenerationReference(event) {
+  await appendPolishReferenceFiles(event, polishGenerationReferences, renderPolishGenerationReferencePreview);
+}
+
+async function handlePolishReference(event) {
+  await appendPolishReferenceFiles(event, polishReferences, renderPolishReferencePreview);
+}
+
+async function addPolishReferenceFile(file) {
+  if (!file || polishReferences.length >= 16) {
+    showErrorToast('润色参考图最多添加 16 张');
+    return;
+  }
+  polishReferences.push({ file, data: await fileToDataUrl(file) });
+  renderPolishReferencePreview();
+  resetPolishSuggestion();
+}
+
+function handlePolishReferencePaste(event) {
+  const item = [...(event.clipboardData?.items || [])].find((entry) => entry.kind === 'file' && entry.type.startsWith('image/'));
+  if (!item) return;
+  event.preventDefault();
+  addPolishReferenceFile(item.getAsFile());
+}
+
+function clearPolishReferences() {
+  polishGenerationReferences = [];
+  polishReferences = [];
+  $('#polishGenerationReferenceUpload').value = '';
+  $('#polishReferenceUpload').value = '';
+  $('#polishUseGenerationReferences').checked = false;
+  renderPolishGenerationReferencePreview();
+  renderPolishReferencePreview();
+}
+
+async function getStoredPolishReferenceIds() {
+  const imageIds = [];
+  for (const reference of polishReferences) {
+    const imageId = reference.imageId && storedImages.has(reference.imageId) ? reference.imageId : await saveImageResource(reference.data, 'polish-reference');
+    reference.imageId = imageId;
+    if (imageId) imageIds.push(imageId);
+  }
+  return [...new Set(imageIds)];
+}
+
+function setPolishReferencesFromIds(imageIds) {
+  polishReferences = (imageIds || []).map((imageId, index) => {
+    const data = storedImages.get(imageId)?.src;
+    return data ? { imageId, data, file: dataUrlToFile(data, `polish-reference-${index + 1}.png`) } : null;
+  }).filter(Boolean);
+  renderPolishReferencePreview();
 }
 
 function selectPolishTemplate(templateId) {
@@ -2761,13 +2878,14 @@ function selectPolishTemplate(templateId) {
   if (template) {
     state.settings.imagePolishInstruction = template.instruction;
     $('#polishInstruction').value = template.instruction;
+    setPolishReferencesFromIds(template.referenceImageIds);
     resetPolishSuggestion();
   }
   persist();
   renderPolishTemplates();
 }
 
-function savePolishTemplate() {
+async function savePolishTemplate() {
   const instruction = $('#polishInstruction').value.trim();
   if (!instruction) { showErrorToast('请先填写润色要求'); return; }
   const templates = getPolishTemplates();
@@ -2778,37 +2896,42 @@ function savePolishTemplate() {
   const existing = templates.find((template) => template.name.toLowerCase() === cleanName.toLowerCase());
   if (existing && !window.confirm(`润色模板“${existing.name}”已存在，覆盖它吗?`)) return;
   const now = Date.now();
-  const template = { id: existing?.id || createId(), name: cleanName, instruction, createdAt: existing?.createdAt || now, updatedAt: now };
+  const referenceImageIds = await getStoredPolishReferenceIds();
+  const template = { id: existing?.id || createId(), name: cleanName, instruction, referenceImageIds, createdAt: existing?.createdAt || now, updatedAt: now };
   if (existing) templates[templates.indexOf(existing)] = template;
   else templates.push(template);
   state.settings.imagePolishInstruction = instruction;
   state.settings.activeImagePolishTemplateId = template.id;
   persist();
+  await removeUnreferencedImages();
   renderPolishTemplates();
   showToast(existing ? '润色模板已覆盖' : '润色模板已保存');
 }
 
-function updatePolishTemplate() {
+async function updatePolishTemplate() {
   const templates = getPolishTemplates();
   const template = templates.find((item) => item.id === state.settings.activeImagePolishTemplateId);
   const instruction = $('#polishInstruction').value.trim();
   if (!template) { showErrorToast('请先选择需要更新的润色模板'); return; }
   if (!instruction) { showErrorToast('请先填写润色要求'); return; }
   template.instruction = instruction;
+  template.referenceImageIds = await getStoredPolishReferenceIds();
   template.updatedAt = Date.now();
   state.settings.imagePolishInstruction = instruction;
   persist();
+  await removeUnreferencedImages();
   renderPolishTemplates();
   showToast(`“${template.name}”已更新`);
 }
 
-function deletePolishTemplate() {
+async function deletePolishTemplate() {
   const templates = getPolishTemplates();
   const template = templates.find((item) => item.id === state.settings.activeImagePolishTemplateId);
   if (!template || !window.confirm(`删除润色模板“${template.name}”?`)) return;
   state.settings.imagePolishTemplates = templates.filter((item) => item.id !== template.id);
   state.settings.activeImagePolishTemplateId = '';
   persist();
+  await removeUnreferencedImages();
   renderPolishTemplates();
   showToast('润色模板已删除，当前润色要求仍保留');
 }
@@ -2820,28 +2943,53 @@ function savePolishInstructionDraft() {
 
 function closePromptPolish() {
   savePolishInstructionDraft();
+  clearPolishReferences();
   $('#promptPolishBackdrop').hidden = true;
 }
 
 function openPromptPolish() {
   const input = $('#imagePrompt');
   const prompt = input.value.trim();
+  const activeTemplate = getPolishTemplates().find((template) => template.id === state.settings.activeImagePolishTemplateId);
   $('#polishSourcePrompt').value = prompt;
   $('#polishInstruction').value = state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction;
   renderPolishTemplates();
-  $('#polishUseReferences').checked = imageReferences.length > 0;
-  renderPolishReferencePreview();
+  polishGenerationReferences = imageReferences.map((reference) => ({ ...reference }));
+  $('#polishUseGenerationReferences').checked = false;
+  renderPolishGenerationReferencePreview();
+  setPolishReferencesFromIds(activeTemplate?.referenceImageIds);
   resetPolishSuggestion();
   $('#promptPolishBackdrop').hidden = false;
   (prompt ? $('#polishInstruction') : $('#polishSourcePrompt')).focus();
 }
 
+function createPolishImageContent(sources, label) {
+  return sources.flatMap((src, index) => [
+    { type: 'text', text: `${label} ${index + 1}:` },
+    { type: 'image_url', image_url: { url: src } }
+  ]);
+}
+
+function createPolishUserContent(source, instruction, generationSources, polishSources) {
+  const referenceLabels = [
+    ...generationSources.map((_, index) => `生成参考图 ${index + 1}`),
+    ...polishSources.map((_, index) => `润色参考图 ${index + 1}`)
+  ];
+  const referenceNote = referenceLabels.length ? `\n\n后续图片依次标记为: ${referenceLabels.join(', ')}. 用户可能使用这些名称指代具体图片. 生成参考图会继续用于最终生图, 润色参考图只用于辅助生成关键词.` : '';
+  return [
+    { type: 'text', text: `原始关键词:\n${source || '未提供, 请根据参考图生成完整的生图关键词'}\n\n润色要求:\n${instruction}${referenceNote}` },
+    ...createPolishImageContent(generationSources, '生成参考图'),
+    ...createPolishImageContent(polishSources, '润色参考图')
+  ];
+}
+
 async function generatePolishResult() {
   const source = $('#polishSourcePrompt').value.trim();
   const instruction = $('#polishInstruction').value.trim();
-  const referenceSources = getPolishReferenceSources();
+  const { generation: generationSources, polish: polishSources } = getPolishRequestReferences();
+  const referenceCount = generationSources.length + polishSources.length;
   const button = $('#generatePolishResult');
-  if (!source) { showErrorToast('请填写需要润色的关键词'); $('#polishSourcePrompt').focus(); return; }
+  if (!source && !referenceCount) { showErrorToast('请填写关键词, 添加润色参考图或勾选生成参考图参与润色'); $('#polishSourcePrompt').focus(); return; }
   if (!instruction) { showErrorToast('请填写润色要求'); $('#polishInstruction').focus(); return; }
   state.settings.imagePolishInstruction = instruction;
   persist();
@@ -2851,11 +2999,11 @@ async function generatePolishResult() {
   try {
     let result;
     if (state.settings.demoMode || !state.settings.chatApiKey || !state.settings.chatBaseUrl) {
-      result = `${source}\n\n${instruction}`;
-      $('#polishStatus').textContent = referenceSources.length ? '演示建议（未分析参考图）' : '演示建议';
+      result = `${source || '请根据参考图生成生图关键词'}\n\n${instruction}`;
+      $('#polishStatus').textContent = referenceCount ? '演示建议（未分析参考图）' : '演示建议';
     } else {
       const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
-      const userContent = [{ type: 'text', text: `原始关键词：\n${source}\n\n润色要求：\n${instruction}${referenceSources.length ? '\n\n请结合附带参考图定制提示词，描述并利用其中的主体、构图、色彩、风格和关键视觉特征。' : ''}` }, ...referenceSources.map((src) => ({ type: 'image_url', image_url: { url: src } }))];
+      const userContent = createPolishUserContent(source, instruction, generationSources, polishSources);
       const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify({ model: state.settings.chatModel, stream: false, messages: [{ role: 'system', content: state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt }, { role: 'user', content: userContent }] }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
@@ -2874,11 +3022,13 @@ async function generatePolishResult() {
   }
 }
 
-function applyPolishResult() {
+async function applyPolishResult() {
   const result = $('#polishResult').value.trim();
   if (!result) { showErrorToast('还没有可使用的润色结果'); return; }
   savePolishInstructionDraft();
   $('#imagePrompt').value = result;
+  await setImageReferencesFromSources(polishGenerationReferences.map((reference) => reference.data));
+  clearPolishReferences();
   $('#promptPolishBackdrop').hidden = true;
   $('#imagePrompt').focus();
   showToast('已使用润色结果');
@@ -3204,6 +3354,12 @@ function getImageWorkspaceImageIds(batches = imageHistory) {
   return ids;
 }
 
+function getPolishTemplateImageIds(settings = state.settings) {
+  const ids = new Set();
+  (settings.imagePolishTemplates || []).forEach((template) => (template.referenceImageIds || []).filter(Boolean).forEach((id) => ids.add(id)));
+  return ids;
+}
+
 function getExportScopeLabel(scope) {
   return { chat: '对话工作区', image: '生图工作区', workspace: '全部工作区', config: '配置', all: '全部数据' }[scope] || '工作区';
 }
@@ -3251,6 +3407,8 @@ async function clearLocalData() {
     state.activeConnectionProfiles = { chat: '', image: '' };
     modelCatalog.chat = [];
     modelCatalog.image = [];
+    await removeUnreferencedImages();
+    await persistImageStore();
   } else {
     if (scope === 'chat' || scope === 'workspace') {
       state.conversations = [];
@@ -3285,7 +3443,8 @@ async function exportWorkspace() {
   if (scope === 'config' || scope === 'all') {
     if (!window.confirm(`${scope === 'all' ? '导出全部数据' : '导出配置'}会包含 API Key、接口地址和模板, 请确认文件保存位置安全`)) return;
     if (scope === 'config') {
-      const workspace = { version: 8, scope, exportedAt: Date.now(), apiConfig: { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
+      const imageIds = getPolishTemplateImageIds();
+      const workspace = { version: 9, scope, exportedAt: Date.now(), images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), apiConfig: { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
       downloadFile(JSON.stringify(workspace, null, 2), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
       showToast('配置已导出');
       return;
@@ -3294,6 +3453,7 @@ async function exportWorkspace() {
   const conversations = scope === 'image' ? [] : state.conversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
   const batches = scope === 'chat' ? [] : imageHistory.map(createStoredBatch);
   const imageIds = scope === 'chat' ? getConversationImageIds(conversations) : scope === 'image' ? getImageWorkspaceImageIds(batches) : new Set([...getConversationImageIds(conversations), ...getImageWorkspaceImageIds(batches)]);
+  if (scope === 'all') getPolishTemplateImageIds().forEach((id) => imageIds.add(id));
   const draftReferenceIds = [];
   if (scope !== 'chat') {
     for (const reference of imageReferences) {
@@ -3301,7 +3461,7 @@ async function exportWorkspace() {
       if (id) { reference.imageId = id; draftReferenceIds.push(id); imageIds.add(id); }
     }
   }
-  const workspace = { version: 8, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches };
+  const workspace = { version: 9, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches };
   if (scope === 'all') workspace.apiConfig = { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
   if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
   const label = getExportScopeLabel(scope);
@@ -3420,10 +3580,14 @@ async function importWorkspace(file) {
     const mode = String(modeInput).trim().toLowerCase();
     if (!['覆盖', '合并', 'overwrite', 'merge'].includes(mode)) throw new Error('导入方式只能填写“覆盖”或“合并”');
     const merge = mode === '合并' || mode === 'merge';
+    const templateImageIds = getPolishTemplateImageIds();
+    const preservedIds = scope === 'all' ? new Set() : scope === 'chat' ? new Set([...getImageWorkspaceImageIds(), ...templateImageIds]) : scope === 'image' ? new Set([...getConversationImageIds(), ...templateImageIds]) : scope === 'workspace' ? templateImageIds : new Set(storedImages.keys());
+    const baseRecords = merge || scope === 'config' ? [...storedImages.values()].filter((record) => record.type === 'image') : [...storedImages.values()].filter((record) => preservedIds.has(record.id));
+    const mergedImages = mergeImageResources(baseRecords, sourceImages);
     if (scope === 'config' || scope === 'all') {
       const importedSettings = payload.apiConfig.settings;
       if (importedSettings && typeof importedSettings === 'object') {
-        const importedTemplates = Array.isArray(importedSettings.imagePolishTemplates) ? normalizePolishTemplates(importedSettings.imagePolishTemplates) : [];
+        const importedTemplates = Array.isArray(importedSettings.imagePolishTemplates) ? normalizePolishTemplates(importedSettings.imagePolishTemplates).map((template) => ({ ...template, referenceImageIds: remapImageIds(template.referenceImageIds, mergedImages.idMap) })) : [];
         const imagePolishTemplates = merge ? [...new Map([...state.settings.imagePolishTemplates, ...importedTemplates].map((template) => [template.id || template.name, template])).values()] : importedTemplates;
         state.settings = { ...state.settings, ...importedSettings, imageOptions: { ...state.settings.imageOptions, ...(importedSettings.imageOptions || {}) }, imagePolishTemplates, activeImagePolishTemplateId: imagePolishTemplates.some((template) => template.id === importedSettings.activeImagePolishTemplateId) ? importedSettings.activeImagePolishTemplateId : state.settings.activeImagePolishTemplateId };
       }
@@ -3444,15 +3608,15 @@ async function importWorkspace(file) {
         if (!state.connectionProfiles[kind].some((profile) => profile.id === state.activeConnectionProfiles[kind])) state.activeConnectionProfiles[kind] = '';
       });
       if (scope === 'config') {
+        storedImages = mergedImages.records;
+        await removeUnreferencedImages();
+        await persistImageStore();
         persist();
         render();
         showToast('配置已导入');
         return;
       }
     }
-    const preservedIds = scope === 'workspace' || scope === 'all' ? new Set() : scope === 'chat' ? getImageWorkspaceImageIds() : getConversationImageIds();
-    const baseRecords = merge ? [...storedImages.values()].filter((record) => record.type === 'image') : [...storedImages.values()].filter((record) => preservedIds.has(record.id));
-    const mergedImages = mergeImageResources(baseRecords, sourceImages);
     const mapBatch = (batch) => ({ ...batch, imageIds: remapImageIds(batch.imageIds, mergedImages.idMap), referenceImageIds: remapImageIds(batch.referenceImageIds, mergedImages.idMap) });
     const batches = sourceHistory.map(mapBatch);
     const conversations = sourceConversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: remapImageIds(message.imageIds, mergedImages.idMap) })) }));
@@ -3648,7 +3812,10 @@ function bindEvents() {
   $('#polishSourcePrompt').addEventListener('input', resetPolishSuggestion);
   $('#polishInstruction').addEventListener('input', resetPolishSuggestion);
   $('#polishInstruction').addEventListener('change', savePolishInstructionDraft);
-  $('#polishUseReferences').addEventListener('change', () => { renderPolishReferencePreview(); resetPolishSuggestion(); });
+  $('#polishGenerationReferenceUpload').addEventListener('change', handlePolishGenerationReference);
+  $('#polishReferenceUpload').addEventListener('change', handlePolishReference);
+  $('#polishUseGenerationReferences').addEventListener('change', resetPolishSuggestion);
+  $('#promptPolishBackdrop').addEventListener('paste', handlePolishReferencePaste);
   $('#imageSizeButton').addEventListener('click', openImageSize);
   $('#closeImageSize').addEventListener('click', closeImageSize);
   $('#cancelImageSize').addEventListener('click', closeImageSize);
