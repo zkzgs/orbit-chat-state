@@ -1066,6 +1066,7 @@ async function loadImageHistory() {
   } catch (error) {
     imageHistory = [];
   }
+  restoreActiveImagePromptTemplate();
 }
 
 async function deleteGenerationRecord(batchId = '', taskId = '') {
@@ -1200,7 +1201,6 @@ function openImageTaskAudit(taskId) {
   if (!task) return;
   $('#taskAuditContent').textContent = JSON.stringify({ request: task.requestLog || null, responses: task.responses || [], error: task.error || null }, null, 2);
   $('#taskAuditBackdrop').hidden = false;
-  $('#closeTaskAudit').focus();
 }
 
 function closeImageTaskAudit() {
@@ -1669,7 +1669,7 @@ function render() {
   renderConnection();
   $$('.context-option').forEach((button) => button.classList.toggle('active', button.dataset.context === state.contextMode));
   $('#contextDescription').textContent = state.contextMode === 'client' ? '每次请求带上本会话历史' : '每次只发送当前问题';
-  setImageConfig(state.settings.imageOptions);
+  setImageConfig({ ...state.settings.imageOptions, countMode: state.settings.imageCountMode, backgroundMode: state.settings.imageBackgroundMode });
   renderImagePromptTemplates();
   renderImageReferences();
   renderImageHistory();
@@ -3214,6 +3214,13 @@ function renderImagePromptTemplates() {
   $('#deleteImagePromptTemplate').disabled = !hasActiveTemplate;
 }
 
+function restoreActiveImagePromptTemplate() {
+  const template = getImagePromptTemplates().find((item) => item.id === state.settings.activeImagePromptTemplateId);
+  if (!template) return;
+  $('#imagePrompt').value = template.prompt;
+  setImagePromptReferencesFromIds(template.referenceImageIds);
+}
+
 async function getStoredImagePromptReferenceIds() {
   const imageIds = [];
   for (const reference of imageReferences) {
@@ -3902,7 +3909,9 @@ function saveSettings() {
     if (profile && !connectionProfileMatches(kind, profile)) state.activeConnectionProfiles[kind] = '';
   });
   const imageModel = $('#imageModel').value.trim() || 'gpt-image-1';
-  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel }, imageCountMode: $('#imageCountModeSetting').value || 'parameter', imageBackgroundMode: $('#imageBackgroundModeSetting').value || 'parameter', systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', demoMode: $('#demoMode').checked };
+  const imageCountMode = $('#imageCountModeSetting').value || 'parameter';
+  const imageBackgroundMode = $('#imageBackgroundModeSetting').value || 'parameter';
+  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', demoMode: $('#demoMode').checked };
   persist();
   closeSettings();
   render();
