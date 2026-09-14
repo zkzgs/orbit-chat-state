@@ -190,10 +190,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .toast.warning .toast-icon { color: var(--warm); }
 .toast { z-index: 200; }
 .data-management-actions { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
-.data-management-select { display: grid; gap: 5px; min-width: 170px; color: var(--muted); font-size: 11px; }
-.data-management-select select { width: 100%; min-height: 36px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; }
-.data-management-select select:focus { border-color: rgba(116,212,203,.55); }
 .data-management-actions .secondary-button { flex: 1; }
+.data-scope-modal { width: min(460px, 100%); }
+.data-scope-body { padding: 20px 25px 24px; }
+.data-scope-body p { margin: 0 0 14px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.data-scope-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.data-scope-option { min-height: 42px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.025); color: var(--muted); text-align: left; font-size: 12px; }
+.data-scope-option:hover { border-color: rgba(116,212,203,.45); background: rgba(116,212,203,.06); color: var(--ink); }
+.data-scope-option[data-data-scope="all"], .data-scope-option[data-data-scope="workspace"] { color: var(--cyan); }
+.data-scope-option[data-data-scope="all"]:hover, .data-scope-option[data-data-scope="workspace"]:hover { color: var(--ink); }
 .profile-manager { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; margin: 0 0 17px; padding: 11px; border: 1px solid var(--line); border-radius: 7px; background: rgba(255,255,255,.025); }
 .profile-select-label { min-width: 0; display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 11px; }
 .profile-select-label select { width: 100%; min-width: 0; padding: 8px 9px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; }
@@ -742,13 +747,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <label class="toggle-row"><span><strong>演示模式</strong><small>不填写 Key 时也能体验完整交互</small></span><input type="checkbox" id="demoMode"><span class="toggle-ui"></span></label>
         </div>
         <div class="settings-section compact-section data-management-section">
-          <div class="section-title"><span class="section-number">04</span><div><strong>数据管理</strong><small>导出时可选择是否包含 API Key 和各类模板</small></div></div>
-          <div class="data-management-actions"><label class="data-management-select">导出范围<select id="exportScope"><option value="chat">对话工作区</option><option value="image">生图工作区</option><option value="workspace" selected>全部工作区</option><option value="config">配置</option></select></label><button class="secondary-button" id="exportWorkspace" type="button">导出</button><button class="secondary-button" id="importWorkspace" type="button">导入</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
-          <div class="data-management-actions"><label class="data-management-select">清除范围<select id="clearDataScope"><option value="chat">对话工作区</option><option value="image">生图工作区</option><option value="workspace">全部工作区</option><option value="config">配置</option><option value="all">全部数据</option></select></label></div>
+          <div class="section-title"><span class="section-number">04</span><div><strong>数据管理</strong><small>操作时选择需要导出或清除的范围</small></div></div>
+          <div class="data-management-actions"><button class="secondary-button" id="exportWorkspace" type="button">导出</button><button class="secondary-button" id="importWorkspace" type="button">导入</button><button class="secondary-button danger" id="resetLocalData" type="button">清除数据</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
         </div>
-        <div class="security-callout"><span>⌁</span><p>Key、接口模板和润色模板默认只保存在当前浏览器；选择“包含配置”导出时才会写入文件。部署到公开环境前，建议通过自己的后端代理请求，避免在前端暴露密钥</p></div>
+        <div class="security-callout"><span>⌁</span><p>Key、接口模板和润色模板默认只保存在当前浏览器；选择“配置”或“全部数据”导出时才会写入文件。部署到公开环境前，建议通过自己的后端代理请求，避免在前端暴露密钥</p></div>
       </div>
-      <div class="modal-footer"><button class="text-button danger" id="resetLocalData">清除所选数据</button><div><button class="secondary-button" id="cancelSettings">取消</button><button class="primary-button" id="saveSettings">保存设置</button></div></div>
+      <div class="modal-footer"><span></span><div><button class="secondary-button" id="cancelSettings">取消</button><button class="primary-button" id="saveSettings">保存设置</button></div></div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="dataScopeBackdrop" hidden>
+    <section class="settings-modal data-scope-modal" role="dialog" aria-modal="true" aria-labelledby="dataScopeTitle">
+      <div class="modal-header"><div><div class="eyebrow">Data scope</div><h2 id="dataScopeTitle">选择数据范围</h2></div><button class="icon-button" id="closeDataScope" title="关闭" aria-label="关闭">×</button></div>
+      <div class="data-scope-body"><p id="dataScopeDescription">请选择本次操作要处理的数据范围。</p><div class="data-scope-options"><button class="data-scope-option" data-data-scope="chat" type="button">对话工作区</button><button class="data-scope-option" data-data-scope="image" type="button">生图工作区</button><button class="data-scope-option" data-data-scope="workspace" type="button">全部工作区</button><button class="data-scope-option" data-data-scope="config" type="button">配置</button><button class="data-scope-option" data-data-scope="all" type="button">全部数据</button></div></div>
+      <div class="modal-footer"><span></span><div><button class="secondary-button" id="cancelDataScope" type="button">取消</button></div></div>
     </section>
   </div>
 
@@ -803,6 +815,7 @@ let imageSizeOriginalConfig = null;
 let selectedHistoryKeys = new Set();
 let customTooltipNode = null;
 let historySelecto = null;
+let dataScopeResolver = null;
 const modelCatalog = {
   chat: [...(state.connectionProfiles.chat.find((profile) => profile.id === state.activeConnectionProfiles.chat)?.models || [])],
   image: [...(state.connectionProfiles.image.find((profile) => profile.id === state.activeConnectionProfiles.image)?.models || [])]
@@ -3192,15 +3205,30 @@ function getImageWorkspaceImageIds(batches = imageHistory) {
 }
 
 function getExportScopeLabel(scope) {
-  return { chat: '对话工作区', image: '生图工作区', workspace: '全部工作区', config: '配置' }[scope] || '工作区';
+  return { chat: '对话工作区', image: '生图工作区', workspace: '全部工作区', config: '配置', all: '全部数据' }[scope] || '工作区';
 }
 
 function getExportFilePrefix(scope) {
-  return { chat: 'orbit-chat-workspace', image: 'orbit-image-workspace', workspace: 'orbit-workspace', config: 'orbit-config' }[scope] || 'orbit-workspace';
+  return { chat: 'orbit-chat-workspace', image: 'orbit-image-workspace', workspace: 'orbit-workspace', config: 'orbit-config', all: 'orbit-all-data' }[scope] || 'orbit-workspace';
+}
+
+function chooseDataScope(action) {
+  $('#dataScopeTitle').textContent = action === 'export' ? '选择导出范围' : '选择清除范围';
+  $('#dataScopeDescription').textContent = action === 'export' ? '请选择要写入 JSON 文件的数据范围。' : '请选择本次要清除的数据范围，确认后不可撤销。';
+  $('#dataScopeBackdrop').hidden = false;
+  return new Promise((resolve) => { dataScopeResolver = resolve; });
+}
+
+function closeDataScope(scope = null) {
+  $('#dataScopeBackdrop').hidden = true;
+  const resolve = dataScopeResolver;
+  dataScopeResolver = null;
+  resolve?.(scope);
 }
 
 async function clearLocalData() {
-  const scope = $('#clearDataScope').value;
+  const scope = await chooseDataScope('clear');
+  if (!scope) return;
   const label = scope === 'all' ? '全部数据' : getExportScopeLabel(scope);
   if (!window.confirm(`清除${label}?\n\n${scope === 'config' ? '会删除接口配置、模板和模型列表。' : scope === 'workspace' ? '会删除对话和生图记录, 保留接口配置。' : scope === 'chat' ? '会删除对话及其未被生图工作区引用的图片。' : scope === 'image' ? '会删除生图记录及其未被对话引用的图片。' : '会删除对话、生图记录、图片缓存、接口配置和模板。'}`)) return;
   if (scope === 'image' || scope === 'workspace' || scope === 'all') localDataGeneration += 1;
@@ -3252,13 +3280,16 @@ async function clearLocalData() {
 }
 
 async function exportWorkspace() {
-  const scope = $('#exportScope').value;
-  if (scope === 'config') {
-    if (!window.confirm('导出配置会包含 API Key、接口地址和模板, 请确认文件保存位置安全')) return;
-    const workspace = { version: 8, scope, exportedAt: Date.now(), apiConfig: { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
-    downloadFile(JSON.stringify(workspace, null, 2), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
-    showToast('配置已导出');
-    return;
+  const scope = await chooseDataScope('export');
+  if (!scope) return;
+  if (scope === 'config' || scope === 'all') {
+    if (!window.confirm(`${scope === 'all' ? '导出全部数据' : '导出配置'}会包含 API Key、接口地址和模板, 请确认文件保存位置安全`)) return;
+    if (scope === 'config') {
+      const workspace = { version: 8, scope, exportedAt: Date.now(), apiConfig: { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
+      downloadFile(JSON.stringify(workspace, null, 2), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
+      showToast('配置已导出');
+      return;
+    }
   }
   const conversations = scope === 'image' ? [] : state.conversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
   const batches = scope === 'chat' ? [] : imageHistory.map(createStoredBatch);
@@ -3271,6 +3302,7 @@ async function exportWorkspace() {
     }
   }
   const workspace = { version: 8, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches };
+  if (scope === 'all') workspace.apiConfig = { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
   if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
   const label = getExportScopeLabel(scope);
   downloadFile(JSON.stringify(workspace, null, 2), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
@@ -3372,7 +3404,7 @@ async function importWorkspace(file) {
   if (!file) return;
   try {
     const payload = JSON.parse(await file.text());
-    const scope = ['chat', 'image', 'workspace', 'config'].includes(payload.scope) ? payload.scope : 'workspace';
+    const scope = ['chat', 'image', 'workspace', 'config', 'all'].includes(payload.scope) ? payload.scope : 'workspace';
     const sourceImages = (Array.isArray(payload.images) ? payload.images : []).filter((image) => image && image.id && image.src).map((image) => createStoredImage(image));
     const sourceHistory = (Array.isArray(payload.imageHistory) ? payload.imageHistory : []).filter((batch) => batch && batch.id).map((batch) => createStoredBatch(batch));
     const sourceConversations = (Array.isArray(payload.conversations) ? payload.conversations : []).map((source) => ({
@@ -3381,14 +3413,14 @@ async function importWorkspace(file) {
       messages: (Array.isArray(source.messages) ? source.messages : []).map((message) => ({ ...message, imageIds: Array.isArray(message.imageIds) ? [...message.imageIds] : [] }))
     }));
     const hasApiConfig = payload.apiConfig && typeof payload.apiConfig === 'object';
-    if (scope === 'config' && !hasApiConfig) throw new Error('文件中没有配置');
+    if ((scope === 'config' || scope === 'all') && !hasApiConfig) throw new Error('文件中没有配置');
     if (!window.confirm(`导入${getExportScopeLabel(scope)}: ${sourceConversations.length} 个对话, ${sourceHistory.length} 条生图记录?`)) return;
     const modeInput = window.prompt('请选择导入方式:\n输入“覆盖”替换对应范围, 输入“合并”保留现有内容并去重', '覆盖');
     if (modeInput === null) return;
     const mode = String(modeInput).trim().toLowerCase();
     if (!['覆盖', '合并', 'overwrite', 'merge'].includes(mode)) throw new Error('导入方式只能填写“覆盖”或“合并”');
     const merge = mode === '合并' || mode === 'merge';
-    if (scope === 'config') {
+    if (scope === 'config' || scope === 'all') {
       const importedSettings = payload.apiConfig.settings;
       if (importedSettings && typeof importedSettings === 'object') {
         const importedTemplates = Array.isArray(importedSettings.imagePolishTemplates) ? normalizePolishTemplates(importedSettings.imagePolishTemplates) : [];
@@ -3411,23 +3443,25 @@ async function importWorkspace(file) {
       ['chat', 'image'].forEach((kind) => {
         if (!state.connectionProfiles[kind].some((profile) => profile.id === state.activeConnectionProfiles[kind])) state.activeConnectionProfiles[kind] = '';
       });
-      persist();
-      render();
-      showToast('配置已导入');
-      return;
+      if (scope === 'config') {
+        persist();
+        render();
+        showToast('配置已导入');
+        return;
+      }
     }
-    const preservedIds = scope === 'workspace' ? new Set() : scope === 'chat' ? getImageWorkspaceImageIds() : getConversationImageIds();
+    const preservedIds = scope === 'workspace' || scope === 'all' ? new Set() : scope === 'chat' ? getImageWorkspaceImageIds() : getConversationImageIds();
     const baseRecords = merge ? [...storedImages.values()].filter((record) => record.type === 'image') : [...storedImages.values()].filter((record) => preservedIds.has(record.id));
     const mergedImages = mergeImageResources(baseRecords, sourceImages);
     const mapBatch = (batch) => ({ ...batch, imageIds: remapImageIds(batch.imageIds, mergedImages.idMap), referenceImageIds: remapImageIds(batch.referenceImageIds, mergedImages.idMap) });
     const batches = sourceHistory.map(mapBatch);
     const conversations = sourceConversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: remapImageIds(message.imageIds, mergedImages.idMap) })) }));
-    if (scope === 'chat' || scope === 'workspace') {
+    if (scope === 'chat' || scope === 'workspace' || scope === 'all') {
       state.conversations = merge ? mergeConversations(state.conversations, conversations) : conversations;
       if (!merge) state.activeConversationId = conversations.some((conversation) => conversation.id === payload.activeConversationId) ? payload.activeConversationId : null;
       state.contextMode = payload.contextMode === 'single' ? 'single' : state.contextMode;
     }
-    if (scope === 'image' || scope === 'workspace') {
+    if (scope === 'image' || scope === 'workspace' || scope === 'all') {
       imageHistory = merge ? mergeImageBatches(imageHistory, batches) : batches;
       if (!merge && payload.imageDraft && typeof payload.imageDraft === 'object') {
         $('#imagePrompt').value = payload.imageDraft.prompt || '';
@@ -3580,6 +3614,9 @@ function bindEvents() {
   $('#deleteChatProfile').addEventListener('click', () => deleteConnectionProfile('chat'));
   $('#deleteImageProfile').addEventListener('click', () => deleteConnectionProfile('image'));
   $('#resetLocalData').addEventListener('click', clearLocalData);
+  $('#closeDataScope').addEventListener('click', () => closeDataScope());
+  $('#cancelDataScope').addEventListener('click', () => closeDataScope());
+  $$('.data-scope-option').forEach((button) => button.addEventListener('click', () => closeDataScope(button.dataset.dataScope)));
   $('#closeToast').addEventListener('click', closeToast);
   $('#exportWorkspace').addEventListener('click', exportWorkspace);
   $('#importWorkspace').addEventListener('click', () => $('#workspaceImportFile').click());
@@ -3697,6 +3734,7 @@ function bindEvents() {
     if (!$('#imageLightbox').hidden) { event.preventDefault(); event.stopPropagation(); closeLightbox(); return; }
     if (!$('#promptPolishBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closePromptPolish(); return; }
     if (!$('#imageSizeBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closeImageSize(); return; }
+    if (!$('#dataScopeBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closeDataScope(); return; }
     if (!$('#settingsBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closeSettings(); return; }
     if ($('#toast').classList.contains('error')) { event.preventDefault(); event.stopPropagation(); closeToast(); }
   });
