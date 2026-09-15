@@ -176,7 +176,29 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .panel-label-actions { display: flex; align-items: center; gap: 10px; }
 .image-generator-panel textarea { width: 100%; display: block; min-height: 100px; resize: vertical; padding: 11px; border: 1px solid var(--line); border-radius: 6px; outline: 0; background: #101a28; color: var(--ink); line-height: 1.6; }.image-generator-panel textarea:focus { border-color: rgba(116,212,203,.5); }
 .image-generator-panel textarea.image-drop-active, .polish-body textarea.image-drop-active { border-color: var(--cyan); background: rgba(116,212,203,.06); box-shadow: 0 0 0 3px rgba(116,212,203,.08); }
+.image-prompt-wrap { position: relative; }
+.image-prompt-wrap > textarea { position: relative; z-index: 1; display: block; color: transparent; caret-color: var(--ink); }
+.image-prompt-wrap > textarea::placeholder { color: var(--muted-2); }
+.image-prompt-mirror { position: absolute; inset: 0; z-index: 2; overflow: hidden; padding: 11px; border: 1px solid transparent; border-radius: 6px; color: var(--ink); font: inherit; line-height: 1.6; white-space: pre-wrap; overflow-wrap: break-word; pointer-events: none; }
+.field-label .image-prompt-mirror { padding: 9px 10px; font-size: 12px; line-height: 1.5; }
+.image-mention-token { border-radius: 3px; background: rgba(116,212,203,.18); color: var(--cyan); pointer-events: auto; cursor: pointer; }
+.image-mention-token.invalid { background: rgba(255,150,150,.19); color: var(--danger); }
+.image-mention-menu { position: absolute; z-index: 12; min-width: 145px; max-width: min(230px, 100%); max-height: 215px; overflow-y: auto; padding: 5px; border: 1px solid var(--line-strong); border-radius: 6px; background: #162235; box-shadow: 0 12px 28px rgba(0,0,0,.35); }
+.image-mention-menu[hidden], .image-mention-tooltip[hidden] { display: none; }
+.image-mention-option { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); text-align: left; font-size: 11px; }
+.image-mention-option:hover, .image-mention-option.active { background: rgba(116,212,203,.13); }
+.image-mention-option img { width: 38px; height: 32px; border-radius: 3px; object-fit: cover; }
+.image-mention-tooltip { position: fixed; z-index: 90; padding: 5px; border: 1px solid var(--line-strong); border-radius: 5px; background: #162235; box-shadow: var(--shadow); pointer-events: none; }
+.image-mention-tooltip img { display: block; width: 128px; height: 96px; object-fit: contain; }
 .reference-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }.reference-upload { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 10px; cursor: pointer; }.reference-upload:hover { border-color: rgba(116,212,203,.45); color: var(--ink); }.reference-upload span { color: var(--cyan); font-size: 15px; }.reference-options { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }.reference-compression-toggle { display: inline-flex; align-items: center; gap: 5px; color: var(--muted-2); font-size: 9px; cursor: pointer; }.reference-compression-toggle input { width: 13px; height: 13px; margin: 0; accent-color: var(--cyan); }.image-reference-preview { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }.image-reference-preview[hidden] { display: none; }.reference-preview-item { position: relative; }.image-reference-preview img { width: 70px; height: 56px; border: 1px solid var(--line-strong); border-radius: 5px; object-fit: cover; }.reference-preview-index { position: absolute; bottom: 4px; left: 4px; min-width: 16px; height: 16px; display: grid; place-items: center; padding: 0 4px; border: 1px solid rgba(255,255,255,.18); border-radius: 3px; background: rgba(5,10,17,.78); color: #fff; font-size: 9px; line-height: 1; pointer-events: none; }.remove-reference { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--panel-soft); border-radius: 50%; background: #314157; color: var(--ink); font-size: 13px; line-height: 14px; }
+.reference-preview-item, .polish-reference-item { cursor: grab; }
+.reference-preview-item.is-dragging, .polish-reference-item.is-dragging { opacity: .45; }
+.reference-preview-item.drag-over, .polish-reference-item.drag-over { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.reference-preview-item .remove-reference, .polish-reference-item .remove-polish-reference { top: 2px; right: 2px; border: 0; border-radius: 3px; background: rgba(8,14,23,.86); }
+.replace-reference, .replace-polish-reference { position: absolute; top: 2px; right: 22px; width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 3px; background: rgba(8,14,23,.86); color: var(--ink); font-size: 14px; line-height: 1; }
+.reference-preview-item .remove-reference, .reference-preview-item .replace-reference, .polish-reference-item .remove-polish-reference, .polish-reference-item .replace-polish-reference { opacity: 0; pointer-events: none; }
+.reference-preview-item:hover .remove-reference, .reference-preview-item:hover .replace-reference, .reference-preview-item:focus-within .remove-reference, .reference-preview-item:focus-within .replace-reference, .polish-reference-item:hover .remove-polish-reference, .polish-reference-item:hover .replace-polish-reference, .polish-reference-item:focus-within .remove-polish-reference, .polish-reference-item:focus-within .replace-polish-reference { opacity: 1; pointer-events: auto; }
+@media (hover: none) { .reference-preview-item .remove-reference, .reference-preview-item .replace-reference, .polish-reference-item .remove-polish-reference, .polish-reference-item .replace-polish-reference { opacity: 1; pointer-events: auto; } }
 .image-controls { display: flex; align-items: end; justify-content: space-between; gap: 15px; padding-top: 12px; }.select-control { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 10px; }.select-control select { min-width: 130px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #101a28; color: var(--ink); font-size: 11px; }.primary-button, .secondary-button { min-height: 34px; padding: 0 13px; border-radius: 6px; font-size: 12px; font-weight: 650; }.primary-button { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }.primary-button:hover { background: #f1fc88; }.secondary-button { border: 1px solid var(--line-strong); background: transparent; color: var(--ink); }.secondary-button:hover { background: rgba(255,255,255,.05); }
 .image-history-section { margin-top: 35px; }.history-heading { display: flex; align-items: end; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--line); }.history-heading h3 { margin: 5px 0 0; font-size: 16px; letter-spacing: -.02em; }.history-count { min-width: 21px; padding: 2px 6px; border-radius: 10px; background: rgba(255,255,255,.06); color: var(--muted); text-align: center; font-size: 10px; }.image-history { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding-top: 13px; }.history-item { position: relative; min-width: 0; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel-soft); text-align: left; }.history-item:hover { border-color: rgba(116,212,203,.5); }.history-item img { display: block; width: 100%; aspect-ratio: 1 / .78; object-fit: cover; }.history-item-info { padding: 7px 8px 8px; }.history-item-prompt { overflow: hidden; color: #c4cfdd; font-size: 10px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }.history-item-time { display: block; margin-top: 4px; overflow: hidden; color: var(--muted-2); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .history-image-button { display: block; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; }
@@ -279,8 +301,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .attachment-preview .attachment-item { position: relative; }
 .attachment-preview img { cursor: zoom-in; }
 .attachment-preview .attachment-item img { width: 76px; height: 60px; }
-.image-reference-preview img { cursor: zoom-in; }
-.reference-preview-item { cursor: zoom-in; }
+.image-reference-preview img { cursor: grab; }
+.reference-preview-item { cursor: grab; }
 .image-size-control { min-width: 0; }
 .size-button { min-width: 0; padding: 7px 8px; overflow: hidden; border: 1px solid var(--line); border-radius: 5px; background: #101a28; color: var(--ink); font-size: 11px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .size-button:hover { border-color: rgba(116,212,203,.5); }
@@ -440,7 +462,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .polish-reference-preview { display: flex; flex-wrap: wrap; gap: 7px; min-height: 43px; }
 .polish-reference-preview[hidden] { display: none; }
 .polish-reference-item { position: relative; }
-.polish-reference-preview .polish-reference-thumb { width: 54px; height: 43px; padding: 0; border: 1px solid var(--line-strong); border-radius: 5px; background: transparent; overflow: hidden; cursor: zoom-in; }
+.polish-reference-preview .polish-reference-thumb { width: 54px; height: 43px; padding: 0; border: 1px solid var(--line-strong); border-radius: 5px; background: transparent; overflow: hidden; cursor: grab; }
 .polish-reference-preview .polish-reference-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .polish-reference-badge { position: absolute; left: 3px; bottom: 3px; max-width: 46px; overflow: hidden; padding: 1px 3px; border-radius: 2px; background: rgba(0,0,0,.7); color: #fff; font-size: 8px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
 .remove-polish-reference { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--panel-soft); border-radius: 50%; background: #314157; color: var(--ink); font-size: 13px; line-height: 14px; }
@@ -662,9 +684,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
               <div class="image-generator-panel">
                 <div class="panel-label-row"><span>描述你想要的画面</span><div class="panel-label-actions"><span class="panel-label-hint">支持中文, 可粘贴参考图</span><button class="field-action" id="polishImagePrompt" type="button">润色关键词</button></div></div>
                 <div class="profile-manager image-prompt-template-manager"><label class="profile-select-label">关键词模板<select id="imagePromptTemplateSelect" aria-label="选择生图关键词模板"><option value="">临时关键词(未保存)</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveImagePromptTemplate" type="button">另存为</button><button class="secondary-button" id="updateImagePromptTemplate" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteImagePromptTemplate" type="button" title="删除当前关键词模板" aria-label="删除当前关键词模板" disabled>×</button></div><small class="profile-help">模板保存关键词和生成参考图, 不保存尺寸, 质量等生成参数</small></div>
-                <textarea id="imagePrompt" rows="4" placeholder="例如: 雨后的上海街头, 霓虹倒影, 35mm 胶片质感, 电影感构图"></textarea>
+                <div class="image-prompt-wrap"><textarea id="imagePrompt" rows="4" placeholder="例如: 雨后的上海街头, 霓虹倒影, 35mm 胶片质感, 电影感构图"></textarea><div class="image-prompt-mirror" id="imagePromptMirror" aria-hidden="true"></div><div class="image-mention-menu" id="imageMentionMenu" hidden></div></div>
                 <div class="reference-row"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><div class="reference-options"><label class="reference-compression-toggle" title="优先无损优化提交副本, 超过 10MB 时始终压缩"><input id="optimizeImageReferences" type="checkbox" checked><span>无损优化</span></label><span class="panel-label-hint" id="imageRequestMode">图片生成 · 无参考图</span></div></div>
-                <div class="image-reference-preview" id="imageReferencePreview" hidden></div>
+                <div class="image-reference-preview" id="imageReferencePreview" hidden></div><input type="file" id="imageReferenceReplaceUpload" accept="image/png,image/jpeg,image/webp" hidden>
                 <div class="image-controls">
                   <label class="select-control image-size-control"><span>尺寸</span><button class="size-button" id="imageSizeButton" type="button">自动 · 1K · 1:1</button><select id="imageRatio" hidden><option value="auto">自动</option><option value="1:1">1:1 方形</option><option value="3:2">3:2 横向</option><option value="2:3">2:3 竖向</option><option value="16:9">16:9 横向</option><option value="9:16">9:16 竖向</option><option value="4:3">4:3 横向</option><option value="3:4">3:4 竖向</option><option value="21:9">21:9 超宽</option></select></label>
                   <label class="select-control"><span>质量</span><select id="imageQuality"><option value="auto">自动</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option><option value="xhigh">极高</option><option value="max">最高</option><option value="standard">标准, DALL-E</option><option value="hd">HD, DALL-E</option></select></label>
@@ -733,6 +755,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
     </section>
   </div>
 
+  <div class="image-mention-tooltip" id="imageMentionTooltip" hidden><img src="" alt=""></div>
+
   <div class="image-viewer" id="chatImageViewer" hidden>
     <div class="viewer-image-wrap" id="viewerImageWrap"><img id="viewerImage" src="" alt="图片预览" draggable="false"><button class="viewer-nav viewer-nav-prev panzoom-exclude" id="viewerPrevious" type="button" title="上一张" aria-label="上一张" hidden>‹</button><button class="viewer-nav viewer-nav-next panzoom-exclude" id="viewerNext" type="button" title="下一张" aria-label="下一张" hidden>›</button><div class="viewer-actions panzoom-exclude"><button class="viewer-action" id="viewerCopy" type="button" title="复制图片" aria-label="复制图片">⧉</button><button class="viewer-action" id="viewerDownload" type="button" title="下载原图" aria-label="下载原图">↓</button><button class="viewer-action viewer-close" id="closeImageViewer" type="button" title="关闭图片预览" aria-label="关闭图片预览">×</button></div><div class="viewer-meta panzoom-exclude" id="viewerMeta">读取图片信息中 · 缩放 100%</div></div>
   </div>
@@ -741,20 +765,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
     <section class="settings-modal polish-modal" role="dialog" aria-modal="true" aria-labelledby="promptPolishTitle">
       <div class="modal-header"><div><div class="eyebrow">Prompt assistant</div><h2 id="promptPolishTitle">润色生图关键词</h2><p class="modal-subtitle">生成参考图随结果带回生图面板, 润色参考图仅用于生成关键词</p></div><button class="icon-button" id="closePromptPolish" title="关闭润色" aria-label="关闭润色">×</button></div>
       <div class="polish-body">
-        <label class="field-label">当前关键词<textarea id="polishSourcePrompt" rows="4"></textarea></label>
+        <div class="field-label"><label for="polishSourcePrompt">当前关键词</label><div class="image-prompt-wrap"><textarea id="polishSourcePrompt" rows="4"></textarea><div class="image-prompt-mirror" id="polishSourcePromptMirror" aria-hidden="true"></div><div class="image-mention-menu" id="polishSourceMentionMenu" hidden></div></div></div>
         <div class="profile-manager polish-template-manager"><label class="profile-select-label">润色模板<select id="polishTemplateSelect" aria-label="选择润色模板"><option value="">临时模板（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="savePolishTemplate" type="button">另存为</button><button class="secondary-button" id="updatePolishTemplate" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deletePolishTemplate" type="button" title="删除当前润色模板" aria-label="删除当前润色模板" disabled>×</button></div><small class="profile-help">模板保存润色要求和润色参考图, 不保存生成参考图</small></div>
         <div class="polish-reference-groups">
           <div class="polish-reference-group">
             <div class="polish-reference-row"><div class="polish-reference-heading"><strong>生成参考图</strong><span class="panel-label-hint" id="polishGenerationReferenceHint">未添加参考图</span></div><label class="reference-upload"><span>⊕</span> 添加<input type="file" id="polishGenerationReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label></div>
             <label class="polish-reference-toggle"><input type="checkbox" id="polishUseGenerationReferences"><span>润色时分析这组图片</span></label>
-            <div class="polish-reference-preview" id="polishGenerationReferencePreview" hidden></div>
+            <div class="polish-reference-preview" id="polishGenerationReferencePreview" hidden></div><input type="file" id="polishGenerationReplaceUpload" accept="image/png,image/jpeg,image/webp" hidden>
           </div>
           <div class="polish-reference-group">
             <div class="polish-reference-row"><div class="polish-reference-heading"><strong>润色参考图</strong><span class="panel-label-hint" id="polishReferenceHint">未添加参考图</span></div><label class="reference-upload"><span>⊕</span> 添加<input type="file" id="polishReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label></div>
-            <div class="polish-reference-preview" id="polishReferencePreview" hidden></div>
+            <div class="polish-reference-preview" id="polishReferencePreview" hidden></div><input type="file" id="polishReferenceReplaceUpload" accept="image/png,image/jpeg,image/webp" hidden>
           </div>
         </div>
-        <label class="field-label">润色要求<textarea id="polishInstruction" rows="4">保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。</textarea></label>
+        <div class="field-label"><label for="polishInstruction">润色要求</label><div class="image-prompt-wrap"><textarea id="polishInstruction" rows="4">保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。</textarea><div class="image-prompt-mirror" id="polishInstructionMirror" aria-hidden="true"></div><div class="image-mention-menu" id="polishInstructionMentionMenu" hidden></div></div></div>
         <div class="polish-result-wrap"><div class="polish-result-heading"><span>润色结果</span><span class="field-help" id="polishStatus">尚未生成</span></div><textarea id="polishResult" rows="6" placeholder="点击“生成建议”查看结果"></textarea></div>
       </div>
       <div class="modal-footer"><button class="secondary-button" id="cancelPromptPolish" type="button">取消</button><div><button class="secondary-button" id="generatePolishResult" type="button">生成建议</button><button class="primary-button" id="applyPolishResult" type="button" disabled>使用结果</button></div></div>
@@ -856,6 +880,7 @@ let editingMessageId = null;
 let imageReferences = [];
 let polishGenerationReferences = [];
 let polishReferences = [];
+let activePolishMentionInput = null;
 let currentImage = null;
 let imageTasks = [];
 let imageTaskTimer = null;
@@ -1212,7 +1237,7 @@ function closeImageTaskAudit() {
 function restoreImageTask(taskId) {
   const task = imageTasks.find((entry) => entry.id === taskId);
   if (!task) return;
-  $('#imagePrompt').value = task.prompt || '';
+  setImagePromptText(task.prompt || '');
   setImageConfig(task.config || {});
   setImageReferencesFromSources((task.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean));
   $('#imagePrompt').focus();
@@ -1971,7 +1996,7 @@ function saveImageSize() {
 }
 
 async function applyImageConfig(item) {
-  $('#imagePrompt').value = item.prompt || '';
+  setImagePromptText(item.prompt || '');
   setImageConfig(item.config);
   await setImageReferencesFromSources(getBatchReferenceSources(item.batch || item));
   setView('image');
@@ -2646,6 +2671,8 @@ async function generateImage() {
     $('#imagePrompt').focus();
     return;
   }
+  const submitted = getSubmittedImagePrompt(prompt);
+  if (submitted === null) return;
   const config = getImageConfig();
   if (config.background === 'transparent' && config.format === 'jpeg') {
     showErrorToast('透明背景只支持 PNG 或 WebP 格式');
@@ -2656,7 +2683,7 @@ async function generateImage() {
   const startedAt = Date.now();
   const countMode = config.countMode || 'parameter';
   const requestCount = countMode === 'parallel' ? 1 : config.count;
-  config.submittedPrompt = buildImagePrompt(prompt, config);
+  config.submittedPrompt = buildImagePrompt(submitted, config);
   let taskResultDetail = '';
   let taskFinalStatus = 'success';
   const references = imageReferences.map((reference) => ({ data: reference.data, file: reference.file }));
@@ -3258,7 +3285,7 @@ function renderImagePromptTemplates() {
 function restoreActiveImagePromptTemplate() {
   const template = getImagePromptTemplates().find((item) => item.id === state.settings.activeImagePromptTemplateId);
   if (!template) return;
-  $('#imagePrompt').value = template.prompt;
+  setImagePromptText(template.prompt);
   setImagePromptReferencesFromIds(template.referenceImageIds);
 }
 
@@ -3284,7 +3311,7 @@ function selectImagePromptTemplate(templateId) {
   const template = getImagePromptTemplates().find((item) => item.id === templateId);
   state.settings.activeImagePromptTemplateId = template?.id || '';
   if (template) {
-    $('#imagePrompt').value = template.prompt;
+    setImagePromptText(template.prompt);
     setImagePromptReferencesFromIds(template.referenceImageIds);
   }
   persist();
@@ -3374,23 +3401,45 @@ function getPolishRequestReferences() {
 function renderPolishReferenceList(references, previewSelector, hintSelector, label, onRemove) {
   const sources = references.map((reference) => reference.data).filter(Boolean);
   const preview = $(previewSelector);
+  const kind = previewSelector === '#polishGenerationReferencePreview' ? 'generation' : 'polish';
   $(hintSelector).textContent = sources.length ? `${sources.length} 张参考图` : '未添加参考图';
   preview.hidden = sources.length === 0;
-  preview.innerHTML = sources.map((src, index) => `<div class="polish-reference-item"><button class="polish-reference-thumb" type="button" data-polish-reference-index="${index}" title="预览${label} ${index + 1}" aria-label="预览${label} ${index + 1}"><img src="${escapeHtml(src)}" alt="${label} ${index + 1}" draggable="false"><span class="polish-reference-badge">${label.replace('参考图', '')} ${index + 1}</span></button><button class="remove-polish-reference" type="button" data-polish-reference-remove="${index}" aria-label="移除${label}">×</button></div>`).join('');
+  preview.innerHTML = sources.map((src, index) => `<div class="polish-reference-item" data-order-index="${index}" draggable="true"><button class="polish-reference-thumb" type="button" data-polish-reference-index="${index}" title="预览${label} ${index + 1}" aria-label="预览${label} ${index + 1}"><img src="${escapeHtml(src)}" alt="${label} ${index + 1}" draggable="false"><span class="polish-reference-badge">${label.replace('参考图', '')} ${index + 1}</span></button><button class="replace-polish-reference" type="button" data-polish-reference-replace="${index}" title="更换${label} ${index + 1}" aria-label="更换${label} ${index + 1}">↻</button><button class="remove-polish-reference" type="button" data-polish-reference-remove="${index}" title="移除${label} ${index + 1}" aria-label="移除${label} ${index + 1}">×</button></div>`).join('');
   preview.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
   preview.querySelectorAll('[data-polish-reference-index]').forEach((button) => button.addEventListener('click', () => {
     const index = Number(button.dataset.polishReferenceIndex) || 0;
     openChatImageViewer(sources[index], sources, index);
   }));
   preview.querySelectorAll('[data-polish-reference-remove]').forEach((button) => button.addEventListener('click', () => {
+    if (!window.confirm(`移除${label} ${Number(button.dataset.polishReferenceRemove) + 1}?`)) return;
     onRemove(Number(button.dataset.polishReferenceRemove));
     resetPolishSuggestion();
   }));
+  const replaceInput = $(previewSelector === '#polishGenerationReferencePreview' ? '#polishGenerationReplaceUpload' : '#polishReferenceReplaceUpload');
+  preview.querySelectorAll('[data-polish-reference-replace]').forEach((button) => button.addEventListener('click', () => {
+    replaceInput.dataset.replaceIndex = button.dataset.polishReferenceReplace;
+    replaceInput.click();
+  }));
+  preview.querySelectorAll('.polish-reference-item').forEach((item) => item.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('.replace-polish-reference, .remove-polish-reference')) return;
+    event.preventDefault();
+    insertPolishReferenceMention(kind, Number(item.dataset.orderIndex));
+  }));
+  bindReferenceReorder(preview, '.polish-reference-item', (from, to) => {
+    const positions = moveReference(references, from, to);
+    remapPolishEditorMentions(kind, positions);
+    if (kind === 'generation') renderPolishGenerationReferencePreview();
+    else renderPolishReferencePreview();
+    resetPolishSuggestion();
+  });
+  renderPolishMentionEditors();
 }
 
 function renderPolishGenerationReferencePreview() {
   renderPolishReferenceList(polishGenerationReferences, '#polishGenerationReferencePreview', '#polishGenerationReferenceHint', '生成参考图', (index) => {
+    const previousLength = polishGenerationReferences.length;
     polishGenerationReferences.splice(index, 1);
+    remapPolishEditorMentions('generation', Array.from({ length: previousLength }, (_, oldIndex) => oldIndex === index ? undefined : oldIndex > index ? oldIndex - 1 : oldIndex));
     renderPolishGenerationReferencePreview();
   });
   const toggle = $('#polishUseGenerationReferences');
@@ -3400,7 +3449,9 @@ function renderPolishGenerationReferencePreview() {
 
 function renderPolishReferencePreview() {
   renderPolishReferenceList(polishReferences, '#polishReferencePreview', '#polishReferenceHint', '润色参考图', (index) => {
+    const previousLength = polishReferences.length;
     polishReferences.splice(index, 1);
+    remapPolishEditorMentions('polish', Array.from({ length: previousLength }, (_, oldIndex) => oldIndex === index ? undefined : oldIndex > index ? oldIndex - 1 : oldIndex));
     renderPolishReferencePreview();
   });
 }
@@ -3565,6 +3616,7 @@ function savePolishInstructionDraft() {
 
 function closePromptPolish() {
   savePolishInstructionDraft();
+  closePolishMentionMenus();
   clearPolishReferences();
   $('#promptPolishBackdrop').hidden = true;
 }
@@ -3580,9 +3632,12 @@ function openPromptPolish() {
   $('#polishUseGenerationReferences').checked = false;
   renderPolishGenerationReferencePreview();
   setPolishReferencesFromIds(activeTemplate?.referenceImageIds);
+  renderPolishMentionEditors();
   resetPolishSuggestion();
   $('#promptPolishBackdrop').hidden = false;
   (prompt ? $('#polishInstruction') : $('#polishSourcePrompt')).focus();
+  $('.polish-body').scrollTop = 0;
+  activePolishMentionInput = null;
 }
 
 function createPolishImageContent(sources, label) {
@@ -3606,8 +3661,12 @@ function createPolishUserContent(source, instruction, generationSources, polishS
 }
 
 async function generatePolishResult() {
-  const source = $('#polishSourcePrompt').value.trim();
-  const instruction = $('#polishInstruction').value.trim();
+  const sourceInput = $('#polishSourcePrompt').value.trim();
+  const instructionInput = $('#polishInstruction').value.trim();
+  const source = getSubmittedPolishText(sourceInput, '#polishSourcePrompt');
+  if (source === null) return;
+  const instruction = getSubmittedPolishText(instructionInput, '#polishInstruction');
+  if (instruction === null) return;
   const { generation: generationSources, polish: polishSources } = getPolishRequestReferences();
   const referenceCount = generationSources.length + polishSources.length;
   const button = $('#generatePolishResult');
@@ -3620,7 +3679,7 @@ async function generatePolishResult() {
   try {
     let result;
     if (state.settings.demoMode || !state.settings.chatApiKey || !state.settings.chatBaseUrl) {
-      result = `${source || '请根据参考图生成生图关键词'}\n\n${instruction}`;
+      result = `${sourceInput || '请根据参考图生成生图关键词'}\n\n${instructionInput}`;
       $('#polishStatus').textContent = referenceCount ? '演示建议（未分析参考图）' : '演示建议';
     } else {
       const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
@@ -3647,7 +3706,7 @@ async function applyPolishResult() {
   const result = $('#polishResult').value.trim();
   if (!result) { showErrorToast('还没有可使用的润色结果'); return; }
   savePolishInstructionDraft();
-  $('#imagePrompt').value = result;
+  setImagePromptText(result);
   await setImageReferencesFromSources(polishGenerationReferences.map((reference) => reference.data));
   clearPolishReferences();
   $('#promptPolishBackdrop').hidden = true;
@@ -3700,17 +3759,460 @@ function fileToDataUrl(file) {
   });
 }
 
+function remapImageMentions(prompt, indexMap) {
+  return prompt.replace(/@图(\d+)/g, (token, number) => {
+    const index = indexMap[Number(number) - 1];
+    return index === undefined ? '@图?' : `@图${index + 1}`;
+  });
+}
+
+function setImagePromptText(prompt) {
+  $('#imagePrompt').value = prompt;
+  renderImagePromptMirror();
+  closeImageMentionMenu();
+}
+
+function renderImagePromptMirror(caretIndex = -1) {
+  const input = $('#imagePrompt');
+  const value = input.value;
+  const mirror = $('#imagePromptMirror');
+  let html = '';
+  let index = 0;
+  const appendText = (text, start) => {
+    if (caretIndex >= start && caretIndex <= start + text.length) {
+      const split = caretIndex - start;
+      html += `${escapeHtml(text.slice(0, split))}<span id="imageMentionCaret">&#8203;</span>${escapeHtml(text.slice(split))}`;
+      caretIndex = -1;
+    } else html += escapeHtml(text);
+  };
+  for (const match of value.matchAll(/@图(?:\d+|\?)/g)) {
+    appendText(value.slice(index, match.index), index);
+    const number = Number(match[0].slice(2));
+    const valid = Number.isInteger(number) && number >= 1 && number <= imageReferences.length;
+    html += `<span class="image-mention-token${valid ? '' : ' invalid'}" data-mention-index="${valid ? number - 1 : -1}" data-mention-start="${match.index}">${escapeHtml(match[0])}</span>`;
+    index = match.index + match[0].length;
+  }
+  appendText(value.slice(index), index);
+  mirror.innerHTML = html || '';
+  mirror.scrollTop = input.scrollTop;
+}
+
+function moveReference(references, from, to) {
+  const order = references.map((_, index) => index);
+  references.splice(to, 0, references.splice(from, 1)[0]);
+  order.splice(to, 0, order.splice(from, 1)[0]);
+  return order.map((_, originalIndex) => order.indexOf(originalIndex));
+}
+
+function bindReferenceReorder(preview, itemSelector, onMove) {
+  let dragging = -1;
+  preview.querySelectorAll(itemSelector).forEach((item) => {
+    item.addEventListener('dragstart', (event) => {
+      if (event.target.closest?.('button:not(.polish-reference-thumb)')) { event.preventDefault(); return; }
+      dragging = Number(item.dataset.orderIndex);
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', String(dragging));
+      item.classList.add('is-dragging');
+    });
+    item.addEventListener('dragover', (event) => {
+      if (dragging < 0) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', (event) => {
+      if (dragging < 0) return;
+      event.preventDefault();
+      const target = Number(item.dataset.orderIndex);
+      if (dragging !== target) onMove(dragging, target);
+      dragging = -1;
+      item.classList.remove('drag-over');
+    });
+    item.addEventListener('dragend', () => {
+      dragging = -1;
+      preview.querySelectorAll(itemSelector).forEach((node) => node.classList.remove('is-dragging', 'drag-over'));
+    });
+  });
+}
+
+function closeImageMentionMenu() {
+  $('#imageMentionMenu').hidden = true;
+  $('#imageMentionTooltip').hidden = true;
+}
+
+function updateImageMentionMenu() {
+  const input = $('#imagePrompt');
+  const menu = $('#imageMentionMenu');
+  const match = input.selectionStart === input.selectionEnd && input.value.slice(0, input.selectionStart).match(/@(?:图)?(\d*)$/);
+  if (!match || !imageReferences.length || document.activeElement !== input || /^[\d?]/.test(input.value.slice(input.selectionStart))) {
+    menu.hidden = true;
+    renderImagePromptMirror();
+    return;
+  }
+  const matches = imageReferences.map((reference, index) => ({ reference, index })).filter(({ index }) => !match[1] || String(index + 1).startsWith(match[1]));
+  if (!matches.length) { menu.hidden = true; renderImagePromptMirror(); return; }
+  menu.dataset.mentionStart = input.selectionStart - match[0].length;
+  menu.dataset.mentionEnd = input.selectionStart;
+  menu.innerHTML = matches.map(({ reference, index }) => `<button class="image-mention-option${index === matches[0].index ? ' active' : ''}" type="button" data-mention-option="${index}"><img src="${escapeHtml(reference.data)}" alt=""><span>@图${index + 1}</span></button>`).join('');
+  menu.hidden = false;
+  renderImagePromptMirror(input.selectionStart);
+  const marker = $('#imageMentionCaret');
+  const wrap = input.parentElement.getBoundingClientRect();
+  const position = marker?.getBoundingClientRect() || input.getBoundingClientRect();
+  menu.style.left = `${Math.max(0, Math.min(position.left - wrap.left, wrap.width - menu.offsetWidth))}px`;
+  const below = position.bottom - wrap.top + 6;
+  const visibleBottom = Math.min(window.innerHeight, $('.image-generator-column').getBoundingClientRect().bottom);
+  menu.style.top = `${position.bottom + 6 + menu.offsetHeight > visibleBottom ? Math.max(0, position.top - wrap.top - menu.offsetHeight - 6) : below}px`;
+}
+
+function insertImageMention(index, replaceCurrent = false) {
+  const input = $('#imagePrompt');
+  const menu = $('#imageMentionMenu');
+  const start = replaceCurrent ? Number(menu.dataset.mentionStart) : input.selectionStart;
+  const end = replaceCurrent ? Number(menu.dataset.mentionEnd) : input.selectionEnd;
+  input.focus();
+  input.setRangeText(`@图${index + 1}`, start, end, 'end');
+  closeImageMentionMenu();
+  renderImagePromptMirror();
+}
+
+function getSubmittedImagePrompt(prompt) {
+  if (/@(?:生成参考图|润色参考图)(?:\d+|\?)/.test(prompt)) {
+    showErrorToast('生图关键词只能引用生成参考图, 请改用 @图x');
+    $('#imagePrompt').focus();
+    return null;
+  }
+  if (/@图\?/.test(prompt) || [...prompt.matchAll(/@图(\d+)/g)].some((match) => Number(match[1]) < 1 || Number(match[1]) > imageReferences.length)) {
+    showErrorToast('关键词引用了不存在的参考图, 请先修改 @图x');
+    $('#imagePrompt').focus();
+    return null;
+  }
+  return prompt.replace(/@图(\d+)/g, (_, number) => `[image ${number}]`);
+}
+
+function bindImageMentionEvents() {
+  const input = $('#imagePrompt');
+  const mirror = $('#imagePromptMirror');
+  const menu = $('#imageMentionMenu');
+  const tooltip = $('#imageMentionTooltip');
+  input.addEventListener('input', () => { renderImagePromptMirror(); updateImageMentionMenu(); });
+  input.addEventListener('click', updateImageMentionMenu);
+  input.addEventListener('keyup', (event) => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) updateImageMentionMenu(); });
+  input.addEventListener('scroll', () => { mirror.scrollTop = input.scrollTop; tooltip.hidden = true; });
+  input.addEventListener('blur', () => window.setTimeout(() => { if (document.activeElement !== input) closeImageMentionMenu(); }, 120));
+  input.addEventListener('compositionstart', () => { menu.hidden = true; });
+  input.addEventListener('compositionend', updateImageMentionMenu);
+  input.addEventListener('keydown', (event) => {
+    if (menu.hidden || event.isComposing) return;
+    const options = [...menu.querySelectorAll('.image-mention-option')];
+    if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+      event.preventDefault();
+      const current = options.findIndex((option) => option.classList.contains('active'));
+      const next = (current + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+      options.forEach((option, index) => option.classList.toggle('active', index === next));
+      options[next].scrollIntoView({ block: 'nearest' });
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      insertImageMention(Number(menu.querySelector('.image-mention-option.active').dataset.mentionOption), true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeImageMentionMenu();
+      renderImagePromptMirror();
+    }
+  });
+  menu.addEventListener('mousedown', (event) => event.preventDefault());
+  menu.addEventListener('click', (event) => {
+    const option = event.target.closest('.image-mention-option');
+    if (option) insertImageMention(Number(option.dataset.mentionOption), true);
+  });
+  mirror.addEventListener('mouseover', (event) => {
+    const token = event.target.closest('.image-mention-token');
+    if (!token || Number(token.dataset.mentionIndex) < 0) return;
+    const reference = imageReferences[Number(token.dataset.mentionIndex)];
+    tooltip.querySelector('img').src = reference.data;
+    tooltip.hidden = false;
+    const rect = token.getBoundingClientRect();
+    tooltip.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 148))}px`;
+    tooltip.style.top = `${rect.bottom + 110 <= window.innerHeight ? rect.bottom + 6 : rect.top - 110}px`;
+  });
+  mirror.addEventListener('mouseout', (event) => { if (event.target.closest('.image-mention-token')) tooltip.hidden = true; });
+  mirror.addEventListener('mousedown', (event) => {
+    const token = event.target.closest('.image-mention-token');
+    if (!token) return;
+    event.preventDefault();
+    input.focus();
+    const end = Number(token.dataset.mentionStart) + token.textContent.length;
+    input.setSelectionRange(end, end);
+    updateImageMentionMenu();
+  });
+}
+
+const polishMentionEditors = [
+  { input: '#polishSourcePrompt', mirror: '#polishSourcePromptMirror', menu: '#polishSourceMentionMenu' },
+  { input: '#polishInstruction', mirror: '#polishInstructionMirror', menu: '#polishInstructionMentionMenu' }
+];
+
+function getPolishMentionEntries() {
+  return [
+    ...polishGenerationReferences.map((reference, index) => ({ kind: 'generation', index, name: `生成参考图${index + 1}`, data: reference.data })),
+    ...polishReferences.map((reference, index) => ({ kind: 'polish', index, name: `润色参考图${index + 1}`, data: reference.data }))
+  ];
+}
+
+function getPolishMentionDetails(token, editor) {
+  const match = token.match(/^@(图|生成参考图|润色参考图)(\d+|\?)$/);
+  if (!match) return null;
+  const kind = match[1] === '润色参考图' ? 'polish' : 'generation';
+  const index = match[2] === '?' ? -1 : Number(match[2]) - 1;
+  const references = kind === 'generation' ? polishGenerationReferences : polishReferences;
+  const allowed = kind === 'polish'
+    ? editor.input === '#polishInstruction'
+    : $('#polishUseGenerationReferences').checked;
+  return { kind, index, valid: allowed && index >= 0 && index < references.length, data: references[index]?.data };
+}
+
+function renderPolishMentionEditor(editor, caretIndex = -1) {
+  const input = $(editor.input);
+  const mirror = $(editor.mirror);
+  const value = input.value;
+  let html = '';
+  let index = 0;
+  const appendText = (text, start) => {
+    if (caretIndex >= start && caretIndex <= start + text.length) {
+      const split = caretIndex - start;
+      html += `${escapeHtml(text.slice(0, split))}<span class="polishMentionCaret">&#8203;</span>${escapeHtml(text.slice(split))}`;
+      caretIndex = -1;
+    } else html += escapeHtml(text);
+  };
+  for (const match of value.matchAll(/@(生成参考图|润色参考图|图)(?:\d+|\?)/g)) {
+    appendText(value.slice(index, match.index), index);
+    const details = getPolishMentionDetails(match[0], editor);
+    html += `<span class="image-mention-token${details?.valid ? '' : ' invalid'}" data-mention-kind="${details?.kind || ''}" data-mention-index="${details?.valid ? details.index : -1}" data-mention-start="${match.index}">${escapeHtml(match[0])}</span>`;
+    index = match.index + match[0].length;
+  }
+  appendText(value.slice(index), index);
+  mirror.innerHTML = html;
+  mirror.scrollTop = input.scrollTop;
+}
+
+function renderPolishMentionEditors() {
+  polishMentionEditors.forEach((editor) => renderPolishMentionEditor(editor));
+}
+
+function closePolishMentionMenus() {
+  polishMentionEditors.forEach((editor) => { $(editor.menu).hidden = true; });
+  $('#imageMentionTooltip').hidden = true;
+}
+
+function updatePolishMentionMenu(editor) {
+  const input = $(editor.input);
+  const menu = $(editor.menu);
+  const selection = input.selectionStart;
+  const match = input.selectionStart === input.selectionEnd && input.value.slice(0, selection).match(/@([^\s@]*)$/);
+  const existingMention = [...input.value.matchAll(/@(生成参考图|润色参考图|图)(?:\d+|\?)/g)].some((item) => selection > item.index && selection <= item.index + item[0].length);
+  if (!match || existingMention || document.activeElement !== input) {
+    menu.hidden = true;
+    renderPolishMentionEditor(editor);
+    return;
+  }
+  const query = match[1];
+  const entries = getPolishMentionEntries().filter((entry) => {
+    const allowed = entry.kind === 'polish'
+      ? editor.input === '#polishInstruction'
+      : $('#polishUseGenerationReferences').checked;
+    return allowed && (entry.name.startsWith(query) || (entry.kind === 'generation' && `图${entry.index + 1}`.startsWith(query)));
+  });
+  if (!entries.length) {
+    menu.hidden = true;
+    renderPolishMentionEditor(editor);
+    return;
+  }
+  closePolishMentionMenus();
+  menu.dataset.mentionStart = selection - match[0].length;
+  menu.dataset.mentionEnd = selection;
+  menu.innerHTML = entries.map((entry, index) => `<button class="image-mention-option${index === 0 ? ' active' : ''}" type="button" data-mention-kind="${entry.kind}" data-mention-index="${entry.index}"><img src="${escapeHtml(entry.data)}" alt=""><span>@${entry.name}</span></button>`).join('');
+  menu.hidden = false;
+  renderPolishMentionEditor(editor, selection);
+  const marker = $(editor.mirror).querySelector('.polishMentionCaret');
+  const wrap = input.parentElement.getBoundingClientRect();
+  const position = marker?.getBoundingClientRect() || input.getBoundingClientRect();
+  menu.style.left = `${Math.max(0, Math.min(position.left - wrap.left, wrap.width - menu.offsetWidth))}px`;
+  const below = position.bottom - wrap.top + 6;
+  const visibleBottom = Math.min(window.innerHeight, input.closest('.polish-modal').getBoundingClientRect().bottom);
+  menu.style.top = `${position.bottom + 6 + menu.offsetHeight > visibleBottom ? Math.max(0, position.top - wrap.top - menu.offsetHeight - 6) : below}px`;
+}
+
+function insertPolishMention(editor, kind, index, replaceCurrent = false) {
+  const input = $(editor.input);
+  const menu = $(editor.menu);
+  const start = replaceCurrent ? Number(menu.dataset.mentionStart) : input.selectionStart;
+  const end = replaceCurrent ? Number(menu.dataset.mentionEnd) : input.selectionEnd;
+  const label = kind === 'generation' ? '生成参考图' : '润色参考图';
+  if (kind === 'generation' && !$('#polishUseGenerationReferences').checked) {
+    showErrorToast('请先勾选“润色时分析这组图片”');
+    return;
+  }
+  if (kind === 'polish' && editor.input !== '#polishInstruction') {
+    showErrorToast('润色参考图只能用于润色要求');
+    return;
+  }
+  input.focus();
+  input.setRangeText(`@${label}${index + 1}`, start, end, 'end');
+  closePolishMentionMenus();
+  renderPolishMentionEditor(editor);
+  resetPolishSuggestion();
+}
+
+function insertPolishReferenceMention(kind, index) {
+  if (kind === 'generation' && !$('#polishUseGenerationReferences').checked) {
+    showErrorToast('请先勾选“润色时分析这组图片”');
+    return;
+  }
+  const editor = kind === 'polish'
+    ? polishMentionEditors[1]
+    : polishMentionEditors.find((item) => item.input === activePolishMentionInput) || polishMentionEditors[0];
+  insertPolishMention(editor, kind, index);
+}
+
+function bindPolishMentionEditor(editor) {
+  const input = $(editor.input);
+  const mirror = $(editor.mirror);
+  const menu = $(editor.menu);
+  input.addEventListener('focus', () => { activePolishMentionInput = editor.input; });
+  input.addEventListener('pointerdown', () => { activePolishMentionInput = editor.input; });
+  input.addEventListener('input', () => { renderPolishMentionEditor(editor); updatePolishMentionMenu(editor); });
+  input.addEventListener('click', () => updatePolishMentionMenu(editor));
+  input.addEventListener('scroll', () => { mirror.scrollTop = input.scrollTop; $('#imageMentionTooltip').hidden = true; });
+  input.addEventListener('blur', () => window.setTimeout(() => { if (!polishMentionEditors.some((item) => document.activeElement === $(item.input))) closePolishMentionMenus(); }, 120));
+  input.addEventListener('compositionstart', () => { menu.hidden = true; });
+  input.addEventListener('compositionend', () => updatePolishMentionMenu(editor));
+  input.addEventListener('keydown', (event) => {
+    if (menu.hidden || event.isComposing) return;
+    const options = [...menu.querySelectorAll('.image-mention-option')];
+    if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+      event.preventDefault();
+      const current = options.findIndex((option) => option.classList.contains('active'));
+      const next = (current + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+      options.forEach((option, index) => option.classList.toggle('active', index === next));
+      options[next].scrollIntoView({ block: 'nearest' });
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const option = menu.querySelector('.image-mention-option.active');
+      insertPolishMention(editor, option.dataset.mentionKind, Number(option.dataset.mentionIndex), true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      closePolishMentionMenus();
+      renderPolishMentionEditor(editor);
+    }
+  });
+  menu.addEventListener('mousedown', (event) => event.preventDefault());
+  menu.addEventListener('click', (event) => {
+    const option = event.target.closest('.image-mention-option');
+    if (option) insertPolishMention(editor, option.dataset.mentionKind, Number(option.dataset.mentionIndex), true);
+  });
+  mirror.addEventListener('mouseover', (event) => {
+    const token = event.target.closest('.image-mention-token');
+    if (!token || Number(token.dataset.mentionIndex) < 0) return;
+    const references = token.dataset.mentionKind === 'generation' ? polishGenerationReferences : polishReferences;
+    const tooltip = $('#imageMentionTooltip');
+    tooltip.querySelector('img').src = references[Number(token.dataset.mentionIndex)].data;
+    tooltip.hidden = false;
+    const rect = token.getBoundingClientRect();
+    tooltip.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 148))}px`;
+    tooltip.style.top = `${rect.bottom + 110 <= window.innerHeight ? rect.bottom + 6 : rect.top - 110}px`;
+  });
+  mirror.addEventListener('mouseout', (event) => { if (event.target.closest('.image-mention-token')) $('#imageMentionTooltip').hidden = true; });
+  mirror.addEventListener('mousedown', (event) => {
+    const token = event.target.closest('.image-mention-token');
+    if (!token) return;
+    event.preventDefault();
+    input.focus();
+    const end = Number(token.dataset.mentionStart) + token.textContent.length;
+    input.setSelectionRange(end, end);
+  });
+}
+
+function remapPolishMentions(text, kind, indexMap) {
+  const pattern = kind === 'generation' ? /@(图|生成参考图)(\d+)/g : /@(润色参考图)(\d+)/g;
+  return text.replace(pattern, (token, label, number) => {
+    const index = indexMap[Number(number) - 1];
+    return index === undefined ? `@${label}?` : `@${label}${index + 1}`;
+  });
+}
+
+function remapPolishEditorMentions(kind, indexMap) {
+  polishMentionEditors.forEach((editor) => {
+    const input = $(editor.input);
+    input.value = remapPolishMentions(input.value, kind, indexMap);
+  });
+  renderPolishMentionEditors();
+}
+
+function getSubmittedPolishText(text, input) {
+  let error = '';
+  const editor = polishMentionEditors.find((item) => item.input === input);
+  const submitted = text.replace(/@(生成参考图|润色参考图|图)(\d+|\?)/g, (token, label, number) => {
+    const kind = label === '润色参考图' ? 'polish' : 'generation';
+    const references = kind === 'generation' ? polishGenerationReferences : polishReferences;
+    const index = number === '?' ? -1 : Number(number) - 1;
+    if (index < 0 || index >= references.length) error = `引用的${kind === 'generation' ? '生成' : '润色'}参考图不存在, 请修改 ${token}`;
+    else if (kind === 'generation' && !$('#polishUseGenerationReferences').checked) error = '关键词引用了生成参考图, 请勾选“润色时分析这组图片”';
+    else if (kind === 'polish' && editor?.input !== '#polishInstruction') error = '润色参考图只能用于润色要求';
+    return `${kind === 'generation' ? '生成参考图' : '润色参考图'} ${index + 1}`;
+  });
+  if (!error) return submitted;
+  showErrorToast(error);
+  $(input).focus();
+  return null;
+}
+
 function renderImageReferences() {
   const preview = $('#imageReferencePreview');
   preview.hidden = imageReferences.length === 0;
-  preview.innerHTML = imageReferences.map((reference, index) => `<div class="reference-preview-item"><img src="${escapeHtml(reference.data)}" alt="生图参考图 ${index + 1}"><span class="reference-preview-index">${index + 1}</span><button type="button" class="remove-reference" data-reference-index="${index}" aria-label="移除参考图">×</button></div>`).join('');
+  preview.innerHTML = imageReferences.map((reference, index) => `<div class="reference-preview-item" data-order-index="${index}" draggable="true"><img src="${escapeHtml(reference.data)}" alt="生图参考图 ${index + 1}" draggable="false"><span class="reference-preview-index">${index + 1}</span><button type="button" class="replace-reference" data-reference-index="${index}" title="更换参考图 ${index + 1}" aria-label="更换参考图 ${index + 1}">↻</button><button type="button" class="remove-reference" data-reference-index="${index}" title="移除参考图 ${index + 1}" aria-label="移除参考图 ${index + 1}">×</button></div>`).join('');
   preview.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
-  $$('.remove-reference').forEach((button) => button.addEventListener('click', () => {
-    imageReferences.splice(Number(button.dataset.referenceIndex), 1);
+  preview.querySelectorAll('.remove-reference').forEach((button) => button.addEventListener('click', () => {
+    const index = Number(button.dataset.referenceIndex);
+    if (!window.confirm(`移除生成参考图 ${index + 1}? 关键词中的关联引用会标记为 @图?`)) return;
+    const previousLength = imageReferences.length;
+    imageReferences.splice(index, 1);
+    setImagePromptText(remapImageMentions($('#imagePrompt').value, Array.from({ length: previousLength }, (_, oldIndex) => oldIndex === index ? undefined : oldIndex > index ? oldIndex - 1 : oldIndex)));
     renderImageReferences();
   }));
-  $$('.reference-preview-item img').forEach((image, index) => image.addEventListener('click', () => openChatImageViewer(image.src, imageReferences.map((reference) => reference.data), index)));
+  preview.querySelectorAll('.replace-reference').forEach((button) => button.addEventListener('click', () => {
+    $('#imageReferenceReplaceUpload').dataset.replaceIndex = button.dataset.referenceIndex;
+    $('#imageReferenceReplaceUpload').click();
+  }));
+  preview.querySelectorAll('.reference-preview-item img').forEach((image, index) => image.addEventListener('click', () => openChatImageViewer(image.src, imageReferences.map((reference) => reference.data), index)));
+  preview.querySelectorAll('.reference-preview-item').forEach((item) => item.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('button')) return;
+    event.preventDefault();
+    insertImageMention(Number(item.dataset.orderIndex));
+  }));
+  bindReferenceReorder(preview, '.reference-preview-item', (from, to) => {
+    const positions = moveReference(imageReferences, from, to);
+    setImagePromptText(remapImageMentions($('#imagePrompt').value, positions));
+    renderImageReferences();
+  });
   $('#imageRequestMode').textContent = imageReferences.length ? `当前请求：图片编辑 · ${imageReferences.length} 张参考图` : '当前请求：图片生成';
+  renderImagePromptMirror();
+}
+
+async function replaceReferenceFile(event, references, renderPreview) {
+  const input = event.target;
+  const index = Number(input.dataset.replaceIndex);
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const data = await fileToDataUrl(file);
+  if (references.some((reference, referenceIndex) => referenceIndex !== index && getImageIdentity(reference.data) === getImageIdentity(data))) {
+    showWarningToast('这张图片已在当前参考图列表中');
+    return;
+  }
+  references[index] = { file, data };
+  renderPreview();
 }
 
 function startImageTaskTimer() {
@@ -4044,7 +4546,7 @@ async function clearLocalData() {
     stopImageTaskTimerIfIdle();
     pendingAttachments = [];
     clearImageReferences();
-    $('#imagePrompt').value = '';
+    setImagePromptText('');
   } else if (scope === 'config') {
     state.settings = { ...defaultState.settings, imageOptions: { ...defaultState.settings.imageOptions }, imagePolishTemplates: [] };
     state.connectionProfiles = { chat: [], image: [] };
@@ -4068,7 +4570,7 @@ async function clearLocalData() {
       clearImageReferences();
       selectedHistoryKeys.clear();
       closeLightbox();
-      $('#imagePrompt').value = '';
+      setImagePromptText('');
     }
     await removeUnreferencedImages();
     await persistImageStore();
@@ -4250,7 +4752,7 @@ async function importWorkspace(file) {
       imageHistory = merge ? mergeImageBatches(imageHistory, batches) : batches;
       imageTasks = merge ? [...new Map([...imageTasks, ...tasks].map((task) => [task.id, task])).values()].sort((left, right) => right.startedAt - left.startedAt) : tasks;
       if (payload.imageDraft && typeof payload.imageDraft === 'object') {
-        $('#imagePrompt').value = payload.imageDraft.prompt || '';
+        setImagePromptText(payload.imageDraft.prompt || '');
         setImageConfig(payload.imageDraft.config || state.settings.imageOptions);
         await setImageReferencesFromSources(remapImageIds(payload.imageDraft.referenceImageIds, mergedImages.idMap).map((id) => mergedImages.records.get(id)?.src).filter(Boolean));
       }
@@ -4461,8 +4963,10 @@ function bindEvents() {
   $('#imageUpload').addEventListener('change', handleAttachment);
   $('#fileUpload').addEventListener('change', handleFileAttachment);
   $('#imageReferenceUpload').addEventListener('change', handleImageReference);
+  $('#imageReferenceReplaceUpload').addEventListener('change', (event) => replaceReferenceFile(event, imageReferences, renderImageReferences));
   $('#imagePrompt').addEventListener('paste', handleImagePromptPaste);
-  bindImageDropTarget($('#imagePrompt'), addImageReferenceFiles);
+  bindImageDropTarget($('#imagePrompt').parentElement, addImageReferenceFiles, $('#imagePrompt'));
+  bindImageMentionEvents();
   $('#imagePromptTemplateSelect').addEventListener('change', (event) => selectImagePromptTemplate(event.target.value));
   $('#saveImagePromptTemplate').addEventListener('click', saveImagePromptTemplate);
   $('#updateImagePromptTemplate').addEventListener('click', updateImagePromptTemplate);
@@ -4481,11 +4985,14 @@ function bindEvents() {
   $('#polishInstruction').addEventListener('change', savePolishInstructionDraft);
   $('#polishGenerationReferenceUpload').addEventListener('change', handlePolishGenerationReference);
   $('#polishReferenceUpload').addEventListener('change', handlePolishReference);
-  $('#polishUseGenerationReferences').addEventListener('change', resetPolishSuggestion);
+  $('#polishGenerationReplaceUpload').addEventListener('change', async (event) => { await replaceReferenceFile(event, polishGenerationReferences, renderPolishGenerationReferencePreview); resetPolishSuggestion(); });
+  $('#polishReferenceReplaceUpload').addEventListener('change', async (event) => { await replaceReferenceFile(event, polishReferences, renderPolishReferencePreview); resetPolishSuggestion(); });
+  $('#polishUseGenerationReferences').addEventListener('change', () => { closePolishMentionMenus(); renderPolishMentionEditors(); resetPolishSuggestion(); });
   $('#polishSourcePrompt').addEventListener('paste', (event) => handlePolishReferencePaste(event, 'generation'));
   $('#polishInstruction').addEventListener('paste', (event) => handlePolishReferencePaste(event, 'polish'));
   bindImageDropTarget($('#polishSourcePrompt'), (files) => addPolishReferenceFiles(files, 'generation'));
   bindImageDropTarget($('#polishInstruction'), (files) => addPolishReferenceFiles(files, 'polish'));
+  polishMentionEditors.forEach(bindPolishMentionEditor);
   $('#imageSizeButton').addEventListener('click', openImageSize);
   $('#closeImageSize').addEventListener('click', closeImageSize);
   $('#cancelImageSize').addEventListener('click', closeImageSize);
