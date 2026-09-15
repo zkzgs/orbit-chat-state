@@ -177,9 +177,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .image-generator-panel textarea { width: 100%; display: block; min-height: 100px; resize: vertical; padding: 11px; border: 1px solid var(--line); border-radius: 6px; outline: 0; background: #101a28; color: var(--ink); line-height: 1.6; }.image-generator-panel textarea:focus { border-color: rgba(116,212,203,.5); }
 .image-generator-panel textarea.image-drop-active, .polish-body textarea.image-drop-active { border-color: var(--cyan); background: rgba(116,212,203,.06); box-shadow: 0 0 0 3px rgba(116,212,203,.08); }
 .image-prompt-wrap { position: relative; }
-.image-prompt-wrap > textarea { position: relative; z-index: 1; display: block; color: transparent; caret-color: var(--ink); }
-.image-prompt-wrap > textarea::placeholder { color: var(--muted-2); }
-.image-prompt-mirror { position: absolute; inset: 0; z-index: 2; overflow: hidden; padding: 11px; border: 1px solid transparent; border-radius: 6px; color: var(--ink); font: inherit; line-height: 1.6; white-space: pre-wrap; overflow-wrap: break-word; pointer-events: none; }
+.image-prompt-wrap > textarea { position: relative; z-index: 1; display: block; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--ink); }
+.field-label .image-prompt-wrap > textarea { color: transparent; -webkit-text-fill-color: transparent; }
+.image-prompt-wrap > textarea::placeholder { color: var(--muted-2); -webkit-text-fill-color: var(--muted-2); }
+.image-prompt-wrap > textarea, .image-prompt-mirror { scrollbar-gutter: stable; }
+.image-prompt-mirror { position: absolute; inset: 0; z-index: 2; overflow: auto; padding: 11px; border: 1px solid transparent; border-radius: 6px; color: var(--ink); font: inherit; line-height: 1.6; white-space: pre-wrap; overflow-wrap: break-word; scrollbar-color: transparent transparent; pointer-events: none; }
+.image-prompt-mirror::-webkit-scrollbar-thumb { background: transparent; }
 .field-label .image-prompt-mirror { padding: 9px 10px; font-size: 12px; line-height: 1.5; }
 .image-mention-token { border-radius: 3px; background: rgba(116,212,203,.18); color: var(--cyan); pointer-events: auto; cursor: pointer; }
 .image-mention-token.invalid { background: rgba(255,150,150,.19); color: var(--danger); }
