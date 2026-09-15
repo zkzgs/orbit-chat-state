@@ -341,7 +341,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .details-section-title { margin-bottom: 7px; color: var(--muted-2); font-size: 10px; }
 .lightbox-reference-section[hidden] { display: none; }
 .lightbox-reference-thumbnails { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
-.lightbox-reference-thumbnails img { width: 58px; height: 48px; border: 1px solid var(--line); border-radius: 5px; object-fit: cover; cursor: zoom-in; }
+.lightbox-reference-button { display: block; padding: 0; border: 0; border-radius: 5px; overflow: hidden; background: transparent; line-height: 0; }
+.lightbox-reference-thumbnails img { display: block; width: 58px; height: 48px; border: 1px solid var(--line); border-radius: 5px; object-fit: cover; cursor: zoom-in; }
 .lightbox-thumbnails { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
 .lightbox-thumbnails:empty { display: none; }
 .lightbox-thumb { padding: 0; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: transparent; }
