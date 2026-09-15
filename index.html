@@ -209,6 +209,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .field-label select:focus { border-color: rgba(116,212,203,.55); }
 .field-help { color: var(--muted-2); font-size: 10px; }
 .field-action { padding: 0; border: 0; background: transparent; color: var(--cyan); font-size: 10px; }
+.proxy-address-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.proxy-address-row .secondary-button { min-height: 35px; white-space: nowrap; }
+.proxy-test-status { display: block; margin-top: 7px; color: var(--muted-2); font-size: 10px; }
+.proxy-test-status.success { color: var(--cyan); }
+.proxy-test-status.error { color: var(--danger); }
+.toggle-row.is-disabled { opacity: .55; cursor: not-allowed; }
 .field-action:hover { text-decoration: underline; }
 .toast:not(.error) .toast-close { display: none; }
 .toast.warning { border-left-color: var(--warm); }
@@ -812,14 +818,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="imageApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="imageApiKey" type="button">显示</button></div></label><label class="field-label"><span class="field-label-heading">模型 <button class="field-action" id="loadImageModels" type="button">获取模型</button></span><input id="imageModel" list="imageModelOptions" type="text" placeholder="gpt-image-1"><datalist id="imageModelOptions"></datalist></label></div>
           <div class="field-grid"><label class="field-label">数量请求方式<select id="imageCountModeSetting"><option value="parameter">单次请求，使用 n 参数</option><option value="parallel">并发请求，每次 n=1</option></select><small class="field-help">官方标准是 n；并发是客户端策略，会把一批请求关联到同一条记录。</small></label><label class="field-label">透明背景实现<select id="imageBackgroundModeSetting"><option value="parameter">使用 background 参数</option><option value="prompt">兼容模式，仅提示透明</option></select><small class="field-help">优先使用 background 参数；兼容模式只为透明背景追加提示词，不会把“不透明”写进关键词。</small></label></div>
         </div>
+        <div class="settings-section">
+          <div class="section-title"><span class="section-number">03</span><div><strong>本地请求代理</strong><small>用于访问不支持浏览器跨域的接口</small></div></div>
+          <div class="field-label"><label for="proxyUrl">代理地址</label><div class="proxy-address-row"><input id="proxyUrl" type="url" placeholder="http://127.0.0.1:8787"><button class="secondary-button" id="testProxyConnection" type="button">测试连接</button></div><small class="proxy-test-status" id="proxyTestStatus">尚未测试代理服务</small></div>
+          <label class="toggle-row is-disabled" id="proxyToggleRow"><span><strong>使用本地代理</strong><small>测试成功后才可开启, 开启后对话, 模型, 润色和生图接口统一转发</small></span><input type="checkbox" id="proxyEnabled" disabled><span class="toggle-ui"></span></label>
+          <p class="field-help">代理只处理请求转发和跨域响应, 不保存 Key 或请求内容, Key 仍保存在当前浏览器, 公开部署时应使用由服务端保管 Key 的专用后端</p>
+        </div>
         <div class="settings-section compact-section">
-          <div class="section-title"><span class="section-number">03</span><div><strong>提示词偏好</strong><small>系统提示词会随对应请求发送</small></div></div>
+          <div class="section-title"><span class="section-number">04</span><div><strong>提示词偏好</strong><small>系统提示词会随对应请求发送</small></div></div>
           <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手"></textarea><small class="field-help">作为对话请求中的 system 消息发送, 不会拼接到生图关键词</small></label>
           <label class="field-label">润色系统提示词<textarea id="imagePolishSystemPrompt" rows="4" placeholder="定义润色模型的角色和输出规则"></textarea><small class="field-help">作为润色请求中的 system 消息发送, 用于定义润色模型的角色和输出规则</small></label>
           <label class="toggle-row"><span><strong>演示模式</strong><small>不填写 Key 时也能体验完整交互</small></span><input type="checkbox" id="demoMode"><span class="toggle-ui"></span></label>
         </div>
         <div class="settings-section compact-section data-management-section">
-          <div class="section-title"><span class="section-number">04</span><div><strong>数据管理</strong><small>操作时选择需要导出或清除的范围</small></div></div>
+          <div class="section-title"><span class="section-number">05</span><div><strong>数据管理</strong><small>操作时选择需要导出或清除的范围</small></div></div>
           <div class="data-management-actions"><button class="secondary-button" id="exportWorkspace" type="button">导出</button><button class="secondary-button" id="importWorkspace" type="button">导入</button><button class="secondary-button danger" id="resetLocalData" type="button">清除数据</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
         </div>
         <div class="security-callout"><span>⌁</span><p>Key、接口模板和润色模板默认只保存在当前浏览器；选择“配置”或“全部数据”导出时才会写入文件。部署到公开环境前，建议通过自己的后端代理请求，避免在前端暴露密钥</p></div>
@@ -862,6 +874,8 @@ const defaultState = {
     activeImagePromptTemplateId: '',
     imagePolishTemplates: [],
     activeImagePolishTemplateId: '',
+    proxyUrl: 'http://127.0.0.1:8787',
+    proxyEnabled: false,
     demoMode: false
   },
   connectionProfiles: { chat: [], image: [] },
@@ -893,6 +907,7 @@ let selectedHistoryKeys = new Set();
 let customTooltipNode = null;
 let historySelecto = null;
 let dataScopeResolver = null;
+let verifiedProxyUrl = '';
 const modelCatalog = {
   chat: [...(state.connectionProfiles.chat.find((profile) => profile.id === state.activeConnectionProfiles.chat)?.models || [])],
   image: [...(state.connectionProfiles.image.find((profile) => profile.id === state.activeConnectionProfiles.image)?.models || [])]
@@ -2144,7 +2159,7 @@ async function getImageBlob(src) {
     }
     return new Blob([decodeURIComponent(encoded)], { type: header.match(/^data:([^;]+)/)?.[1] || '' });
   }
-  const response = await fetch(src);
+  const response = await resourceFetch(src);
   if (!response.ok) throw new Error('图片下载失败');
   return await response.blob();
 }
@@ -2422,7 +2437,7 @@ function resetLightboxZoom() {
 
 async function copyImageToClipboard(src) {
   try {
-    const response = await fetch(src);
+    const response = await resourceFetch(src);
     const sourceBlob = await response.blob();
     if (!navigator.clipboard?.write || !window.ClipboardItem) throw new Error('当前浏览器不支持图片剪贴板');
     const blob = sourceBlob.type === 'image/png' ? sourceBlob : await convertImageToPng(sourceBlob);
@@ -2494,7 +2509,8 @@ function buildApiEndpoint(input, suffix) {
   let value = input.trim().replace(/\/$/, '');
   if (!value) return '';
   if (value.endsWith(suffix)) return value;
-  value = value.replace(/\/(chat\/completions|images\/generations|images\/edits)$/, '');
+  const knownEndpoint = /\/(chat\/completions|images\/generations|images\/edits)$/;
+  if (knownEndpoint.test(value)) return `${value.replace(knownEndpoint, '')}${suffix}`;
   if (value.endsWith('/v1') || value.endsWith('/api')) return `${value}${suffix}`;
   return value;
 }
@@ -2503,6 +2519,34 @@ function buildModelsEndpoint(input) {
   const value = input.trim().replace(/\/$/, '').replace(/\/(chat\/completions|images\/generations|models)$/, '');
   if (!value) return '';
   return value.endsWith('/v1') || value.endsWith('/api') ? `${value}/models` : `${value}/models`;
+}
+
+function normalizeProxyUrl(value) {
+  return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function routeApiRequest(endpoint, options = {}, proxyConfig = state.settings) {
+  if (!proxyConfig.proxyEnabled) return { endpoint, options };
+  const proxyUrl = normalizeProxyUrl(proxyConfig.proxyUrl);
+  if (!proxyUrl) throw new Error('已启用本地代理, 但代理地址为空');
+  const targetUrl = new URL(endpoint).href;
+  const headers = new Headers(options.headers || {});
+  headers.set('X-Orbit-Target-Url', targetUrl);
+  return { endpoint: `${proxyUrl}/proxy`, options: { ...options, headers } };
+}
+
+async function apiFetch(endpoint, options = {}, proxyConfig = state.settings) {
+  const request = routeApiRequest(endpoint, options, proxyConfig);
+  try {
+    return await fetch(request.endpoint, request.options);
+  } catch (error) {
+    if (proxyConfig.proxyEnabled && error.name !== 'AbortError') throw new Error(`无法连接本地代理 ${normalizeProxyUrl(proxyConfig.proxyUrl)}, 请先启动代理服务`);
+    throw error;
+  }
+}
+
+function resourceFetch(source, options = {}) {
+  return state.settings.proxyEnabled && /^https?:\/\//i.test(source) ? apiFetch(source, options) : fetch(source, options);
 }
 
 function buildRequestMessages() {
@@ -2578,7 +2622,7 @@ async function requestChat() {
   let payload;
   let webSearchFallback = false;
   try {
-    response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
+    response = await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
   } catch (error) {
     if (error.name === 'AbortError') throw new Error('请求超时或已中断, 请检查接口地址和网络');
     throw error;
@@ -2592,7 +2636,7 @@ async function requestChat() {
     $('#chatWebSearch').checked = false;
     persist();
     webSearchFallback = true;
-    response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
+    response = await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
     payload = await response.json();
   }
   if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
@@ -2637,12 +2681,14 @@ function abbreviateResponseValue(value) {
 
 function sendImageEditRequest(endpoint, fetchOptions, onUploaded) {
   return new Promise((resolve, reject) => {
+    let routed;
+    try { routed = routeApiRequest(endpoint, fetchOptions); } catch (error) { reject(error); return; }
     const request = new XMLHttpRequest();
     let responseReceived = false;
-    request.open(fetchOptions.method || 'POST', endpoint);
-    Object.entries(fetchOptions.headers || {}).forEach(([name, value]) => request.setRequestHeader(name, value));
+    request.open(routed.options.method || 'POST', routed.endpoint);
+    new Headers(routed.options.headers || {}).forEach((value, name) => request.setRequestHeader(name, value));
     request.upload.onloadend = () => { if (!responseReceived) onUploaded?.(); };
-    request.onerror = () => reject(new Error('网络请求失败, 请检查接口地址和跨域设置'));
+    request.onerror = () => reject(new Error(state.settings.proxyEnabled ? `无法连接本地代理 ${normalizeProxyUrl(state.settings.proxyUrl)}, 请先启动代理服务` : '网络请求失败, 请检查接口地址和跨域设置'));
     request.onabort = () => reject(new Error('请求已中断'));
     request.onload = () => {
       responseReceived = true;
@@ -2653,13 +2699,13 @@ function sendImageEditRequest(endpoint, fetchOptions, onUploaded) {
       });
       resolve(new Response(request.responseText, { status: request.status, statusText: request.statusText, headers }));
     };
-    request.send(fetchOptions.body);
+    request.send(routed.options.body);
   });
 }
 
 async function fetchImageRequest(endpoint, fetchOptions, hasReference, onPhase) {
   onPhase?.(hasReference ? 'uploading' : 'waiting');
-  const response = hasReference ? await sendImageEditRequest(endpoint, fetchOptions, () => onPhase?.('waiting')) : await fetch(endpoint, fetchOptions);
+  const response = hasReference ? await sendImageEditRequest(endpoint, fetchOptions, () => onPhase?.('waiting')) : await apiFetch(endpoint, fetchOptions);
   onPhase?.('parsing');
   await new Promise((resolve) => window.setTimeout(resolve, 0));
   return parseImageResponse(response, endpoint, hasReference);
@@ -3003,7 +3049,7 @@ function stripImageAuditMetadata(metadata = {}) {
 }
 
 async function downloadImageAsDataUrl(src) {
-  const response = await fetch(src);
+  const response = await resourceFetch(src);
   if (!response.ok) throw new Error('无法下载图片');
   const blob = await response.blob();
   return await new Promise((resolve, reject) => {
@@ -3042,7 +3088,10 @@ async function loadModels(kind) {
   button.disabled = true;
   button.textContent = '获取中';
   try {
-    const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${apiKey}` } });
+    const proxyConfig = $('#settingsBackdrop').hidden
+      ? state.settings
+      : { proxyUrl: $('#proxyUrl').value.trim() || state.settings.proxyUrl, proxyEnabled: $('#proxyEnabled').checked };
+    const response = await apiFetch(endpoint, { headers: { Authorization: `Bearer ${apiKey}` } }, proxyConfig);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
     const models = Array.isArray(payload?.data) ? payload.data.map((item) => item.id).filter(Boolean) : [];
@@ -3685,7 +3734,7 @@ async function generatePolishResult() {
     } else {
       const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
       const userContent = createPolishUserContent(source, instruction, generationSources, polishSources);
-      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify({ model: state.settings.chatModel, stream: false, messages: [{ role: 'system', content: state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt }, { role: 'user', content: userContent }] }) });
+      const response = await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify({ model: state.settings.chatModel, stream: false, messages: [{ role: 'system', content: state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt }, { role: 'user', content: userContent }] }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
       const content = payload?.choices?.[0]?.message?.content;
@@ -4410,6 +4459,68 @@ function deleteConnectionProfile(kind) {
   showToast('模板已删除，当前接口配置仍保留');
 }
 
+function setProxyTestStatus(status, message) {
+  const output = $('#proxyTestStatus');
+  output.classList.remove('success', 'error');
+  if (status) output.classList.add(status);
+  output.textContent = message;
+}
+
+function updateProxyToggleState() {
+  const proxyUrl = normalizeProxyUrl($('#proxyUrl').value);
+  const verified = Boolean(proxyUrl && proxyUrl === verifiedProxyUrl);
+  $('#proxyEnabled').disabled = !verified;
+  $('#proxyToggleRow').classList.toggle('is-disabled', !verified);
+}
+
+function invalidateProxyConnection() {
+  const proxyUrl = normalizeProxyUrl($('#proxyUrl').value);
+  if (proxyUrl && proxyUrl === verifiedProxyUrl) return;
+  verifiedProxyUrl = '';
+  $('#proxyEnabled').checked = false;
+  updateProxyToggleState();
+  setProxyTestStatus('', '代理地址已变更, 请重新测试连接');
+}
+
+async function testProxyConnection() {
+  const button = $('#testProxyConnection');
+  const proxyUrl = normalizeProxyUrl($('#proxyUrl').value);
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(proxyUrl);
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error();
+  } catch (error) {
+    showErrorToast('请输入有效的 HTTP 代理地址');
+    $('#proxyUrl').focus();
+    return;
+  }
+  button.disabled = true;
+  button.textContent = '测试中';
+  setProxyTestStatus('', '正在连接代理服务');
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(`${proxyUrl}/health`, { cache: 'no-store', signal: controller.signal });
+    const payload = await response.json();
+    if (!response.ok || payload?.service !== 'orbit-api-proxy') throw new Error('目标不是 Orbit 本地代理服务');
+    verifiedProxyUrl = proxyUrl;
+    updateProxyToggleState();
+    setProxyTestStatus('success', `连接成功, 代理版本 ${payload.version || '1'}`);
+    showToast('代理服务连接成功, 现在可以开启代理');
+  } catch (error) {
+    verifiedProxyUrl = '';
+    $('#proxyEnabled').checked = false;
+    updateProxyToggleState();
+    const message = error.name === 'AbortError' ? '连接代理超时' : error.message === '目标不是 Orbit 本地代理服务' ? error.message : '无法连接代理服务';
+    setProxyTestStatus('error', message);
+    showErrorToast(`${message}, 请先运行 start-proxy.bat`);
+  } finally {
+    window.clearTimeout(timeout);
+    button.disabled = false;
+    button.textContent = '测试连接';
+  }
+}
+
 function openSettings() {
   $('#chatBaseUrl').value = state.settings.chatBaseUrl;
   $('#chatApiKey').value = state.settings.chatApiKey;
@@ -4425,6 +4536,12 @@ function openSettings() {
   syncCustomSelects();
   $('#chatWebSearch').checked = Boolean(state.settings.chatWebSearch);
   $('#demoMode').checked = state.settings.demoMode;
+  $('#proxyUrl').value = state.settings.proxyUrl || defaultState.settings.proxyUrl;
+  $('#proxyEnabled').checked = Boolean(state.settings.proxyEnabled);
+  if (state.settings.proxyEnabled) verifiedProxyUrl = normalizeProxyUrl(state.settings.proxyUrl);
+  updateProxyToggleState();
+  if (verifiedProxyUrl === normalizeProxyUrl($('#proxyUrl').value)) setProxyTestStatus('success', state.settings.proxyEnabled ? '代理已启用' : '连接已测试, 可以开启代理');
+  else setProxyTestStatus('', '尚未测试代理服务');
   renderAllConnectionProfiles();
   $('#settingsBackdrop').hidden = false;
 }
@@ -4441,7 +4558,13 @@ function saveSettings() {
   const imageModel = $('#imageModel').value.trim() || 'gpt-image-1';
   const imageCountMode = $('#imageCountModeSetting').value || 'parameter';
   const imageBackgroundMode = $('#imageBackgroundModeSetting').value || 'parameter';
-  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', demoMode: $('#demoMode').checked };
+  const proxyUrl = normalizeProxyUrl($('#proxyUrl').value);
+  const proxyEnabled = $('#proxyEnabled').checked;
+  if (proxyEnabled && proxyUrl !== verifiedProxyUrl) {
+    showErrorToast('代理地址尚未通过连接测试');
+    return;
+  }
+  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, demoMode: $('#demoMode').checked };
   persist();
   closeSettings();
   render();
@@ -4948,6 +5071,14 @@ function bindEvents() {
   $('#workspaceImportFile').addEventListener('change', (event) => { importWorkspace(event.target.files[0]); event.target.value = ''; });
   $('#loadChatModels').addEventListener('click', () => loadModels('chat'));
   $('#loadImageModels').addEventListener('click', () => loadModels('image'));
+  $('#proxyUrl').addEventListener('input', invalidateProxyConnection);
+  $('#testProxyConnection').addEventListener('click', testProxyConnection);
+  $('#proxyEnabled').addEventListener('change', () => {
+    if ($('#proxyEnabled').checked && normalizeProxyUrl($('#proxyUrl').value) !== verifiedProxyUrl) {
+      $('#proxyEnabled').checked = false;
+      showErrorToast('请先测试代理连接');
+    }
+  });
   $('#sendButton').addEventListener('click', sendMessage);
   $('#copyCurrentConversation').addEventListener('click', copyCurrentConversation);
   $('#exportCurrentConversation').addEventListener('click', () => { downloadCurrentConversationAsMarkdown(); closeConversationExportMenu(); });
