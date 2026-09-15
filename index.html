@@ -670,7 +670,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
                   <label class="select-control"><span>质量</span><select id="imageQuality"><option value="auto">自动</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option><option value="xhigh">极高</option><option value="max">最高</option><option value="standard">标准, DALL-E</option><option value="hd">HD, DALL-E</option></select></label>
                   <label class="select-control"><span>格式</span><select id="imageFormat"><option value="png">PNG</option><option value="jpeg">JPEG（JPG）</option><option value="webp">WebP</option></select></label>
                   <label class="select-control compression-control"><span>输出压缩 (%)</span><input id="imageCompression" type="number" min="0" max="100" step="1" value="0" inputmode="numeric"></label>
-                  <label class="select-control"><span>背景</span><select id="imageBackground"><option value="auto">自动</option><option value="opaque">不透明</option><option value="transparent">透明</option></select></label>
+                  <label class="select-control"><span>输出透明度</span><select id="imageBackground"><option value="auto">自动</option><option value="opaque">不透明</option><option value="transparent">透明</option></select></label>
                   <label class="select-control"><span>审核</span><select id="imageModeration"><option value="auto">自动</option><option value="low">宽松</option></select></label>
                   <label class="select-control count-control"><span>数量</span><input id="imageCount" type="number" min="1" max="10" value="1"></label>
                 </div>
@@ -785,7 +785,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <div class="profile-manager"><label class="profile-select-label">生图接口模板<select id="imageProfileSelect" aria-label="选择生图接口模板"><option value="">临时配置（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveImageProfile" type="button">另存为</button><button class="secondary-button" id="updateImageProfile" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteImageProfile" type="button" title="删除当前生图模板" aria-label="删除当前生图模板" disabled>×</button></div><small class="profile-help">选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。</small></div>
           <label class="field-label">接口地址<input id="imageBaseUrl" type="url" placeholder="https://api.openai.com/v1/images/generations"></label>
           <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="imageApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="imageApiKey" type="button">显示</button></div></label><label class="field-label"><span class="field-label-heading">模型 <button class="field-action" id="loadImageModels" type="button">获取模型</button></span><input id="imageModel" list="imageModelOptions" type="text" placeholder="gpt-image-1"><datalist id="imageModelOptions"></datalist></label></div>
-          <div class="field-grid"><label class="field-label">数量请求方式<select id="imageCountModeSetting"><option value="parameter">单次请求，使用 n 参数</option><option value="parallel">并发请求，每次 n=1</option></select><small class="field-help">官方标准是 n；并发是客户端策略，会把一批请求关联到同一条记录。</small></label><label class="field-label">透明背景实现<select id="imageBackgroundModeSetting"><option value="parameter">使用 background 参数</option><option value="prompt">追加到提示词</option></select><small class="field-help">官方标准是 background；提示词拼接仅作为手动兼容策略。</small></label></div>
+          <div class="field-grid"><label class="field-label">数量请求方式<select id="imageCountModeSetting"><option value="parameter">单次请求，使用 n 参数</option><option value="parallel">并发请求，每次 n=1</option></select><small class="field-help">官方标准是 n；并发是客户端策略，会把一批请求关联到同一条记录。</small></label><label class="field-label">透明背景实现<select id="imageBackgroundModeSetting"><option value="parameter">使用 background 参数</option><option value="prompt">兼容模式，仅提示透明</option></select><small class="field-help">优先使用 background 参数；兼容模式只为透明背景追加提示词，不会把“不透明”写进关键词。</small></label></div>
         </div>
         <div class="settings-section compact-section">
           <div class="section-title"><span class="section-number">03</span><div><strong>提示词偏好</strong><small>系统提示词会随对应请求发送</small></div></div>
@@ -2169,7 +2169,7 @@ function renderImageMetadata(image) {
   const rawResponse = rawResponseRecord ? JSON.stringify(rawResponseRecord, null, 2) : '';
   const responseDataKind = response.delivery === 'b64_json' ? (response.providedUrl ? 'b64_json（同时返回 URL）' : 'b64_json') : response.delivery === 'url' ? (image.src.startsWith('data:') ? '接口 URL（已保存为本地 Base64）' : '接口 URL') : image.src.startsWith('data:') ? '本地 Base64 数据' : '本地对象';
   const referenceSources = getBatchReferenceSources(batch);
-  return `<div class="metadata-card full"><dt>请求 / 实际模型</dt><dd>${renderComparison(config.model || state.settings.imageModel || '未知', actualModel, actualModel || '响应未提供')}</dd></div><div class="metadata-card full"><dt>来源</dt><dd>${escapeHtml(source)}</dd></div><div class="metadata-card"><dt>请求 / 实际尺寸</dt><dd>${renderComparison(requestSize, actualSize, actualSize || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际比例</dt><dd>${renderComparison(requestRatio || '自动', actualRatio, actualRatio || '响应未提供', true)}</dd></div><div class="metadata-card"><dt>请求 / 实际格式</dt><dd>${renderComparison(config.format || 'png', actualFormat, actualFormat || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际数量</dt><dd>${renderComparison(String(requestedCount), String(actualCount), String(actualCount))}</dd></div><div class="metadata-card"><dt>质量</dt><dd>${escapeHtml(config.quality || 'auto')}</dd></div><div class="metadata-card"><dt>压缩</dt><dd>${escapeHtml(['jpeg', 'webp'].includes(config.format) ? (config.compression === undefined || config.compression === 'auto' ? 'auto' : `${config.compression}%`) : 'PNG 不支持')}</dd></div><div class="metadata-card"><dt>请求 / 实际背景</dt><dd>${renderComparison(requestBackground, actualBackground, actualBackground || '未检测')}</dd></div><div class="metadata-card"><dt>审核</dt><dd>${escapeHtml(moderationDisplay)}</dd></div><div class="metadata-card"><dt>参考图</dt><dd>${escapeHtml(`${referenceSources.length} 张`)}</dd></div><div class="metadata-card"><dt>数据来源</dt><dd>${escapeHtml(responseDataKind)}</dd></div><div class="metadata-card"><dt>文件大小</dt><dd>${escapeHtml(formatBytes(image.fileSize || 0))}</dd></div><div class="metadata-card"><dt>创建时间</dt><dd>${escapeHtml(formatTime(batch.startedAt || batch.createdAt || image.createdAt))}</dd></div><div class="metadata-card"><dt>耗时</dt><dd>${escapeHtml(formatDuration(batch.durationMs || 0))}</dd></div><div class="metadata-card full"><dt>完整请求配置</dt><dd>${escapeHtml(formatImageConfig(config, response.requestType, image.prompt || batch.prompt || ''))}</dd>${rawRequest ? `<details class="metadata-disclosure"><summary>查看实际请求</summary><pre>${escapeHtml(rawRequest)}</pre></details>` : ''}</div>${response.revised_prompt ? `<div class="metadata-card full"><dt>接口修订提示词</dt><dd>${escapeHtml(response.revised_prompt)}</dd></div>` : ''}<div class="metadata-card full"><dt>接口响应</dt><dd>${escapeHtml(JSON.stringify(responseSummary))}</dd>${rawResponse ? `<details class="metadata-disclosure"><summary>查看上游响应</summary><pre>${escapeHtml(rawResponse)}</pre></details>` : ''}</div>`;
+  return `<div class="metadata-card full"><dt>请求 / 实际模型</dt><dd>${renderComparison(config.model || state.settings.imageModel || '未知', actualModel, actualModel || '响应未提供')}</dd></div><div class="metadata-card full"><dt>来源</dt><dd>${escapeHtml(source)}</dd></div><div class="metadata-card"><dt>请求 / 实际尺寸</dt><dd>${renderComparison(requestSize, actualSize, actualSize || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际比例</dt><dd>${renderComparison(requestRatio || '自动', actualRatio, actualRatio || '响应未提供', true)}</dd></div><div class="metadata-card"><dt>请求 / 实际格式</dt><dd>${renderComparison(config.format || 'png', actualFormat, actualFormat || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际数量</dt><dd>${renderComparison(String(requestedCount), String(actualCount), String(actualCount))}</dd></div><div class="metadata-card"><dt>质量</dt><dd>${escapeHtml(config.quality || 'auto')}</dd></div><div class="metadata-card"><dt>压缩</dt><dd>${escapeHtml(['jpeg', 'webp'].includes(config.format) ? (config.compression === undefined || config.compression === 'auto' ? 'auto' : `${config.compression}%`) : 'PNG 不支持')}</dd></div><div class="metadata-card"><dt>选项 / 实际透明度</dt><dd>${renderComparison(requestBackground, actualBackground, actualBackground || '未检测')}</dd></div><div class="metadata-card"><dt>审核</dt><dd>${escapeHtml(moderationDisplay)}</dd></div><div class="metadata-card"><dt>参考图</dt><dd>${escapeHtml(`${referenceSources.length} 张`)}</dd></div><div class="metadata-card"><dt>数据来源</dt><dd>${escapeHtml(responseDataKind)}</dd></div><div class="metadata-card"><dt>文件大小</dt><dd>${escapeHtml(formatBytes(image.fileSize || 0))}</dd></div><div class="metadata-card"><dt>创建时间</dt><dd>${escapeHtml(formatTime(batch.startedAt || batch.createdAt || image.createdAt))}</dd></div><div class="metadata-card"><dt>耗时</dt><dd>${escapeHtml(formatDuration(batch.durationMs || 0))}</dd></div><div class="metadata-card full"><dt>完整请求配置</dt><dd>${escapeHtml(formatImageConfig(config, response.requestType, image.prompt || batch.prompt || ''))}</dd>${rawRequest ? `<details class="metadata-disclosure"><summary>查看实际请求</summary><pre>${escapeHtml(rawRequest)}</pre></details>` : ''}</div>${response.revised_prompt ? `<div class="metadata-card full"><dt>接口修订提示词</dt><dd>${escapeHtml(response.revised_prompt)}</dd></div>` : ''}<div class="metadata-card full"><dt>接口响应</dt><dd>${escapeHtml(JSON.stringify(responseSummary))}</dd>${rawResponse ? `<details class="metadata-disclosure"><summary>查看上游响应</summary><pre>${escapeHtml(rawResponse)}</pre></details>` : ''}</div>`;
 }
 
 function renderComparison(requested, actual, actualLabel, ratioMode = false) {
@@ -2180,6 +2180,9 @@ function renderComparison(requested, actual, actualLabel, ratioMode = false) {
 }
 
 function formatImageConfig(config, requestType = '', prompt = '') {
+  const backgroundDelivery = config.backgroundMode === 'parameter'
+    ? config.background && config.background !== 'auto' ? '发送 background 参数' : '未发送 background 参数'
+    : config.background === 'transparent' ? '追加透明背景提示词' : '未追加背景提示词';
   const entries = [
     ['原始提示词', prompt || '未记录'],
     ['实际发送提示词', config.submittedPrompt || prompt || '未记录'],
@@ -2192,8 +2195,8 @@ function formatImageConfig(config, requestType = '', prompt = '') {
     ['质量', config.quality || 'auto'],
     ['格式（output_format）', config.format || 'png'],
     ['压缩（output_compression）', ['jpeg', 'webp'].includes(config.format) ? `${config.compression ?? 0}%` : `${config.compression ?? 0}%（PNG 不发送）`],
-    ['背景（background）', config.background || 'auto'],
-    ['透明实现', config.backgroundMode === 'prompt' ? '提示词拼接' : 'background 参数'],
+    ['透明度选项', config.background || 'auto'],
+    ['背景发送方式', backgroundDelivery],
     ['审核', config.moderation || 'auto'],
     ['参考图提交优化', config.optimizeReferences === false ? '关闭（超过 10MB 仍强制）' : '开启（优先无损）'],
     ['数量', config.count || 1],
@@ -2226,9 +2229,8 @@ function formatActualRatio(width, height) {
 }
 
 function buildImagePrompt(prompt, config) {
-  if (config.backgroundMode !== 'prompt' || config.background === 'auto') return prompt;
-  const backgroundInstruction = config.background === 'transparent' ? 'Use a transparent background.' : 'Use an opaque background.';
-  return `${prompt}\n\n${backgroundInstruction}`;
+  if (config.backgroundMode !== 'prompt' || config.background !== 'transparent') return prompt;
+  return `${prompt}\n\nUse a transparent background.`;
 }
 
 function ratiosMatch(requested, actual) {
