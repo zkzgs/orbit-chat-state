@@ -4795,6 +4795,13 @@ function remapImageIds(ids, idMap) {
   return [...new Set((ids || []).map((id) => idMap.get(id) || id).filter(Boolean))];
 }
 
+function mergeNamedRecords(existingRecords, incomingRecords) {
+  return [...existingRecords, ...incomingRecords].reduce((records, record) => {
+    const name = record.name.trim().toLowerCase();
+    return records.filter((item) => item.id !== record.id && item.name.trim().toLowerCase() !== name).concat(record);
+  }, []);
+}
+
 function mergeConversations(existingConversations, incomingConversations) {
   return [...new Map([...existingConversations, ...incomingConversations].map((conversation) => [conversation.id, conversation])).values()];
 }
@@ -4819,7 +4826,7 @@ async function importWorkspace(file) {
     const hasApiConfig = payload.apiConfig && typeof payload.apiConfig === 'object';
     if ((scope === 'config' || scope === 'all') && !hasApiConfig) throw new Error('文件中没有配置');
     if (!window.confirm(`导入${getExportScopeLabel(scope)}: ${sourceConversations.length} 个对话, ${sourceHistory.length} 条生图记录, ${sourceTasks.length} 条任务记录?`)) return;
-    const modeInput = window.prompt('请选择导入方式:\n输入 "覆盖" 替换对应范围\n输入 "合并" 保留不同 ID 的项目, 同 ID 使用导入版本', '覆盖');
+    const modeInput = window.prompt('请选择导入方式:\n输入 "覆盖" 替换对应范围\n输入 "合并" 保留不同 ID 的项目, 同 ID 使用导入版本', '合并');
     if (modeInput === null) return;
     const mode = String(modeInput).trim().toLowerCase();
     if (!['覆盖', '合并', 'overwrite', 'merge'].includes(mode)) throw new Error('导入方式只能填写 "覆盖" 或 "合并"');
@@ -4832,9 +4839,9 @@ async function importWorkspace(file) {
       const importedSettings = payload.apiConfig.settings;
       if (importedSettings && typeof importedSettings === 'object') {
         const importedPromptTemplates = normalizeImagePromptTemplates(importedSettings.imagePromptTemplates).map((template) => ({ ...template, referenceImageIds: remapImageIds(template.referenceImageIds, mergedImages.idMap) }));
-        const imagePromptTemplates = merge ? [...new Map([...state.settings.imagePromptTemplates, ...importedPromptTemplates].map((template) => [template.id || template.name, template])).values()] : importedPromptTemplates;
+        const imagePromptTemplates = merge ? mergeNamedRecords(state.settings.imagePromptTemplates, importedPromptTemplates) : importedPromptTemplates;
         const importedTemplates = Array.isArray(importedSettings.imagePolishTemplates) ? normalizePolishTemplates(importedSettings.imagePolishTemplates).map((template) => ({ ...template, referenceImageIds: remapImageIds(template.referenceImageIds, mergedImages.idMap) })) : [];
-        const imagePolishTemplates = merge ? [...new Map([...state.settings.imagePolishTemplates, ...importedTemplates].map((template) => [template.id || template.name, template])).values()] : importedTemplates;
+        const imagePolishTemplates = merge ? mergeNamedRecords(state.settings.imagePolishTemplates, importedTemplates) : importedTemplates;
         const activeImagePromptTemplateId = imagePromptTemplates.some((template) => template.id === importedSettings.activeImagePromptTemplateId) ? importedSettings.activeImagePromptTemplateId : merge && imagePromptTemplates.some((template) => template.id === state.settings.activeImagePromptTemplateId) ? state.settings.activeImagePromptTemplateId : '';
         const activeImagePolishTemplateId = imagePolishTemplates.some((template) => template.id === importedSettings.activeImagePolishTemplateId) ? importedSettings.activeImagePolishTemplateId : merge && imagePolishTemplates.some((template) => template.id === state.settings.activeImagePolishTemplateId) ? state.settings.activeImagePolishTemplateId : '';
         state.settings = { ...state.settings, ...importedSettings, imageOptions: { ...state.settings.imageOptions, ...(importedSettings.imageOptions || {}) }, imagePromptTemplates, activeImagePromptTemplateId, imagePolishTemplates, activeImagePolishTemplateId };
@@ -4843,7 +4850,7 @@ async function importWorkspace(file) {
         const importedProfiles = payload.apiConfig.connectionProfiles;
         state.connectionProfiles = ['chat', 'image'].reduce((result, kind) => {
           const incoming = Array.isArray(importedProfiles[kind]) ? importedProfiles[kind] : [];
-          result[kind] = merge ? [...new Map([...state.connectionProfiles[kind], ...incoming].map((profile) => [profile.id || `${profile.baseUrl}|${profile.model}`, profile])).values()] : incoming;
+          result[kind] = merge ? mergeNamedRecords(state.connectionProfiles[kind], incoming) : incoming;
           return result;
         }, { chat: [], image: [] });
       }
