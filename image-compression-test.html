@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图片压缩测试</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09111b;
+      --panel: #111c2a;
+      --panel-soft: #162334;
+      --line: #29384b;
+      --line-strong: #3a4c62;
+      --text: #edf3f8;
+      --muted: #91a1b4;
+      --accent: #75d5ca;
+      --warning: #f2c76d;
+      --danger: #ff8f91;
+    }
+    * { box-sizing: border-box; }
+    body { min-width: 280px; margin: 0; background: var(--bg); color: var(--text); font-family: Inter, "Microsoft YaHei", system-ui, sans-serif; }
+    button, input { font: inherit; }
+    input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+    .app { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0 56px; }
+    header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+    h1 { margin: 0; font-size: 25px; letter-spacing: 0; }
+    .subtitle { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+    .controls { display: flex; align-items: end; gap: 12px; }
+    .field { display: grid; gap: 6px; color: var(--muted); font-size: 11px; }
+    .limit-wrap { display: flex; align-items: center; gap: 7px; }
+    .limit-wrap input { width: 82px; height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: var(--panel); color: var(--text); }
+    .limit-wrap input:focus { border-color: var(--accent); }
+    .toggle { display: flex; align-items: center; gap: 8px; min-height: 36px; color: var(--text); font-size: 12px; cursor: pointer; }
+    .toggle input { width: 15px; height: 15px; accent-color: var(--accent); }
+    .upload-zone { min-height: 150px; display: grid; place-items: center; padding: 28px; border: 1px dashed var(--line-strong); border-radius: 8px; background: var(--panel); text-align: center; transition: .16s ease; }
+    .upload-zone.is-dragging { border-color: var(--accent); background: rgba(117, 213, 202, .06); }
+    .upload-zone strong { display: block; font-size: 15px; }
+    .upload-zone p { margin: 8px 0 15px; color: var(--muted); font-size: 11px; }
+    .primary, .download { min-height: 34px; padding: 0 14px; border: 1px solid rgba(117, 213, 202, .45); border-radius: 5px; background: rgba(117, 213, 202, .12); color: var(--accent); cursor: pointer; }
+    .primary:hover, .download:hover { background: rgba(117, 213, 202, .2); }
+    .summary { min-height: 21px; margin: 17px 0 9px; color: var(--muted); font-size: 12px; }
+    .results { display: grid; gap: 14px; }
+    .result { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    .file-name { min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .status { flex: 0 0 auto; color: var(--warning); font-size: 11px; }
+    .status.success { color: var(--accent); }
+    .status.error { color: var(--danger); }
+    .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .preview { min-width: 0; padding: 14px; }
+    .preview + .preview { border-left: 1px solid var(--line); }
+    .preview-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; color: var(--muted); font-size: 11px; }
+    .preview-frame { height: 270px; display: grid; place-items: center; overflow: hidden; border-radius: 5px; background: #080e16; }
+    .preview-frame img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+    .meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+    .meta div { min-width: 0; padding: 8px; border-radius: 5px; background: var(--panel-soft); }
+    .meta span { display: block; color: var(--muted); font-size: 9px; }
+    .meta strong { display: block; margin-top: 4px; overflow: hidden; font-size: 11px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    .result-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .download { min-height: 30px; padding: 0 11px; font-size: 11px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 720px) {
+      .app { width: min(100% - 20px, 1120px); padding-top: 22px; }
+      header { align-items: stretch; flex-direction: column; }
+      .controls { justify-content: space-between; }
+      .comparison { grid-template-columns: 1fr; }
+      .preview + .preview { border-top: 1px solid var(--line); border-left: 0; }
+      .preview-frame { height: min(68vw, 280px); }
+      .result-foot { align-items: stretch; flex-direction: column; }
+      .download { width: 100%; min-height: 38px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div><h1>图片压缩测试</h1><p class="subtitle">本地处理, 不上传图片</p></div>
+      <div class="controls">
+        <label class="toggle"><input id="compressionEnabled" type="checkbox" checked>启用压缩</label>
+        <label class="field">目标体积<div class="limit-wrap"><input id="compressionLimit" type="number" min="0.1" step="0.1" value="1" inputmode="decimal"><span>MB</span></div></label>
+      </div>
+    </header>
+
+    <label class="upload-zone" id="uploadZone">
+      <input id="fileInput" type="file" accept="image/*" multiple hidden>
+      <span><strong>拖入图片或选择文件</strong><p>支持同时测试多张图片</p><span class="primary">选择图片</span></span>
+    </label>
+
+    <div class="summary" id="summary">尚未选择图片</div>
+    <section class="results" id="results"></section>
+  </main>
+
+  <script>
+    const compressedRequestImageCache = new Map();
+    const $ = (selector) => document.querySelector(selector);
+    let selectedFiles = [];
+    let renderToken = 0;
+
+    function getImageIdentity(src) {
+      const separatorIndex = String(src).indexOf(',');
+      return String(src).startsWith('data:') && separatorIndex >= 0 ? String(src).slice(separatorIndex + 1) : String(src);
+    }
+
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function canvasToImageBlob(canvas, type, quality) {
+      return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('浏览器无法压缩这张图片')), type, quality));
+    }
+
+    async function compressRequestImage(reference, enabled, limitMb) {
+      const originalFile = reference.file;
+      const targetBytes = Math.round(limitMb * 1024 * 1024);
+      const originalMeta = { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, compressed: false, strategy: 'original', targetBytes, targetReached: originalFile.size <= targetBytes, dimensionsPreserved: true };
+      if (!enabled || originalFile.size <= targetBytes) return { file: originalFile, meta: originalMeta };
+      const cacheKey = `${getImageIdentity(reference.data)}|compress:${targetBytes}`;
+      if (compressedRequestImageCache.has(cacheKey)) return compressedRequestImageCache.get(cacheKey);
+      const task = (async () => {
+        const bitmap = await createImageBitmap(originalFile);
+        const originalWidth = bitmap.width;
+        const originalHeight = bitmap.height;
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = originalWidth;
+          canvas.height = originalHeight;
+          canvas.getContext('2d').drawImage(bitmap, 0, 0, originalWidth, originalHeight);
+          let low = .01;
+          let high = .9;
+          let candidateQuality = low;
+          let candidate = await canvasToImageBlob(canvas, 'image/webp', low);
+          if (candidate.type !== 'image/webp') throw new Error('当前浏览器不支持 WebP 压缩');
+          if (candidate.size <= targetBytes) {
+            for (let attempt = 0; attempt < 8; attempt += 1) {
+              const quality = (low + high) / 2;
+              const blob = await canvasToImageBlob(canvas, 'image/webp', quality);
+              if (blob.size <= targetBytes) {
+                candidate = blob;
+                candidateQuality = quality;
+                low = quality;
+              } else high = quality;
+            }
+          }
+          if (candidate.size >= originalFile.size) return { file: originalFile, meta: { ...originalMeta, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight } };
+          const submittedFile = new File([candidate], `${originalFile.name.replace(/\.[^.]+$/, '') || 'image'}-compressed.webp`, { type: 'image/webp', lastModified: originalFile.lastModified });
+          return { file: submittedFile, meta: { ...originalMeta, submittedSize: submittedFile.size, submittedType: submittedFile.type, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, compressed: true, strategy: 'quality-only', quality: Number(candidateQuality.toFixed(3)), targetReached: submittedFile.size <= targetBytes } };
+        } finally {
+          bitmap.close();
+        }
+      })();
+      compressedRequestImageCache.set(cacheKey, task);
+      try {
+        return await task;
+      } catch (error) {
+        compressedRequestImageCache.delete(cacheKey);
+        throw error;
+      }
+    }
+
+    async function getDimensions(file) {
+      const bitmap = await createImageBitmap(file);
+      const dimensions = { width: bitmap.width, height: bitmap.height };
+      bitmap.close();
+      return dimensions;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+    }
+
+    function formatType(type) {
+      return type.replace('image/', '').toUpperCase() || '未知';
+    }
+
+    function createPreview(title, url, file, dimensions) {
+      const section = document.createElement('div');
+      section.className = 'preview';
+      section.innerHTML = `<div class="preview-label"><span>${title}</span><span>${formatBytes(file.size)}</span></div><div class="preview-frame"><img alt="${title}"></div><div class="meta"><div><span>格式</span><strong>${formatType(file.type)}</strong></div><div><span>尺寸</span><strong>${dimensions.width} x ${dimensions.height}</strong></div><div><span>体积</span><strong>${formatBytes(file.size)}</strong></div></div>`;
+      section.querySelector('img').src = url;
+      return section;
+    }
+
+    async function createResult(file, enabled, limitMb, token) {
+      const result = document.createElement('article');
+      result.className = 'result';
+      result.innerHTML = `<div class="result-head"><span class="file-name"></span><span class="status">处理中</span></div><div class="comparison"></div><div class="result-foot" hidden><span></span><button class="download" type="button">下载提交副本</button></div>`;
+      result.querySelector('.file-name').textContent = file.name;
+      $('#results').appendChild(result);
+      try {
+        const data = await fileToDataUrl(file);
+        const compressed = await compressRequestImage({ data, file }, enabled, limitMb);
+        if (token !== renderToken) return;
+        const [originalDimensions, submittedDimensions] = await Promise.all([getDimensions(file), getDimensions(compressed.file)]);
+        const originalUrl = URL.createObjectURL(file);
+        const submittedUrl = compressed.file === file ? originalUrl : URL.createObjectURL(compressed.file);
+        const comparison = result.querySelector('.comparison');
+        comparison.append(createPreview('本地原图', originalUrl, file, originalDimensions), createPreview('接口提交副本', submittedUrl, compressed.file, submittedDimensions));
+        const savedRatio = file.size ? Math.max(0, 1 - compressed.file.size / file.size) : 0;
+        const targetMissed = enabled && !compressed.meta.targetReached;
+        const status = result.querySelector('.status');
+        status.classList.toggle('success', !targetMissed);
+        status.textContent = targetMissed ? `保持尺寸, 未达到 ${limitMb}MB` : compressed.meta.compressed ? `已压缩至 ${formatBytes(compressed.file.size)}` : enabled ? '低于目标, 未处理' : '压缩已关闭';
+        const foot = result.querySelector('.result-foot');
+        foot.hidden = false;
+        foot.querySelector('span').textContent = compressed.meta.compressed ? `分辨率保持 ${originalDimensions.width} x ${originalDimensions.height}, 体积减少 ${(savedRatio * 100).toFixed(1)}%, 质量 ${compressed.meta.quality}` : '提交副本与原图一致, 分辨率未改变';
+        foot.querySelector('button').addEventListener('click', () => {
+          const link = document.createElement('a');
+          link.href = submittedUrl;
+          link.download = compressed.file.name;
+          link.click();
+        });
+        return { compressed: compressed.meta.compressed, targetMissed };
+      } catch (error) {
+        const status = result.querySelector('.status');
+        status.classList.add('error');
+        status.textContent = error.message || '压缩失败';
+        return { compressed: false, targetMissed: false };
+      }
+    }
+
+    async function renderResults() {
+      const token = ++renderToken;
+      const enabled = $('#compressionEnabled').checked;
+      const limitMb = Math.max(.1, Number($('#compressionLimit').value) || 1);
+      $('#compressionLimit').value = limitMb;
+      $('#results').replaceChildren();
+      if (!selectedFiles.length) {
+        $('#summary').textContent = '尚未选择图片';
+        return;
+      }
+      $('#summary').textContent = `正在处理 ${selectedFiles.length} 张图片`;
+      let compressedCount = 0;
+      let targetMissedCount = 0;
+      for (const file of selectedFiles) {
+        if (token !== renderToken) return;
+        const result = await createResult(file, enabled, limitMb, token);
+        if (result?.compressed) compressedCount += 1;
+        if (result?.targetMissed) targetMissedCount += 1;
+      }
+      if (token === renderToken) $('#summary').textContent = `共 ${selectedFiles.length} 张, 实际压缩 ${compressedCount} 张, 目标 ${limitMb}MB${targetMissedCount ? `, ${targetMissedCount} 张为保持分辨率未达到目标` : ''}`;
+    }
+
+    function selectFiles(files) {
+      selectedFiles = [...files].filter((file) => file.type.startsWith('image/'));
+      renderResults();
+    }
+
+    $('#fileInput').addEventListener('change', (event) => {
+      selectFiles(event.target.files);
+      event.target.value = '';
+    });
+    $('#compressionEnabled').addEventListener('change', renderResults);
+    $('#compressionLimit').addEventListener('change', renderResults);
+    const uploadZone = $('#uploadZone');
+    ['dragenter', 'dragover'].forEach((type) => uploadZone.addEventListener(type, (event) => {
+      event.preventDefault();
+      uploadZone.classList.add('is-dragging');
+    }));
+    ['dragleave', 'drop'].forEach((type) => uploadZone.addEventListener(type, (event) => {
+      event.preventDefault();
+      uploadZone.classList.remove('is-dragging');
+    }));
+    uploadZone.addEventListener('drop', (event) => selectFiles(event.dataTransfer.files));
+  </script>
+</body>
+</html>

@@ -193,7 +193,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .image-mention-option img { width: 38px; height: 32px; border-radius: 3px; object-fit: cover; }
 .image-mention-tooltip { position: fixed; z-index: 90; padding: 5px; border: 1px solid var(--line-strong); border-radius: 5px; background: #162235; box-shadow: var(--shadow); pointer-events: none; }
 .image-mention-tooltip img { display: block; width: 128px; height: 96px; object-fit: contain; }
-.reference-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }.reference-upload { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 10px; cursor: pointer; }.reference-upload:hover { border-color: rgba(116,212,203,.45); color: var(--ink); }.reference-upload span { color: var(--cyan); font-size: 15px; }.reference-options { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }.reference-compression-toggle { display: inline-flex; align-items: center; gap: 5px; color: var(--muted-2); font-size: 9px; cursor: pointer; }.reference-compression-toggle input { width: 13px; height: 13px; margin: 0; accent-color: var(--cyan); }.image-reference-preview { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }.image-reference-preview[hidden] { display: none; }.reference-preview-item { position: relative; }.image-reference-preview img { width: 70px; height: 56px; border: 1px solid var(--line-strong); border-radius: 5px; object-fit: cover; }.reference-preview-index { position: absolute; bottom: 4px; left: 4px; min-width: 16px; height: 16px; display: grid; place-items: center; padding: 0 4px; border: 1px solid rgba(255,255,255,.18); border-radius: 3px; background: rgba(5,10,17,.78); color: #fff; font-size: 9px; line-height: 1; pointer-events: none; }.remove-reference { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--panel-soft); border-radius: 50%; background: #314157; color: var(--ink); font-size: 13px; line-height: 14px; }
+.reference-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }.reference-upload { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 10px; cursor: pointer; }.reference-upload:hover { border-color: rgba(116,212,203,.45); color: var(--ink); }.reference-upload span { color: var(--cyan); font-size: 15px; }.reference-options { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }.image-reference-preview { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }.image-reference-preview[hidden] { display: none; }.reference-preview-item { position: relative; }.image-reference-preview img { width: 70px; height: 56px; border: 1px solid var(--line-strong); border-radius: 5px; object-fit: cover; }.reference-preview-index { position: absolute; bottom: 4px; left: 4px; min-width: 16px; height: 16px; display: grid; place-items: center; padding: 0 4px; border: 1px solid rgba(255,255,255,.18); border-radius: 3px; background: rgba(5,10,17,.78); color: #fff; font-size: 9px; line-height: 1; pointer-events: none; }.remove-reference { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--panel-soft); border-radius: 50%; background: #314157; color: var(--ink); font-size: 13px; line-height: 14px; }
 .reference-preview-item, .polish-reference-item { cursor: grab; }
 .reference-preview-item.is-dragging, .polish-reference-item.is-dragging { opacity: .45; }
 .reference-preview-item.drag-over, .polish-reference-item.drag-over { outline: 2px solid var(--cyan); outline-offset: 2px; }
@@ -207,6 +207,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .history-image-button { display: block; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; overflow: clip; padding: 18px; background: rgba(2,7,13,.72); backdrop-filter: blur(8px); }.modal-backdrop[hidden], .image-view[hidden], .chat-view[hidden] { display: none; }.settings-modal { width: min(620px, 100%); min-height: 0; max-height: min(760px, 94vh); display: flex; flex-direction: column; border: 1px solid var(--line-strong); border-radius: 11px; background: #111b29; box-shadow: var(--shadow); }.modal-header { flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 25px 19px; border-bottom: 1px solid var(--line); }.modal-header h2 { margin: 6px 0 0; font-size: 21px; letter-spacing: -.03em; }.settings-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 2px 25px; }.settings-section { padding: 22px 0; border-bottom: 1px solid var(--line); }.compact-section { border-bottom: 0; }.section-title { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 17px; }.section-number { color: var(--accent); font-family: ui-monospace, monospace; font-size: 11px; }.section-title strong { display: block; font-size: 13px; }.section-title small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.field-label { display: flex; flex-direction: column; gap: 6px; margin-bottom: 13px; color: var(--muted); font-size: 11px; }.field-label input, .field-label textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; }.field-label input:focus, .field-label textarea:focus { border-color: rgba(116,212,203,.55); }.field-label textarea { resize: vertical; line-height: 1.5; }.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }.input-with-action { position: relative; }.input-with-action input { padding-right: 52px; }.show-key { position: absolute; top: 50%; right: 7px; transform: translateY(-50%); padding: 3px; border: 0; background: transparent; color: var(--muted-2); font-size: 10px; }.show-key:hover { color: var(--ink); }.toggle-row { position: relative; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }.toggle-row > span:first-child strong { display: block; color: var(--ink); font-size: 12px; }.toggle-row > span:first-child small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.toggle-row input { position: absolute; top: 50%; right: 11px; width: 13px; height: 13px; margin: 0; transform: translateY(-50%); opacity: 0; pointer-events: none; }.toggle-ui { position: relative; width: 35px; height: 20px; flex: 0 0 auto; border-radius: 10px; background: #28364a; transition: .2s; }.toggle-ui::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #8391a3; transition: .2s; }.toggle-row input:checked + .toggle-ui { background: rgba(230,243,107,.55); }.toggle-row input:checked + .toggle-ui::after { left: 18px; background: var(--accent); }.security-callout { display: flex; gap: 9px; margin: 3px 0 20px; padding: 10px 11px; border: 1px solid rgba(116,212,203,.12); border-radius: 6px; background: rgba(116,212,203,.04); color: var(--muted); }.security-callout span { color: var(--cyan); }.security-callout p { margin: 0; font-size: 10px; line-height: 1.55; }.modal-footer { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 16px 25px; border-top: 1px solid var(--line); }.modal-footer > div { display: flex; gap: 8px; }.text-button { padding: 5px 0; border: 0; background: transparent; font-size: 11px; }.danger { color: var(--danger); }.danger:hover { text-decoration: underline; }.toast { position: fixed; top: 18px; right: 18px; z-index: 60; width: min(380px, calc(100vw - 36px)); display: flex; align-items: flex-start; gap: 10px; padding: 13px 12px 13px 14px; border: 1px solid var(--line-strong); border-left: 3px solid var(--cyan); border-radius: 7px; background: #1b293a; color: var(--ink); font-size: 12px; line-height: 1.5; box-shadow: var(--shadow); opacity: 0; transform: translateX(calc(100% + 24px)); pointer-events: none; transition: .24s ease; }.toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; }.toast.error { border-left-color: var(--danger); }.toast-icon { flex: 0 0 auto; color: var(--cyan); font-size: 14px; line-height: 1.45; }.toast.error .toast-icon { color: var(--danger); }.toast-message { min-width: 0; flex: 1; overflow-wrap: anywhere; }.toast-close { width: 23px; height: 23px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; }.toast-close:hover { background: rgba(255,255,255,.08); color: var(--ink); }
+.settings-section .toggle-row + .field-label { margin-top: 16px; }
 .field-label-heading { display: flex; align-items: center; justify-content: space-between; }
 .field-label select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; }
 .field-label select:focus { border-color: rgba(116,212,203,.55); }
@@ -709,7 +710,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
                 <div class="panel-label-row"><span>描述你想要的画面</span><div class="panel-label-actions"><span class="panel-label-hint">支持中文, 可粘贴参考图</span><button class="field-action" id="polishImagePrompt" type="button">润色关键词</button></div></div>
                 <div class="profile-manager image-prompt-template-manager"><label class="profile-select-label">关键词模板<select id="imagePromptTemplateSelect" aria-label="选择生图关键词模板"><option value="">临时关键词(未保存)</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveImagePromptTemplate" type="button">另存为</button><button class="secondary-button" id="updateImagePromptTemplate" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteImagePromptTemplate" type="button" title="删除当前关键词模板" aria-label="删除当前关键词模板" disabled>×</button></div><small class="profile-help">模板保存关键词和生成参考图, 不保存尺寸, 质量等生成参数</small></div>
                 <div class="image-prompt-wrap"><textarea id="imagePrompt" rows="4" placeholder="例如: 雨后的上海街头, 霓虹倒影, 35mm 胶片质感, 电影感构图"></textarea><div class="image-prompt-mirror" id="imagePromptMirror" aria-hidden="true"></div><div class="image-mention-menu" id="imageMentionMenu" hidden></div></div>
-                <div class="reference-row"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><div class="reference-options"><label class="reference-compression-toggle" title="优先无损优化提交副本, 超过 10MB 时始终压缩"><input id="optimizeImageReferences" type="checkbox" checked><span>无损优化</span></label><span class="panel-label-hint" id="imageRequestMode">图片生成 · 无参考图</span></div></div>
+                <div class="reference-row"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><div class="reference-options"><span class="panel-label-hint" id="imageRequestMode">图片生成 · 无参考图</span></div></div>
                 <div class="image-reference-preview" id="imageReferencePreview" hidden></div><input type="file" id="imageReferenceReplaceUpload" accept="image/png,image/jpeg,image/webp" hidden>
                 <div class="image-controls">
                   <label class="select-control image-size-control"><span>尺寸</span><button class="size-button" id="imageSizeButton" type="button">自动 · 1K · 1:1</button><select id="imageRatio" hidden><option value="auto">自动</option><option value="1:1">1:1 方形</option><option value="3:2">3:2 横向</option><option value="2:3">2:3 竖向</option><option value="16:9">16:9 横向</option><option value="9:16">9:16 竖向</option><option value="4:3">4:3 横向</option><option value="3:4">3:4 竖向</option><option value="21:9">21:9 超宽</option></select></label>
@@ -841,14 +842,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <label class="toggle-row is-disabled" id="proxyToggleRow"><span><strong>使用本地代理</strong><small>测试成功后才可开启, 开启后对话, 模型, 润色和生图接口统一转发</small></span><input type="checkbox" id="proxyEnabled" disabled><span class="toggle-ui"></span></label>
           <p class="field-help">代理只处理请求转发和跨域响应, 不保存 Key 或请求内容, Key 仍保存在当前浏览器, 公开部署时应使用由服务端保管 Key 的专用后端</p>
         </div>
+        <div class="settings-section">
+          <div class="section-title"><span class="section-number">04</span><div><strong>图片请求</strong><small>统一处理发送到接口的图片副本</small></div></div>
+          <label class="toggle-row"><span><strong>压缩接口图片</strong><small>图片超过目标体积时压缩为 WebP, 本地缓存和历史记录仍保留原图</small></span><input type="checkbox" id="compressRequestImages" checked><span class="toggle-ui"></span></label>
+          <label class="field-label">单张图片目标体积 (MB)<input id="requestImageCompressionLimit" type="number" min="0.1" step="0.1" value="1" inputmode="decimal"><small class="field-help">默认 1MB, 只调整编码质量, 不改变像素宽高和比例, 无法达到目标时会保留原尺寸并使用更小的提交副本</small></label>
+        </div>
         <div class="settings-section compact-section">
-          <div class="section-title"><span class="section-number">04</span><div><strong>提示词偏好</strong><small>系统提示词会随对应请求发送</small></div></div>
+          <div class="section-title"><span class="section-number">05</span><div><strong>提示词偏好</strong><small>系统提示词会随对应请求发送</small></div></div>
           <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手"></textarea><small class="field-help">作为对话请求中的 system 消息发送, 不会拼接到生图关键词</small></label>
           <label class="field-label">润色系统提示词<textarea id="imagePolishSystemPrompt" rows="4" placeholder="定义润色模型的角色和输出规则"></textarea><small class="field-help">作为润色请求中的 system 消息发送, 用于定义润色模型的角色和输出规则</small></label>
           <label class="toggle-row"><span><strong>演示模式</strong><small>不填写 Key 时也能体验完整交互</small></span><input type="checkbox" id="demoMode"><span class="toggle-ui"></span></label>
         </div>
         <div class="settings-section compact-section data-management-section">
-          <div class="section-title"><span class="section-number">05</span><div><strong>数据管理</strong><small>操作时选择需要导出或清除的范围</small></div></div>
+          <div class="section-title"><span class="section-number">06</span><div><strong>数据管理</strong><small>操作时选择需要导出或清除的范围</small></div></div>
           <div class="data-management-actions"><button class="secondary-button" id="exportWorkspace" type="button">导出</button><button class="secondary-button" id="importWorkspace" type="button">导入</button><button class="secondary-button danger" id="resetLocalData" type="button">清除数据</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
         </div>
         <div class="security-callout"><span>⌁</span><p>Key、接口模板和润色模板默认只保存在当前浏览器；选择“配置”或“全部数据”导出时才会写入文件。部署到公开环境前，建议通过自己的后端代理请求，避免在前端暴露密钥</p></div>
@@ -879,9 +885,11 @@ const defaultState = {
     imageBaseUrl: 'https://aixor.cc/v1',
     imageApiKey: '',
     imageModel: 'gpt-image-2.5',
-    imageOptions: { sizeMode: 'auto', resolution: '1K', ratio: 'auto', width: 1024, height: 1024, quality: 'auto', format: 'png', compression: 0, background: 'auto', moderation: 'auto', count: 1, optimizeReferences: true },
+    imageOptions: { sizeMode: 'auto', resolution: '1K', ratio: 'auto', width: 1024, height: 1024, quality: 'auto', format: 'png', compression: 0, background: 'auto', moderation: 'auto', count: 1 },
     imageCountMode: 'parameter',
     imageBackgroundMode: 'parameter',
+    compressRequestImages: true,
+    requestImageCompressionLimitMb: 1,
     systemPrompt: '你是一位简洁, 直接的中文助手',
     reasoningEffort: 'auto',
     chatWebSearch: false,
@@ -932,10 +940,7 @@ const modelCatalog = {
 
 const IMAGE_DB_NAME = 'orbit-chat-images-v1';
 const IMAGE_STORE_NAME = 'generations';
-const REFERENCE_FORCE_COMPRESSION_BYTES = 10 * 1024 * 1024;
-const REFERENCE_TARGET_BYTES = 9 * 1024 * 1024;
-const REFERENCE_MAX_EDGE = 4096;
-const optimizedReferenceCache = new Map();
+const compressedRequestImageCache = new Map();
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -1889,7 +1894,8 @@ function getImageConfig() {
     background: $('#imageBackground').value,
     moderation: $('#imageModeration').value,
     count: Math.min(10, Math.max(1, Number($('#imageCount').value) || 1)),
-    optimizeReferences: $('#optimizeImageReferences').checked,
+    compressReferences: state.settings.compressRequestImages,
+    referenceCompressionLimitMb: state.settings.requestImageCompressionLimitMb,
     countMode: state.settings.imageCountMode || state.settings.imageOptions.countMode || 'parameter',
     backgroundMode: state.settings.imageBackgroundMode || 'parameter'
   };
@@ -1909,7 +1915,6 @@ function setImageConfig(config = {}) {
   if (config.background) $('#imageBackground').value = config.background;
   if (config.moderation) $('#imageModeration').value = config.moderation;
   if (config.count) $('#imageCount').value = Math.min(10, Math.max(1, Number(config.count)));
-  $('#optimizeImageReferences').checked = config.optimizeReferences !== false;
   if (config.countMode) state.settings.imageCountMode = config.countMode;
   if (config.backgroundMode) state.settings.imageBackgroundMode = config.backgroundMode;
   updateImageSizeButton();
@@ -2257,7 +2262,7 @@ function formatImageConfig(config, requestType = '', prompt = '') {
     ['透明度选项', config.background || 'auto'],
     ['背景发送方式', backgroundDelivery],
     ['审核', config.moderation || 'auto'],
-    ['参考图提交优化', config.optimizeReferences === false ? '关闭（超过 10MB 仍强制）' : '开启（优先无损）'],
+    ['参考图压缩', config.compressReferences ? `开启（目标 ${config.referenceCompressionLimitMb || 1}MB, 保持原分辨率）` : '关闭'],
     ['数量', config.count || 1],
     ['数量方式', config.countMode === 'parallel' ? '并发请求（每次 n=1）' : '单次请求（n=数量）']
   ];
@@ -2567,15 +2572,26 @@ function resourceFetch(source, options = {}) {
   return state.settings.proxyEnabled && /^https?:\/\//i.test(source) ? apiFetch(source, options) : fetch(source, options);
 }
 
-function buildRequestMessages() {
+async function buildRequestMessages() {
   const conversation = activeConversation();
   const source = state.contextMode === 'single' ? conversation.messages.slice(-1) : conversation.messages;
-  const messages = source.map((message) => {
-    const imageIds = message.imageIds || [];
-    const imageSources = imageIds.map((id) => storedImages.get(id)?.src).filter(Boolean);
-    if (!imageSources.length) return { role: message.role, content: message.content };
-    return { role: message.role, content: [{ type: 'text', text: message.content }, ...imageSources.map((imageSrc) => ({ type: 'image_url', image_url: { url: imageSrc } }))] };
-  });
+  const messages = [];
+  for (const message of source) {
+    const imageRecords = (message.imageIds || []).map((id) => storedImages.get(id)).filter((record) => record?.src);
+    if (!imageRecords.length) {
+      messages.push({ role: message.role, content: message.content });
+      continue;
+    }
+    let imageSources = imageRecords.map((record) => record.src);
+    if (state.settings.compressRequestImages) {
+      const references = await Promise.all(imageRecords.map(async (record, index) => {
+        const data = record.src.startsWith('data:') ? record.src : await downloadImageAsDataUrl(record.src);
+        return { data, file: dataUrlToFile(data, record.name || `chat-image-${index + 1}.png`) };
+      }));
+      imageSources = (await prepareRequestImages(references, true, state.settings.requestImageCompressionLimitMb, null, true)).map((reference) => reference.data);
+    }
+    messages.push({ role: message.role, content: [{ type: 'text', text: message.content }, ...imageSources.map((imageSrc) => ({ type: 'image_url', image_url: { url: imageSrc } }))] });
+  }
   if (state.settings.systemPrompt) messages.unshift({ role: 'system', content: state.settings.systemPrompt });
   return messages;
 }
@@ -2632,7 +2648,7 @@ async function requestChat() {
   const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
   requestController = new AbortController();
   const timeout = window.setTimeout(() => requestController.abort(), 60000);
-  const body = { model: state.settings.chatModel, messages: buildRequestMessages(), temperature: 0.7, stream: false };
+  const body = { model: state.settings.chatModel, messages: await buildRequestMessages(), temperature: 0.7, stream: false };
   const webSearchRequested = Boolean(state.settings.chatWebSearch);
   if (webSearchRequested) body.web_search_options = {};
   if (state.settings.reasoningEffort && state.settings.reasoningEffort !== 'auto') body.reasoning_effort = state.settings.reasoningEffort;
@@ -2774,7 +2790,7 @@ async function generateImage() {
     } else {
       const hasReference = references.length > 0;
       const endpoint = buildApiEndpoint(state.settings.imageBaseUrl, hasReference ? '/images/edits' : '/images/generations');
-      const requestReferences = hasReference ? await prepareImageRequestReferences(references, config.optimizeReferences, (completed, total) => updateImageTask(taskId, { detail: `优化提交副本 ${completed}/${total}` })) : [];
+      const requestReferences = hasReference ? await prepareRequestImages(references, config.compressReferences, config.referenceCompressionLimitMb, (completed, total) => updateImageTask(taskId, { detail: `${config.compressReferences ? '压缩' : '准备'}提交副本 ${completed}/${total}` })) : [];
       if (generation !== localDataGeneration) return;
       const request = { model: config.model, prompt: config.submittedPrompt, n: requestCount };
       if (config.size !== 'auto') request.size = config.size;
@@ -2889,69 +2905,64 @@ function dataUrlToFile(dataUrl, name) {
 }
 
 function canvasToImageBlob(canvas, type, quality) {
-  return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('浏览器无法压缩这张参考图')), type, quality));
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('浏览器无法压缩这张图片')), type, quality));
 }
 
-async function optimizeReferenceImage(reference, enabled) {
+async function compressRequestImage(reference, enabled, limitMb) {
   const originalFile = reference.file;
-  const forced = originalFile.size > REFERENCE_FORCE_COMPRESSION_BYTES;
-  if (!enabled && !forced) return { file: originalFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, optimized: false, forced: false } };
-  const cacheKey = `${getImageIdentity(reference.data)}|${forced ? 'force' : 'lossless'}`;
-  if (optimizedReferenceCache.has(cacheKey)) return optimizedReferenceCache.get(cacheKey);
+  const targetBytes = Math.round(limitMb * 1024 * 1024);
+  const originalMeta = { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, compressed: false, strategy: 'original', targetBytes, targetReached: originalFile.size <= targetBytes, dimensionsPreserved: true };
+  if (!enabled || originalFile.size <= targetBytes) return { file: originalFile, meta: originalMeta };
+  const cacheKey = `${getImageIdentity(reference.data)}|compress:${targetBytes}`;
+  if (compressedRequestImageCache.has(cacheKey)) return compressedRequestImageCache.get(cacheKey);
   const task = (async () => {
     const bitmap = await createImageBitmap(originalFile);
     const originalWidth = bitmap.width;
     const originalHeight = bitmap.height;
-    const originalLongEdge = Math.max(originalWidth, originalHeight);
-    const shouldOptimize = forced || (originalFile.type === 'image/png' && originalFile.size > 2 * 1024 * 1024);
-    if (!shouldOptimize) {
-      bitmap.close();
-      return { file: originalFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, optimized: false, forced, strategy: 'original' } };
-    }
-    const outputType = ['image/png', 'image/jpeg', 'image/webp'].includes(originalFile.type) ? originalFile.type : 'image/png';
-    let scale = forced ? Math.min(1, REFERENCE_MAX_EDGE / originalLongEdge) : 1;
-    let quality = .94;
-    let submittedWidth = Math.max(1, Math.round(originalWidth * scale));
-    let submittedHeight = Math.max(1, Math.round(originalHeight * scale));
-    const encode = async () => {
+    try {
       const canvas = document.createElement('canvas');
-      canvas.width = submittedWidth;
-      canvas.height = submittedHeight;
-      canvas.getContext('2d').drawImage(bitmap, 0, 0, submittedWidth, submittedHeight);
-      return canvasToImageBlob(canvas, outputType, outputType === 'image/png' ? undefined : quality);
-    };
-    let blob = await encode();
-    while (forced && blob.size > REFERENCE_TARGET_BYTES && Math.max(submittedWidth, submittedHeight) > 768) {
-      scale = Math.min(.86, Math.sqrt(REFERENCE_TARGET_BYTES / blob.size) * .94);
-      submittedWidth = Math.max(1, Math.round(submittedWidth * scale));
-      submittedHeight = Math.max(1, Math.round(submittedHeight * scale));
-      quality = Math.max(.76, quality - .04);
-      blob = await encode();
+      canvas.width = originalWidth;
+      canvas.height = originalHeight;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, originalWidth, originalHeight);
+      let low = .01;
+      let high = .9;
+      let candidateQuality = low;
+      let candidate = await canvasToImageBlob(canvas, 'image/webp', low);
+      if (candidate.type !== 'image/webp') throw new Error('当前浏览器不支持 WebP 压缩');
+      if (candidate.size <= targetBytes) {
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const quality = (low + high) / 2;
+          const blob = await canvasToImageBlob(canvas, 'image/webp', quality);
+          if (blob.size <= targetBytes) {
+            candidate = blob;
+            candidateQuality = quality;
+            low = quality;
+          } else high = quality;
+        }
+      }
+      if (candidate.size >= originalFile.size) return { file: originalFile, meta: { ...originalMeta, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight } };
+      const submittedFile = new File([candidate], `${originalFile.name.replace(/\.[^.]+$/, '') || 'image'}-compressed.webp`, { type: 'image/webp', lastModified: originalFile.lastModified });
+      return { file: submittedFile, meta: { ...originalMeta, submittedSize: submittedFile.size, submittedType: submittedFile.type, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, compressed: true, strategy: 'quality-only', quality: Number(candidateQuality.toFixed(3)), targetReached: submittedFile.size <= targetBytes } };
+    } finally {
+      bitmap.close();
     }
-    bitmap.close();
-    if (!forced && blob.size >= originalFile.size && submittedWidth === originalWidth && submittedHeight === originalHeight) {
-      return { file: originalFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, optimized: false, forced } };
-    }
-    const extension = outputType === 'image/jpeg' ? 'jpg' : outputType.split('/')[1];
-    const submittedFile = new File([blob], `${originalFile.name.replace(/\.[^.]+$/, '') || 'reference'}-optimized.${extension}`, { type: outputType, lastModified: originalFile.lastModified });
-    return { file: submittedFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: submittedFile.size, originalType: originalFile.type, submittedType: submittedFile.type, originalWidth, originalHeight, submittedWidth, submittedHeight, optimized: true, forced, strategy: forced ? 'forced' : 'lossless' } };
   })();
-  optimizedReferenceCache.set(cacheKey, task);
+  compressedRequestImageCache.set(cacheKey, task);
   try {
     return await task;
   } catch (error) {
-    optimizedReferenceCache.delete(cacheKey);
-    if (forced) throw error;
-    return { file: originalFile, meta: { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, optimized: false, forced: false, optimizationError: error.message } };
+    compressedRequestImageCache.delete(cacheKey);
+    throw error;
   }
 }
 
-async function prepareImageRequestReferences(references, optimize, onProgress) {
+async function prepareRequestImages(references, enabled, limitMb, onProgress, includeData = false) {
   const prepared = [];
   for (let index = 0; index < references.length; index += 1) {
     onProgress?.(index, references.length);
-    const result = await optimizeReferenceImage(references[index], optimize);
-    prepared.push({ ...references[index], file: result.file, submissionMeta: result.meta });
+    const result = await compressRequestImage(references[index], enabled, limitMb);
+    const data = includeData && result.file !== references[index].file ? await fileToDataUrl(result.file) : references[index].data;
+    prepared.push({ ...references[index], data, file: result.file, submissionMeta: result.meta });
   }
   onProgress?.(references.length, references.length);
   return prepared;
@@ -3461,8 +3472,8 @@ function resetPolishSuggestion() {
 
 function getPolishRequestReferences() {
   return {
-    generation: $('#polishUseGenerationReferences').checked ? polishGenerationReferences.map((reference) => reference.data).filter(Boolean) : [],
-    polish: polishReferences.map((reference) => reference.data).filter(Boolean)
+    generation: $('#polishUseGenerationReferences').checked ? polishGenerationReferences.filter((reference) => reference.data) : [],
+    polish: polishReferences.filter((reference) => reference.data)
   };
 }
 
@@ -3735,8 +3746,8 @@ async function generatePolishResult() {
   if (source === null) return;
   const instruction = getSubmittedPolishText(instructionInput, '#polishInstruction');
   if (instruction === null) return;
-  const { generation: generationSources, polish: polishSources } = getPolishRequestReferences();
-  const referenceCount = generationSources.length + polishSources.length;
+  const { generation: generationReferences, polish: polishRequestReferences } = getPolishRequestReferences();
+  const referenceCount = generationReferences.length + polishRequestReferences.length;
   const button = $('#generatePolishResult');
   if (!source && !referenceCount) { showErrorToast('请填写关键词, 添加润色参考图或勾选生成参考图参与润色'); $('#polishSourcePrompt').focus(); return; }
   if (!instruction) { showErrorToast('请填写润色要求'); $('#polishInstruction').focus(); return; }
@@ -3750,6 +3761,12 @@ async function generatePolishResult() {
       result = `${sourceInput || '请根据参考图生成生图关键词'}\n\n${instructionInput}`;
       $('#polishStatus').textContent = referenceCount ? '演示建议（未分析参考图）' : '演示建议';
     } else {
+      const requestReferences = [...generationReferences, ...polishRequestReferences];
+      const preparedReferences = requestReferences.length ? await prepareRequestImages(requestReferences, state.settings.compressRequestImages, state.settings.requestImageCompressionLimitMb, (completed, total) => {
+        $('#polishStatus').textContent = `准备参考图 ${completed}/${total}`;
+      }, true) : [];
+      const generationSources = preparedReferences.slice(0, generationReferences.length).map((reference) => reference.data);
+      const polishSources = preparedReferences.slice(generationReferences.length).map((reference) => reference.data);
       const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
       const userContent = createPolishUserContent(source, instruction, generationSources, polishSources);
       const response = await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify({ model: state.settings.chatModel, stream: false, messages: [{ role: 'system', content: state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt }, { role: 'user', content: userContent }] }) });
@@ -4548,6 +4565,8 @@ function openSettings() {
   $('#imageModel').value = state.settings.imageModel;
   $('#imageCountModeSetting').value = state.settings.imageCountMode || 'parameter';
   $('#imageBackgroundModeSetting').value = state.settings.imageBackgroundMode || 'parameter';
+  $('#compressRequestImages').checked = state.settings.compressRequestImages;
+  $('#requestImageCompressionLimit').value = state.settings.requestImageCompressionLimitMb;
   $('#systemPrompt').value = state.settings.systemPrompt;
   $('#imagePolishSystemPrompt').value = state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt;
   $('#reasoningEffort').value = state.settings.reasoningEffort || 'auto';
@@ -4576,13 +4595,15 @@ function saveSettings() {
   const imageModel = $('#imageModel').value.trim() || 'gpt-image-1';
   const imageCountMode = $('#imageCountModeSetting').value || 'parameter';
   const imageBackgroundMode = $('#imageBackgroundModeSetting').value || 'parameter';
+  const compressRequestImages = $('#compressRequestImages').checked;
+  const requestImageCompressionLimitMb = Math.max(.1, Number($('#requestImageCompressionLimit').value) || 1);
   const proxyUrl = normalizeProxyUrl($('#proxyUrl').value);
   const proxyEnabled = $('#proxyEnabled').checked;
   if (proxyEnabled && proxyUrl !== verifiedProxyUrl) {
     showErrorToast('代理地址尚未通过连接测试');
     return;
   }
-  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, demoMode: $('#demoMode').checked };
+  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, demoMode: $('#demoMode').checked };
   persist();
   closeSettings();
   render();
@@ -5128,10 +5149,6 @@ function bindEvents() {
   $('#saveImagePromptTemplate').addEventListener('click', saveImagePromptTemplate);
   $('#updateImagePromptTemplate').addEventListener('click', updateImagePromptTemplate);
   $('#deleteImagePromptTemplate').addEventListener('click', deleteImagePromptTemplate);
-  $('#optimizeImageReferences').addEventListener('change', () => {
-    state.settings.imageOptions.optimizeReferences = $('#optimizeImageReferences').checked;
-    persist();
-  });
   $('#polishImagePrompt').addEventListener('click', openPromptPolish);
   $('#polishTemplateSelect').addEventListener('change', (event) => selectPolishTemplate(event.target.value));
   $('#savePolishTemplate').addEventListener('click', savePolishTemplate);

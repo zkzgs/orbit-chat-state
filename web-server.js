@@ -7,7 +7,11 @@ const path = require('node:path');
 
 const host = '0.0.0.0';
 const port = Number(process.env.ORBIT_WEB_PORT || process.argv[2] || 5500);
-const indexPath = path.join(__dirname, 'index.html');
+const publicFiles = new Map([
+  ['/', 'index.html'],
+  ['/index.html', 'index.html'],
+  ['/image-compression-test.html', 'image-compression-test.html']
+]);
 
 function sendText(response, status, message) {
   response.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -40,14 +44,15 @@ const server = http.createServer((request, response) => {
     response.end();
     return;
   }
-  if (pathname !== '/' && pathname !== '/index.html') {
+  const fileName = publicFiles.get(pathname);
+  if (!fileName) {
     sendText(response, 404, 'Not Found');
     return;
   }
 
-  fs.readFile(indexPath, (error, content) => {
+  fs.readFile(path.join(__dirname, fileName), (error, content) => {
     if (error) {
-      sendText(response, 500, 'Unable to read index.html');
+      sendText(response, 500, `Unable to read ${fileName}`);
       return;
     }
     response.writeHead(200, {
