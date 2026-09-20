@@ -844,7 +844,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
         </div>
         <div class="settings-section">
           <div class="section-title"><span class="section-number">04</span><div><strong>图片请求</strong><small>统一处理发送到接口的图片副本</small></div></div>
-          <label class="toggle-row"><span><strong>压缩接口图片</strong><small>图片超过目标体积时压缩为 WebP, 本地缓存和历史记录仍保留原图</small></span><input type="checkbox" id="compressRequestImages" checked><span class="toggle-ui"></span></label>
+          <label class="toggle-row"><span><strong>压缩接口图片</strong><small>图片超过目标体积时压缩为 WebP, 本地缓存和历史记录仍保留原图, GIF 为保留动画不会压缩</small></span><input type="checkbox" id="compressRequestImages" checked><span class="toggle-ui"></span></label>
           <label class="field-label">单张图片目标体积 (MB)<input id="requestImageCompressionLimit" type="number" min="0.1" step="0.1" value="1" inputmode="decimal"><small class="field-help">默认 1MB, 只调整编码质量, 不改变像素宽高和比例, 无法达到目标时会保留原尺寸并使用更小的提交副本</small></label>
         </div>
         <div class="settings-section compact-section">
@@ -874,6 +874,160 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   <div class="toast" id="toast" role="status" aria-live="polite"><span class="toast-icon" aria-hidden="true">✓</span><span class="toast-message"></span><button class="toast-close" id="closeToast" type="button" title="关闭提示" aria-label="关闭提示">×</button></div>
   <script src="https://cdn.jsdelivr.net/npm/selecto@1.26.2/dist/selecto.min.js" integrity="sha384-JBBZtYvXa/GfEbqTkjceN/toTnOGBkyawMAdzmagJyC4qxHlS3+ra3XMbXJV/q6u" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.6.0/dist/panzoom.min.js" integrity="sha384-p/V9q47QHNmBI0EG7lJPLVHC5WN1mgpLtNpFykf0IX8iJ4xDCYPWEXcigFOvYW52" crossorigin="anonymous"></script>
+  <script id="imageWorkerSource" type="text/plain">
+'use strict';
+
+function normalizeImageFormat(format) {
+  const value = String(format || '').toLowerCase();
+  if (value === 'jpg') return 'jpeg';
+  if (value === 'svg+xml') return 'svg';
+  return value;
+}
+
+function detectBase64ImageFormat(encoded) {
+  try {
+    const binary = atob(String(encoded || '').slice(0, 24));
+    const bytes = [...binary].map((character) => character.charCodeAt(0));
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
+    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpeg';
+    if (binary.slice(0, 6) === 'GIF87a' || binary.slice(0, 6) === 'GIF89a') return 'gif';
+    if (binary.slice(0, 4) === 'RIFF' && binary.slice(8, 12) === 'WEBP') return 'webp';
+  } catch { }
+  return 'png';
+}
+
+function dataUrlToBlob(dataUrl) {
+  const separator = String(dataUrl || '').indexOf(',');
+  if (separator < 0) throw new Error('无效的图片数据');
+  const header = String(dataUrl).slice(0, separator);
+  const encoded = String(dataUrl).slice(separator + 1);
+  const mime = header.match(/^data:([^;]+)/i)?.[1] || 'application/octet-stream';
+  if (!header.includes(';base64')) return new Blob([decodeURIComponent(encoded)], { type: mime });
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new Blob([bytes], { type: mime });
+}
+
+function blobToDataUrl(blob) {
+  if (typeof FileReaderSync === 'undefined') throw new Error('当前浏览器不支持 Worker 文件读取');
+  return new FileReaderSync().readAsDataURL(blob);
+}
+
+async function detectBlobFormat(blob) {
+  const bytes = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpeg';
+  if (String.fromCharCode(...bytes.slice(0, 6)) === 'GIF87a' || String.fromCharCode(...bytes.slice(0, 6)) === 'GIF89a') return 'gif';
+  if (String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return 'webp';
+  return normalizeImageFormat(blob.type?.split('/')[1] || '');
+}
+
+async function inspectImage(blob) {
+  if (typeof createImageBitmap !== 'function') throw new Error('当前浏览器不支持 Worker 图片解码');
+  const bitmap = await createImageBitmap(blob);
+  const width = bitmap.width;
+  const height = bitmap.height;
+  let hasTransparency;
+  try {
+    if (typeof OffscreenCanvas !== 'undefined') {
+      const scale = Math.min(1, 512 / Math.max(width, height));
+      const canvas = new OffscreenCanvas(Math.max(1, Math.round(width * scale)), Math.max(1, Math.round(height * scale)));
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      hasTransparency = false;
+      for (let index = 3; index < pixels.length; index += 4) {
+        if (pixels[index] < 255) {
+          hasTransparency = true;
+          break;
+        }
+      }
+    }
+  } finally {
+    bitmap.close();
+  }
+  const format = await detectBlobFormat(blob);
+  return { width, height, detectedFormat: format, format, fileSize: blob.size, hasTransparency };
+}
+
+async function compressImage(file, targetBytes) {
+  if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas === 'undefined') throw new Error('当前浏览器不支持 Worker 图片压缩');
+  const bitmap = await createImageBitmap(file);
+  try {
+    const originalWidth = bitmap.width;
+    const originalHeight = bitmap.height;
+    const canvas = new OffscreenCanvas(originalWidth, originalHeight);
+    const context = canvas.getContext('2d');
+    context.drawImage(bitmap, 0, 0, originalWidth, originalHeight);
+    const encode = (quality) => canvas.convertToBlob({ type: 'image/webp', quality });
+    const { blob: candidate, quality: candidateQuality, targetReached } = await findImageCompressionCandidate(encode, targetBytes);
+    if (candidate.size >= file.size) return { compressed: false, originalWidth, originalHeight };
+    return { blob: candidate, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, quality: candidateQuality, compressed: true, targetReached };
+  } finally {
+    bitmap.close();
+  }
+}
+
+async function convertToPng(blob) {
+  if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas === 'undefined') throw new Error('当前浏览器不支持 Worker 图片转换');
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    return await canvas.convertToBlob({ type: 'image/png' });
+  } finally {
+    bitmap.close();
+  }
+}
+
+function abbreviateResponseValue(value) {
+  const text = String(value || '');
+  if (text.length <= 100) return text;
+  return `${text.slice(0, 42)}...${text.slice(-42)}（共 ${text.length} 个字符）`;
+}
+
+function parseImageResponse(raw, endpoint, hasReference) {
+  let payload = {};
+  let parsed = true;
+  try { payload = raw ? JSON.parse(raw) : {}; } catch { payload = {}; parsed = false; }
+  const apiResponse = parsed && payload && typeof payload === 'object'
+    ? { ...payload, data: Array.isArray(payload.data) ? payload.data.map((item) => {
+      if (typeof item === 'string') return abbreviateResponseValue(item);
+      if (!item || typeof item !== 'object') return item;
+      return { ...item, b64_json: item.b64_json ? abbreviateResponseValue(item.b64_json) : item.b64_json, delivery: item.b64_json ? 'b64_json' : item.url ? 'url' : 'unknown', base64Length: item.b64_json?.length || 0 };
+    }) : payload.data }
+    : raw;
+  const responseModel = payload?.model || '';
+  const images = (payload?.data || []).map((item) => {
+    const value = typeof item === 'string' ? item : item?.b64_json;
+    const detectedFormat = value ? detectBase64ImageFormat(value) : '';
+    const source = typeof item === 'string' ? `data:image/${detectedFormat};base64,${item}` : (value ? `data:image/${detectedFormat};base64,${value}` : item?.url || '');
+    return { src: source, responseMeta: { id: item?.id, revised_prompt: item?.revised_prompt, model: responseModel || item?.model || '', created: payload.created || item?.created, output_format: item?.output_format || detectedFormat, size: item?.size, source: endpoint, requestType: hasReference ? 'edit' : 'generation', delivery: typeof item === 'string' || item?.b64_json ? 'b64_json' : item?.url ? 'url' : 'unknown', providedUrl: Boolean(item?.url) } };
+  }).filter((item) => item.src);
+  return { images, apiResponse, responseModel, created: payload.created, id: payload.id, usage: payload.usage, parsed, errorMessage: payload?.error?.message || payload?.message || payload?.detail || String(raw || '').slice(0, 500) };
+}
+
+const handlers = {
+  fileToDataUrl: ({ file }) => blobToDataUrl(file),
+  blobToDataUrl: ({ blob }) => blobToDataUrl(blob),
+  dataUrlToBlob: ({ dataUrl }) => dataUrlToBlob(dataUrl),
+  inspectImage: ({ blob }) => inspectImage(blob),
+  compressImage: ({ file, targetBytes }) => compressImage(file, targetBytes),
+  convertToPng: ({ blob }) => convertToPng(blob),
+  parseImageResponse: ({ raw, endpoint, hasReference }) => parseImageResponse(raw, endpoint, hasReference)
+};
+
+self.onmessage = async (event) => {
+  const { id, type, payload } = event.data || {};
+  try {
+    const result = await handlers[type](payload || {});
+    self.postMessage({ id, result });
+  } catch (error) {
+    self.postMessage({ id, error: error?.message || 'Worker 图片处理失败' });
+  }
+};
+  </script>
   <script>
 const STORAGE_KEY = 'orbit-chat-state-v1';
 
@@ -940,10 +1094,101 @@ const modelCatalog = {
 
 const IMAGE_DB_NAME = 'orbit-chat-images-v1';
 const IMAGE_STORE_NAME = 'generations';
+const COMPRESSED_REQUEST_IMAGE_CACHE_LIMIT = 8;
 const compressedRequestImageCache = new Map();
+let imageCompressionQueue = Promise.resolve();
+let imageWorker = null;
+let imageWorkerUrl = '';
+let imageWorkerUnavailable = false;
+let imageWorkerRequestId = 0;
+const imageWorkerRequests = new Map();
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+async function findImageCompressionCandidate(encode, targetBytes) {
+  let low = .01;
+  let high = 1;
+  const highestQuality = await encode(high);
+  if (highestQuality.type !== 'image/webp') throw new Error('当前浏览器不支持 WebP 压缩');
+  if (highestQuality.size <= targetBytes) return { blob: highestQuality, quality: 1, targetReached: true };
+  let candidateQuality = low;
+  let candidate = await encode(low);
+  if (candidate.type !== 'image/webp') throw new Error('当前浏览器不支持 WebP 压缩');
+  if (candidate.size <= targetBytes) {
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      const quality = (low + high) / 2;
+      const blob = await encode(quality);
+      if (blob.size <= targetBytes) {
+        candidate = blob;
+        candidateQuality = quality;
+        low = quality;
+      } else high = quality;
+    }
+  }
+  return { blob: candidate, quality: Number(candidateQuality.toFixed(3)), targetReached: candidate.size <= targetBytes };
+}
+
+function getImageWorker() {
+  if (imageWorker || imageWorkerUnavailable || typeof Worker === 'undefined') return imageWorker;
+  try {
+    const workerBody = $('#imageWorkerSource')?.textContent || '';
+    if (!workerBody.trim()) throw new Error('图片 Worker 源码缺失');
+    const source = `'use strict';\n${findImageCompressionCandidate.toString()}\n${workerBody.replace(/^\s*'use strict';\s*/, '')}`;
+    imageWorkerUrl = URL.createObjectURL(new Blob([source], { type: 'application/javascript' }));
+    imageWorker = new Worker(imageWorkerUrl);
+    imageWorker.onmessage = (event) => {
+      const { id, result, error } = event.data || {};
+      const request = imageWorkerRequests.get(id);
+      if (!request) return;
+      imageWorkerRequests.delete(id);
+      if (error) request.reject(new Error(error));
+      else request.resolve(result);
+    };
+    imageWorker.onerror = () => {
+      imageWorkerUnavailable = true;
+      disposeImageWorker('图片 Worker 不可用');
+    };
+    return imageWorker;
+  } catch {
+    imageWorkerUnavailable = true;
+    disposeImageWorker('图片 Worker 创建失败');
+    return null;
+  }
+}
+
+function disposeImageWorker(message = '图片 Worker 已停止') {
+  imageWorker?.terminate();
+  imageWorker = null;
+  if (imageWorkerUrl) URL.revokeObjectURL(imageWorkerUrl);
+  imageWorkerUrl = '';
+  imageWorkerRequests.forEach(({ reject }) => reject(new Error(message)));
+  imageWorkerRequests.clear();
+}
+
+window.addEventListener('pagehide', () => {
+  disposeImageWorker();
+  compressedRequestImageCache.clear();
+});
+
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) imageWorkerUnavailable = false;
+});
+
+function runImageWorker(type, payload) {
+  const worker = getImageWorker();
+  if (!worker) return Promise.reject(new Error('图片 Worker 不可用'));
+  const id = ++imageWorkerRequestId;
+  return new Promise((resolve, reject) => {
+    imageWorkerRequests.set(id, { resolve, reject });
+    try {
+      worker.postMessage({ id, type, payload });
+    } catch (error) {
+      imageWorkerRequests.delete(id);
+      reject(error);
+    }
+  });
+}
 
 function loadState() {
   try {
@@ -1066,6 +1311,18 @@ function getImageIdentity(src) {
   return String(src).startsWith('data:') && separatorIndex >= 0 ? String(src).slice(separatorIndex + 1) : String(src);
 }
 
+function getImageFingerprint(src) {
+  const value = getImageIdentity(src);
+  let first = 2166136261;
+  let second = 2246822519;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    first = Math.imul(first ^ code, 16777619);
+    second = Math.imul(second ^ code, 3266489917);
+  }
+  return `${value.length}:${(first >>> 0).toString(36)}:${(second >>> 0).toString(36)}`;
+}
+
 function findStoredImageBySource(src) {
   const identity = getImageIdentity(src);
   return [...storedImages.values()].find((record) => record.type === 'image' && getImageIdentity(record.src) === identity);
@@ -1175,6 +1432,7 @@ async function clearStoredImages() {
   }
   storedImages.clear();
   imageHistory = [];
+  compressedRequestImageCache.clear();
 }
 
 function renderImageHistory() {
@@ -2173,6 +2431,9 @@ async function readChatViewerMeta(src) {
 
 async function getImageBlob(src) {
   if (src.startsWith('data:')) {
+    try {
+      return await runImageWorker('dataUrlToBlob', { dataUrl: src });
+    } catch { }
     const [header, encoded] = src.split(',');
     if (header.includes(';base64')) {
       const binary = atob(encoded);
@@ -2193,6 +2454,7 @@ function detectBase64ImageFormat(encoded) {
     const bytes = [...binary].map((character) => character.charCodeAt(0));
     if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
     if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpeg';
+    if (binary.slice(0, 6) === 'GIF87a' || binary.slice(0, 6) === 'GIF89a') return 'gif';
     if (binary.slice(0, 4) === 'RIFF' && binary.slice(8, 12) === 'WEBP') return 'webp';
   } catch { }
   return 'png';
@@ -2472,6 +2734,9 @@ async function copyImageToClipboard(src) {
 }
 
 async function convertImageToPng(blob) {
+  try {
+    return await runImageWorker('convertToPng', { blob });
+  } catch { }
   const bitmap = await createImageBitmap(blob);
   const canvas = document.createElement('canvas');
   canvas.width = bitmap.width;
@@ -2585,7 +2850,12 @@ async function buildRequestMessages() {
     let imageSources = imageRecords.map((record) => record.src);
     if (state.settings.compressRequestImages) {
       const references = await Promise.all(imageRecords.map(async (record, index) => {
-        const data = record.src.startsWith('data:') ? record.src : await downloadImageAsDataUrl(record.src);
+        let data;
+        try {
+          data = record.src.startsWith('data:') ? record.src : await downloadImageAsDataUrl(record.src);
+        } catch {
+          throw new Error('历史消息中的远程图片无法读取, 请开启本地代理或重新上传本地图片');
+        }
         return { data, file: dataUrlToFile(data, record.name || `chat-image-${index + 1}.png`) };
       }));
       imageSources = (await prepareRequestImages(references, true, state.settings.requestImageCompressionLimitMb, null, true)).map((reference) => reference.data);
@@ -2646,23 +2916,27 @@ function demoReply(content, hasImage) {
 
 async function requestChat() {
   const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
-  requestController = new AbortController();
-  const timeout = window.setTimeout(() => requestController.abort(), 60000);
-  const body = { model: state.settings.chatModel, messages: await buildRequestMessages(), temperature: 0.7, stream: false };
+  const messages = await buildRequestMessages();
+  const body = { model: state.settings.chatModel, messages, temperature: 0.7, stream: false };
   const webSearchRequested = Boolean(state.settings.chatWebSearch);
   if (webSearchRequested) body.web_search_options = {};
   if (state.settings.reasoningEffort && state.settings.reasoningEffort !== 'auto') body.reasoning_effort = state.settings.reasoningEffort;
+  const sendRequest = async () => {
+    requestController = new AbortController();
+    const timeout = window.setTimeout(() => requestController.abort(), 60000);
+    try {
+      return await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
+    } catch (error) {
+      if (error.name === 'AbortError') throw new Error('请求超时或已中断, 请检查接口地址和网络');
+      throw error;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  };
   let response;
   let payload;
   let webSearchFallback = false;
-  try {
-    response = await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
-  } catch (error) {
-    if (error.name === 'AbortError') throw new Error('请求超时或已中断, 请检查接口地址和网络');
-    throw error;
-  } finally {
-    window.clearTimeout(timeout);
-  }
+  response = await sendRequest();
   payload = await response.json();
   if (!response.ok && webSearchRequested && [400, 404, 422].includes(response.status)) {
     delete body.web_search_options;
@@ -2670,7 +2944,7 @@ async function requestChat() {
     $('#chatWebSearch').checked = false;
     persist();
     webSearchFallback = true;
-    response = await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
+    response = await sendRequest();
     payload = await response.json();
   }
   if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
@@ -2683,6 +2957,25 @@ async function requestChat() {
 
 async function parseImageResponse(response, endpoint, hasReference) {
   const raw = await response.text();
+  try {
+    const parsedResult = await runImageWorker('parseImageResponse', { raw, endpoint, hasReference });
+    const responseModel = parsedResult.responseModel || response.headers.get('x-model') || response.headers.get('x-openai-model') || '';
+    const images = parsedResult.images.map((image) => image.responseMeta?.model || !responseModel ? image : { ...image, responseMeta: { ...image.responseMeta, model: responseModel } });
+    const upstreamResponse = { status: response.status, statusText: response.statusText || '', headers: Object.fromEntries(response.headers.entries()), body: parsedResult.apiResponse, receivedAt: Date.now() };
+    if (!response.ok) {
+      const error = new Error(parsedResult.errorMessage || raw.slice(0, 500) || `接口返回 ${response.status}`);
+      error.upstreamResponse = upstreamResponse;
+      throw error;
+    }
+    const requestId = response.headers.get('x-request-id') || response.headers.get('request-id') || '';
+    return { images, meta: { source: endpoint, model: responseModel, created: parsedResult.created, id: parsedResult.id, usage: parsedResult.usage, status: response.status, requestId, requestType: hasReference ? 'edit' : 'generation', moderationSent: true, apiResponse: parsedResult.apiResponse, upstreamResponse } };
+  } catch (error) {
+    if (error?.upstreamResponse) throw error;
+  }
+  return parseImageResponseOnMain(raw, response, endpoint, hasReference);
+}
+
+function parseImageResponseOnMain(raw, response, endpoint, hasReference) {
   let payload = {};
   let parsed = true;
   try { payload = raw ? JSON.parse(raw) : {}; } catch (error) { payload = {}; parsed = false; }
@@ -2908,46 +3201,46 @@ function canvasToImageBlob(canvas, type, quality) {
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('浏览器无法压缩这张图片')), type, quality));
 }
 
+async function compressRequestImageOnMain(originalFile, targetBytes) {
+  const bitmap = await createImageBitmap(originalFile);
+  const originalWidth = bitmap.width;
+  const originalHeight = bitmap.height;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = originalWidth;
+    canvas.height = originalHeight;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, originalWidth, originalHeight);
+    const { blob: candidate, quality: candidateQuality, targetReached } = await findImageCompressionCandidate((quality) => canvasToImageBlob(canvas, 'image/webp', quality), targetBytes);
+    if (candidate.size >= originalFile.size) return { compressed: false, originalWidth, originalHeight };
+    return { blob: candidate, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, quality: candidateQuality, compressed: true, targetReached };
+  } finally {
+    bitmap.close();
+  }
+}
+
 async function compressRequestImage(reference, enabled, limitMb) {
   const originalFile = reference.file;
   const targetBytes = Math.round(limitMb * 1024 * 1024);
   const originalMeta = { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, compressed: false, strategy: 'original', targetBytes, targetReached: originalFile.size <= targetBytes, dimensionsPreserved: true };
   if (!enabled || originalFile.size <= targetBytes) return { file: originalFile, meta: originalMeta };
-  const cacheKey = `${getImageIdentity(reference.data)}|compress:${targetBytes}`;
+  if (originalFile.type === 'image/gif') return { file: originalFile, meta: { ...originalMeta, strategy: 'preserve-animation', targetReached: false } };
+  const cacheKey = `${getImageFingerprint(reference.data)}|compress:${targetBytes}`;
   if (compressedRequestImageCache.has(cacheKey)) return compressedRequestImageCache.get(cacheKey);
-  const task = (async () => {
-    const bitmap = await createImageBitmap(originalFile);
-    const originalWidth = bitmap.width;
-    const originalHeight = bitmap.height;
+  const task = imageCompressionQueue.then(async () => {
+    let result;
     try {
-      const canvas = document.createElement('canvas');
-      canvas.width = originalWidth;
-      canvas.height = originalHeight;
-      canvas.getContext('2d').drawImage(bitmap, 0, 0, originalWidth, originalHeight);
-      let low = .01;
-      let high = .9;
-      let candidateQuality = low;
-      let candidate = await canvasToImageBlob(canvas, 'image/webp', low);
-      if (candidate.type !== 'image/webp') throw new Error('当前浏览器不支持 WebP 压缩');
-      if (candidate.size <= targetBytes) {
-        for (let attempt = 0; attempt < 8; attempt += 1) {
-          const quality = (low + high) / 2;
-          const blob = await canvasToImageBlob(canvas, 'image/webp', quality);
-          if (blob.size <= targetBytes) {
-            candidate = blob;
-            candidateQuality = quality;
-            low = quality;
-          } else high = quality;
-        }
-      }
-      if (candidate.size >= originalFile.size) return { file: originalFile, meta: { ...originalMeta, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight } };
-      const submittedFile = new File([candidate], `${originalFile.name.replace(/\.[^.]+$/, '') || 'image'}-compressed.webp`, { type: 'image/webp', lastModified: originalFile.lastModified });
-      return { file: submittedFile, meta: { ...originalMeta, submittedSize: submittedFile.size, submittedType: submittedFile.type, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, compressed: true, strategy: 'quality-only', quality: Number(candidateQuality.toFixed(3)), targetReached: submittedFile.size <= targetBytes } };
-    } finally {
-      bitmap.close();
+      result = await runImageWorker('compressImage', { file: originalFile, targetBytes });
+    } catch {
+      result = await compressRequestImageOnMain(originalFile, targetBytes);
     }
-  })();
+    const { blob, originalWidth, originalHeight, submittedWidth, submittedHeight, quality, compressed, targetReached } = result;
+    if (!compressed || !blob) return { file: originalFile, meta: { ...originalMeta, originalWidth, originalHeight, submittedWidth: submittedWidth || originalWidth, submittedHeight: submittedHeight || originalHeight } };
+    const submittedFile = new File([blob], `${originalFile.name.replace(/\.[^.]+$/, '') || 'image'}-compressed.webp`, { type: 'image/webp', lastModified: originalFile.lastModified });
+    return { file: submittedFile, meta: { ...originalMeta, submittedSize: submittedFile.size, submittedType: submittedFile.type, originalWidth, originalHeight, submittedWidth: submittedWidth || originalWidth, submittedHeight: submittedHeight || originalHeight, compressed: true, strategy: 'quality-only', quality, targetReached: Boolean(targetReached) } };
+  });
+  imageCompressionQueue = task.catch(() => {});
   compressedRequestImageCache.set(cacheKey, task);
+  while (compressedRequestImageCache.size > COMPRESSED_REQUEST_IMAGE_CACHE_LIMIT) compressedRequestImageCache.delete(compressedRequestImageCache.keys().next().value);
   try {
     return await task;
   } catch (error) {
@@ -3000,14 +3293,19 @@ async function saveGeneratedImage(record, generationToken = localDataGeneration)
 }
 
 async function readImageDetails(src) {
+  let blob;
+  try { blob = await getImageBlob(src); } catch (error) { blob = null; }
+  if (blob) {
+    try {
+      return await runImageWorker('inspectImage', { blob });
+    } catch { }
+  }
   const image = new Image();
   const dimensions = await new Promise((resolve, reject) => {
     image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
     image.onerror = reject;
     image.src = src;
   });
-  let blob;
-  try { blob = await getImageBlob(src); } catch (error) { blob = null; }
   const detectedFormat = blob instanceof Blob ? await detectImageFormat(blob) : normalizeImageFormat(blob?.type?.split('/')[1] || src.match(/^data:image\/([^;,]+)/)?.[1] || '');
   let hasTransparency;
   try { hasTransparency = await detectTransparency(image); } catch (error) { hasTransparency = undefined; }
@@ -3018,6 +3316,7 @@ async function detectImageFormat(blob) {
   const bytes = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpeg';
+  if (String.fromCharCode(...bytes.slice(0, 6)) === 'GIF87a' || String.fromCharCode(...bytes.slice(0, 6)) === 'GIF89a') return 'gif';
   if (String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return 'webp';
   return normalizeImageFormat(blob.type?.split('/')[1] || '');
 }
@@ -3081,6 +3380,9 @@ async function downloadImageAsDataUrl(src) {
   const response = await resourceFetch(src);
   if (!response.ok) throw new Error('无法下载图片');
   const blob = await response.blob();
+  try {
+    return await runImageWorker('blobToDataUrl', { blob });
+  } catch { }
   return await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -3092,11 +3394,20 @@ async function downloadImageAsDataUrl(src) {
 async function downloadImageOriginal(image, batch = null) {
   if (!image?.src) return;
   try {
-    const dataUrl = image.src.startsWith('data:') ? image.src : await downloadImageAsDataUrl(image.src);
+    const blob = await getImageBlob(image.src);
+    const configuredFormat = ['png', 'jpeg', 'webp'].includes(batch?.config?.format) ? batch.config.format : '';
+    const mimeFormat = normalizeImageFormat(blob.type?.split('/')[1] || '');
+    const detectedFormat = await detectImageFormat(blob);
+    const format = ['png', 'jpeg', 'webp', 'gif'].includes(mimeFormat) ? mimeFormat : ['png', 'jpeg', 'webp', 'gif'].includes(detectedFormat) ? detectedFormat : configuredFormat || 'png';
+    const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `orbit-${(batch?.batchId || 'image')}-${image.id || '1'}.${dataUrl.match(/^data:image\/([^;,]+)/)?.[1] || batch?.config?.format || 'png'}`;
+    link.href = objectUrl;
+    link.download = `orbit-${(batch?.batchId || 'image')}-${image.id || '1'}.${format}`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     showToast('原图下载已开始');
   } catch (error) { showErrorToast('原图下载失败, 请检查图片地址是否允许跨域'); }
 }
@@ -3836,12 +4147,13 @@ function handleImagePromptPaste(event) {
 }
 
 function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
+  const fallback = () => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+  return runImageWorker('fileToDataUrl', { file }).catch(fallback);
 }
 
 function remapImageMentions(prompt, indexMap) {
@@ -4696,6 +5008,7 @@ async function clearLocalData() {
   if (!scope) return;
   const label = scope === 'all' ? '全部数据' : getExportScopeLabel(scope);
   if (!window.confirm(`清除${label}?\n\n${scope === 'config' ? '会删除接口配置、模板和模型列表。' : scope === 'workspace' ? '会删除对话和生图记录, 保留接口配置。' : scope === 'chat' ? '会删除对话及其未被生图工作区引用的图片。' : scope === 'image' ? '会删除生图记录及其未被对话引用的图片。' : '会删除对话、生图记录、图片缓存、接口配置和模板。'}`)) return;
+  if (scope !== 'config') compressedRequestImageCache.clear();
   if (scope === 'image' || scope === 'workspace' || scope === 'all') localDataGeneration += 1;
   if (scope === 'chat' || scope === 'workspace' || scope === 'all') {
     requestController?.abort();

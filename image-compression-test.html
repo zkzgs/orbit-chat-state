@@ -116,11 +116,35 @@
       return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('浏览器无法压缩这张图片')), type, quality));
     }
 
+    async function findImageCompressionCandidate(encode, targetBytes) {
+      let low = .01;
+      let high = 1;
+      const highestQuality = await encode(high);
+      if (highestQuality.type !== 'image/webp') throw new Error('当前浏览器不支持 WebP 压缩');
+      if (highestQuality.size <= targetBytes) return { blob: highestQuality, quality: 1, targetReached: true };
+      let candidateQuality = low;
+      let candidate = await encode(low);
+      if (candidate.type !== 'image/webp') throw new Error('当前浏览器不支持 WebP 压缩');
+      if (candidate.size <= targetBytes) {
+        for (let attempt = 0; attempt < 9; attempt += 1) {
+          const quality = (low + high) / 2;
+          const blob = await encode(quality);
+          if (blob.size <= targetBytes) {
+            candidate = blob;
+            candidateQuality = quality;
+            low = quality;
+          } else high = quality;
+        }
+      }
+      return { blob: candidate, quality: Number(candidateQuality.toFixed(3)), targetReached: candidate.size <= targetBytes };
+    }
+
     async function compressRequestImage(reference, enabled, limitMb) {
       const originalFile = reference.file;
       const targetBytes = Math.round(limitMb * 1024 * 1024);
       const originalMeta = { name: originalFile.name, originalSize: originalFile.size, submittedSize: originalFile.size, originalType: originalFile.type, submittedType: originalFile.type, compressed: false, strategy: 'original', targetBytes, targetReached: originalFile.size <= targetBytes, dimensionsPreserved: true };
       if (!enabled || originalFile.size <= targetBytes) return { file: originalFile, meta: originalMeta };
+      if (originalFile.type === 'image/gif') return { file: originalFile, meta: { ...originalMeta, strategy: 'preserve-animation', targetReached: false } };
       const cacheKey = `${getImageIdentity(reference.data)}|compress:${targetBytes}`;
       if (compressedRequestImageCache.has(cacheKey)) return compressedRequestImageCache.get(cacheKey);
       const task = (async () => {
@@ -132,25 +156,10 @@
           canvas.width = originalWidth;
           canvas.height = originalHeight;
           canvas.getContext('2d').drawImage(bitmap, 0, 0, originalWidth, originalHeight);
-          let low = .01;
-          let high = .9;
-          let candidateQuality = low;
-          let candidate = await canvasToImageBlob(canvas, 'image/webp', low);
-          if (candidate.type !== 'image/webp') throw new Error('当前浏览器不支持 WebP 压缩');
-          if (candidate.size <= targetBytes) {
-            for (let attempt = 0; attempt < 8; attempt += 1) {
-              const quality = (low + high) / 2;
-              const blob = await canvasToImageBlob(canvas, 'image/webp', quality);
-              if (blob.size <= targetBytes) {
-                candidate = blob;
-                candidateQuality = quality;
-                low = quality;
-              } else high = quality;
-            }
-          }
+          const { blob: candidate, quality: candidateQuality, targetReached } = await findImageCompressionCandidate((quality) => canvasToImageBlob(canvas, 'image/webp', quality), targetBytes);
           if (candidate.size >= originalFile.size) return { file: originalFile, meta: { ...originalMeta, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight } };
           const submittedFile = new File([candidate], `${originalFile.name.replace(/\.[^.]+$/, '') || 'image'}-compressed.webp`, { type: 'image/webp', lastModified: originalFile.lastModified });
-          return { file: submittedFile, meta: { ...originalMeta, submittedSize: submittedFile.size, submittedType: submittedFile.type, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, compressed: true, strategy: 'quality-only', quality: Number(candidateQuality.toFixed(3)), targetReached: submittedFile.size <= targetBytes } };
+          return { file: submittedFile, meta: { ...originalMeta, submittedSize: submittedFile.size, submittedType: submittedFile.type, originalWidth, originalHeight, submittedWidth: originalWidth, submittedHeight: originalHeight, compressed: true, strategy: 'quality-only', quality: candidateQuality, targetReached } };
         } finally {
           bitmap.close();
         }
@@ -205,13 +214,14 @@
         const comparison = result.querySelector('.comparison');
         comparison.append(createPreview('本地原图', originalUrl, file, originalDimensions), createPreview('接口提交副本', submittedUrl, compressed.file, submittedDimensions));
         const savedRatio = file.size ? Math.max(0, 1 - compressed.file.size / file.size) : 0;
-        const targetMissed = enabled && !compressed.meta.targetReached;
+        const animationPreserved = compressed.meta.strategy === 'preserve-animation';
+        const targetMissed = enabled && !compressed.meta.targetReached && !animationPreserved;
         const status = result.querySelector('.status');
         status.classList.toggle('success', !targetMissed);
-        status.textContent = targetMissed ? `保持尺寸, 未达到 ${limitMb}MB` : compressed.meta.compressed ? `已压缩至 ${formatBytes(compressed.file.size)}` : enabled ? '低于目标, 未处理' : '压缩已关闭';
+        status.textContent = animationPreserved ? 'GIF 保留动画, 未压缩' : targetMissed ? `保持尺寸, 未达到 ${limitMb}MB` : compressed.meta.compressed ? `已压缩至 ${formatBytes(compressed.file.size)}` : enabled ? '低于目标, 未处理' : '压缩已关闭';
         const foot = result.querySelector('.result-foot');
         foot.hidden = false;
-        foot.querySelector('span').textContent = compressed.meta.compressed ? `分辨率保持 ${originalDimensions.width} x ${originalDimensions.height}, 体积减少 ${(savedRatio * 100).toFixed(1)}%, 质量 ${compressed.meta.quality}` : '提交副本与原图一致, 分辨率未改变';
+        foot.querySelector('span').textContent = animationPreserved ? '提交原始 GIF, 动画帧和分辨率均保持不变' : compressed.meta.compressed ? `分辨率保持 ${originalDimensions.width} x ${originalDimensions.height}, 体积减少 ${(savedRatio * 100).toFixed(1)}%, 质量 ${compressed.meta.quality}` : '提交副本与原图一致, 分辨率未改变';
         foot.querySelector('button').addEventListener('click', () => {
           const link = document.createElement('a');
           link.href = submittedUrl;
