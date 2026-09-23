@@ -1078,6 +1078,11 @@ let activePolishMentionInput = null;
 let currentImage = null;
 let imageTasks = [];
 let imageTaskTimer = null;
+let imageHistoryRenderTimer = 0;
+let historyImageObserver = null;
+let messageImageObserver = null;
+const imageTaskPersistTimers = new Map();
+let imageHistoryReady = Promise.resolve();
 let localDataGeneration = 0;
 let imageHistoryView = 'group';
 let imageSizeDraft = null;
@@ -1388,7 +1393,7 @@ async function loadImageHistory() {
   } catch (error) {
     imageHistory = [];
   }
-  restoreActiveImagePromptTemplate();
+  await restoreActiveImagePromptTemplate();
 }
 
 async function deleteGenerationRecord(batchId = '', taskId = '') {
@@ -1433,9 +1438,19 @@ async function clearStoredImages() {
   storedImages.clear();
   imageHistory = [];
   compressedRequestImageCache.clear();
+  imageTaskPersistTimers.forEach((timer) => window.clearTimeout(timer));
+  imageTaskPersistTimers.clear();
 }
 
 function renderImageHistory() {
+  if (imageHistoryRenderTimer) return;
+  imageHistoryRenderTimer = window.setTimeout(() => {
+    imageHistoryRenderTimer = 0;
+    renderImageHistoryNow();
+  }, 50);
+}
+
+function renderImageHistoryNow() {
   const section = $('#imageHistorySection');
   const list = $('#imageHistory');
   if (!section || !list) return;
@@ -1446,6 +1461,7 @@ function renderImageHistory() {
   const items = getGenerationTimelineEntries();
   $('#imageHistoryCount').textContent = items.length;
   list.innerHTML = items.length ? items.map(renderGenerationRecord).join('') : '<div class="history-empty">生成任务和图片会显示在这里</div>';
+  hydrateDeferredImages(list, 'history');
   list.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
   $$('.generation-record-delete').forEach((button) => button.addEventListener('click', () => deleteGenerationRecord(button.dataset.historyId, button.dataset.taskId)));
   $$('.history-image-button').forEach((button) => button.addEventListener('click', (event) => {
@@ -1462,8 +1478,7 @@ function renderImageHistory() {
     if (button.dataset.historyAction === 'edit') editGeneratedImage(batch);
     if (button.dataset.historyAction === 'new-chat') copyImageToNewChat(image, batch);
   }));
-  $$('[data-generation-action="reuse-task"]').forEach((button) => button.addEventListener('click', () => restoreImageTask(button.dataset.taskId)));
-  $$('[data-generation-action="audit"]').forEach((button) => button.addEventListener('click', () => openImageTaskAudit(button.dataset.taskId)));
+  bindGenerationTaskActions(list);
   $$('.history-select').forEach((checkbox) => checkbox.addEventListener('click', (event) => event.stopPropagation()));
   $$('.history-select').forEach((checkbox) => checkbox.addEventListener('change', () => {
     const nextSelection = new Set(selectedHistoryKeys);
@@ -1473,6 +1488,11 @@ function renderImageHistory() {
   $$('.history-view-toggle button').forEach((button) => button.classList.toggle('active', button.dataset.historyView === imageHistoryView));
   bindHistorySelecto();
   updateHistorySelectionBar();
+}
+
+function bindGenerationTaskActions(root) {
+  root.querySelectorAll('[data-generation-action="reuse-task"]').forEach((button) => button.addEventListener('click', () => restoreImageTask(button.dataset.taskId)));
+  root.querySelectorAll('[data-generation-action="audit"]').forEach((button) => button.addEventListener('click', () => openImageTaskAudit(button.dataset.taskId)));
 }
 
 function getGenerationTimelineEntries() {
@@ -1507,7 +1527,7 @@ function renderGenerationRecord({ task, batch, image, index }) {
   const detail = task?.detail || `已生成 ${images.length} 张图片`;
   const requestRecord = task && (task.requestLog || task.responses?.length || task.error) ? { request: task.requestLog || null, responses: task.responses || [], error: task.error || null } : null;
   if (selectable) {
-    const thumbs = isGroup ? `<div class="history-item-thumb-grid">${images.slice(0, 4).map((entry) => `<img src="${escapeHtml(entry.src)}" alt="${escapeHtml(title)}" draggable="false">`).join('')}</div>` : `<img src="${escapeHtml(image?.src || images[0].src)}" alt="${escapeHtml(title)}" draggable="false">`;
+    const thumbs = isGroup ? `<div class="history-item-thumb-grid">${images.slice(0, 4).map((entry) => `<img data-image-id="${escapeHtml(entry.id)}" alt="${escapeHtml(title)}" decoding="async" draggable="false">`).join('')}</div>` : `<img data-image-id="${escapeHtml(image?.id || images[0].id)}" alt="${escapeHtml(title)}" decoding="async" draggable="false">`;
     const countText = `<span class="history-item-batch">数量 ${images.length}</span>`;
     const statusText = status === 'partial' ? ' · 部分完成' : '';
     const actions = isGroup ? `${historyActionButton('config', '复制配置', '配置', batch.id)}${historyActionButton('download', '下载首图', '下载', batch.id)}${historyActionButton('download-all', '下载全部', '全下', batch.id)}${historyActionButton('edit', '编辑输出', '编辑', batch.id)}${historyActionButton('new-chat', '放入对话', '对话', batch.id)}` : `${historyActionButton('config', '复制配置', '配置', batch.id)}${historyActionButton('download', '下载原图', '下载', batch.id, index)}${historyActionButton('edit', '编辑输出', '编辑', batch.id)}${historyActionButton('new-chat', '放入对话', '对话', batch.id, index)}`;
@@ -1530,12 +1550,12 @@ function closeImageTaskAudit() {
   $('#taskAuditBackdrop').hidden = true;
 }
 
-function restoreImageTask(taskId) {
+async function restoreImageTask(taskId) {
   const task = imageTasks.find((entry) => entry.id === taskId);
   if (!task) return;
   setImagePromptText(task.prompt || '');
   setImageConfig(task.config || {});
-  setImageReferencesFromSources((task.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean));
+  await setImageReferencesFromSources((task.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean));
   $('#imagePrompt').focus();
   showToast(task.status === 'error' ? '已恢复失败任务, 可以修改关键词后重试' : '已同步这条生成配置');
 }
@@ -2042,6 +2062,34 @@ async function deleteConversation(id) {
   showToast('对话已删除');
 }
 
+function hydrateDeferredImages(root, observerName) {
+  const previousObserver = observerName === 'history' ? historyImageObserver : messageImageObserver;
+  previousObserver?.disconnect();
+  const images = [...root.querySelectorAll('img[data-image-id]')];
+  if (!images.length) return;
+  if (!('IntersectionObserver' in window)) {
+    images.forEach((image) => {
+      const source = storedImages.get(image.dataset.imageId)?.src;
+      if (source) image.src = source;
+      image.removeAttribute('data-image-id');
+    });
+    return;
+  }
+  const observer = new IntersectionObserver((entries, activeObserver) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      const image = entry.target;
+      const source = storedImages.get(image.dataset.imageId)?.src;
+      if (source) image.src = source;
+      image.removeAttribute('data-image-id');
+      activeObserver.unobserve(image);
+    });
+  }, { root: observerName === 'history' && getComputedStyle(root).overflowY === 'auto' ? root : $('.content-stage'), rootMargin: '300px' });
+  images.forEach((image) => observer.observe(image));
+  if (observerName === 'history') historyImageObserver = observer;
+  else messageImageObserver = observer;
+}
+
 function renderMessages() {
   const conversation = activeConversation();
   const list = $('#messageList');
@@ -2050,11 +2098,12 @@ function renderMessages() {
   $('#exportCurrentConversation').disabled = !hasMessages;
   $('#welcomePanel').hidden = hasMessages;
   list.innerHTML = conversation.messages.map((message) => {
-    const imageSources = getMessageImageRecords(message).map((record) => record.src);
-  const image = imageSources.map((src, index) => `<button class="message-image-button" data-message-image="${encodeURIComponent(src)}" aria-label="预览消息图片"><img class="message-image" src="${escapeHtml(src)}" alt="用户上传的图片 ${index + 1}"></button>`).join('');
+    const imageRecords = getMessageImageRecords(message);
+  const image = imageRecords.map((record, index) => `<button class="message-image-button" data-image-id="${escapeHtml(record.id)}" aria-label="预览消息图片"><img class="message-image" data-image-id="${escapeHtml(record.id)}" alt="用户上传的图片 ${index + 1}" decoding="async"></button>`).join('');
     const editAction = message.role === 'user' ? `<button class="message-action edit-message" data-message-id="${message.id}">修改</button>` : '';
     return `<article class="message ${message.role}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div><div class="message-text markdown-body">${renderMarkdown(message.content)}</div>${image}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
   }).join('');
+  hydrateDeferredImages(list, 'messages');
   $$('.copy-message').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard?.writeText(decodeURIComponent(button.dataset.message));
     showToast('已复制到剪贴板');
@@ -2063,8 +2112,9 @@ function renderMessages() {
   $$('.delete-message').forEach((button) => button.addEventListener('click', () => deleteMessage(button.dataset.messageId)));
   $$('.message-image-button').forEach((button) => button.addEventListener('click', () => {
     const buttons = [...button.parentElement.querySelectorAll('.message-image-button')];
-    const sources = buttons.map((item) => decodeURIComponent(item.dataset.messageImage));
-    openChatImageViewer(decodeURIComponent(button.dataset.messageImage), sources, buttons.indexOf(button));
+    const sources = buttons.map((item) => storedImages.get(item.dataset.imageId)?.src).filter(Boolean);
+    const source = storedImages.get(button.dataset.imageId)?.src;
+    if (source) openChatImageViewer(source, sources, buttons.indexOf(button));
   }));
   $$('.markdown-inline-image').forEach((image) => image.addEventListener('click', () => {
     const images = [...image.closest('.message-content').querySelectorAll('.markdown-inline-image')];
@@ -2779,6 +2829,7 @@ function setView(view) {
     $('#sidebar').classList.remove('open');
   }
   $('#workspaceTitle').textContent = view === 'image' ? '生图工作区' : activeConversation().title;
+  hydrateDeferredImages(view === 'image' ? $('#imageHistory') : $('#messageList'), view === 'image' ? 'history' : 'messages');
 }
 
 function createMessage(role, content, imageIds = []) {
@@ -2856,7 +2907,7 @@ async function buildRequestMessages() {
         } catch {
           throw new Error('历史消息中的远程图片无法读取, 请开启本地代理或重新上传本地图片');
         }
-        return { data, file: dataUrlToFile(data, record.name || `chat-image-${index + 1}.png`) };
+        return { data, name: record.name || `chat-image-${index + 1}.png`, file: null };
       }));
       imageSources = (await prepareRequestImages(references, true, state.settings.requestImageCompressionLimitMb, null, true)).map((reference) => reference.data);
     }
@@ -2883,7 +2934,10 @@ async function sendMessage() {
     persist();
   }
   const imageIds = [];
-  for (const attachment of attachments) imageIds.push(attachment.imageId || await saveChatImage(attachment.data, attachment.name));
+  for (const attachment of attachments) {
+    imageIds.push(attachment.imageId || await saveChatImage(attachment.data, attachment.name));
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+  }
   addMessage(createMessage('user', content || '请分析这些图片', imageIds));
   $('#sendButton').disabled = true;
   $('#typingIndicator').hidden = false;
@@ -2917,6 +2971,7 @@ function demoReply(content, hasImage) {
 async function requestChat() {
   const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
   const messages = await buildRequestMessages();
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
   const body = { model: state.settings.chatModel, messages, temperature: 0.7, stream: false };
   const webSearchRequested = Boolean(state.settings.chatWebSearch);
   if (webSearchRequested) body.web_search_options = {};
@@ -2937,6 +2992,7 @@ async function requestChat() {
   let payload;
   let webSearchFallback = false;
   response = await sendRequest();
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
   payload = await response.json();
   if (!response.ok && webSearchRequested && [400, 404, 422].includes(response.status)) {
     delete body.web_search_options;
@@ -3187,14 +3243,14 @@ async function editGeneratedImage(item) {
   }
 }
 
-function dataUrlToFile(dataUrl, name) {
-  const [header, encoded] = dataUrl.split(',');
-  const mime = header.match(/data:(.*?);/)?.[1] || 'image/png';
-  if (!header.includes(';base64')) return new File([decodeURIComponent(encoded)], name, { type: mime });
-  const binary = atob(encoded);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return new File([bytes], name, { type: mime });
+async function dataUrlToFile(dataUrl, name) {
+  let blob;
+  try {
+    blob = await runImageWorker('dataUrlToBlob', { dataUrl });
+  } catch {
+    blob = await fetch(dataUrl).then((response) => response.blob());
+  }
+  return new File([blob], name, { type: blob.type || 'application/octet-stream' });
 }
 
 function canvasToImageBlob(canvas, type, quality) {
@@ -3253,9 +3309,12 @@ async function prepareRequestImages(references, enabled, limitMb, onProgress, in
   const prepared = [];
   for (let index = 0; index < references.length; index += 1) {
     onProgress?.(index, references.length);
-    const result = await compressRequestImage(references[index], enabled, limitMb);
-    const data = includeData && result.file !== references[index].file ? await fileToDataUrl(result.file) : references[index].data;
-    prepared.push({ ...references[index], data, file: result.file, submissionMeta: result.meta });
+    const reference = references[index];
+    const file = reference.file || await dataUrlToFile(reference.data, reference.name || `reference-${index + 1}.png`);
+    const result = await compressRequestImage({ ...reference, file }, enabled, limitMb);
+    const data = includeData && result.file !== file ? await fileToDataUrl(result.file) : reference.data;
+    prepared.push({ ...reference, data, file: result.file, submissionMeta: result.meta });
+    await yieldToBrowser();
   }
   onProgress?.(references.length, references.length);
   return prepared;
@@ -3290,6 +3349,11 @@ async function saveGeneratedImage(record, generationToken = localDataGeneration)
   }
   renderImageHistory();
   return storedRecord;
+}
+
+async function yieldToBrowser() {
+  if (window.scheduler?.yield) await window.scheduler.yield();
+  else await new Promise((resolve) => window.setTimeout(resolve, 0));
 }
 
 async function readImageDetails(src) {
@@ -3364,11 +3428,16 @@ async function presentGeneratedImages(imageDataList, prompt, config, referenceSo
   records.forEach((record) => storedImages.set(record.id, record));
   renderImageHistory();
 
-  // 缩略图先显示, 大图继续在后台写入本地历史
-  Promise.allSettled(records.map((record) => saveGeneratedImage(record, generationToken))).then((results) => {
-    if (results.some((result) => result.status === 'rejected')) showErrorToast('图片已生成, 但部分图片无法写入本地历史');
-  });
+  // 缩略图先显示, 分帧写入详情以避免手机同时解码多张大图
+  persistGeneratedImages(records, generationToken).catch(() => showErrorToast('图片已生成, 但部分图片无法写入本地历史'));
   return batch;
+}
+
+async function persistGeneratedImages(records, generationToken) {
+  for (const record of records) {
+    await yieldToBrowser();
+    await saveGeneratedImage(record, generationToken);
+  }
 }
 
 function stripImageAuditMetadata(metadata = {}) {
@@ -3692,17 +3761,21 @@ async function getStoredImagePromptReferenceIds() {
 function setImagePromptReferencesFromIds(imageIds) {
   imageReferences = (imageIds || []).map((imageId, index) => {
     const data = storedImages.get(imageId)?.src;
-    return data ? { imageId, data, file: dataUrlToFile(data, `image-prompt-reference-${index + 1}.png`) } : null;
+    return data ? { imageId, data, name: `image-prompt-reference-${index + 1}.png`, file: null } : null;
   }).filter(Boolean);
   renderImageReferences();
 }
 
-function selectImagePromptTemplate(templateId) {
+async function selectImagePromptTemplate(templateId) {
+  await imageHistoryReady;
   const template = getImagePromptTemplates().find((item) => item.id === templateId);
   state.settings.activeImagePromptTemplateId = template?.id || '';
   if (template) {
+    const templateImageIds = template.referenceImageIds.filter((imageId) => storedImages.has(imageId));
+    const templateImageCount = template.referenceImageIds.length;
+    const shouldApplyTemplateImages = !templateImageCount || !imageReferences.length || window.confirm(`当前已有 ${imageReferences.length} 张参考图, 此模板包含 ${templateImageCount} 张参考图。是否用模板图片覆盖当前列表?\n\n选择“取消”会保留当前图片, 仍应用模板关键词。`);
     setImagePromptText(template.prompt);
-    setImagePromptReferencesFromIds(template.referenceImageIds);
+    if (shouldApplyTemplateImages) setImagePromptReferencesFromIds(templateImageIds);
   }
   persist();
   renderImagePromptTemplates();
@@ -3794,7 +3867,8 @@ function renderPolishReferenceList(references, previewSelector, hintSelector, la
   const kind = previewSelector === '#polishGenerationReferencePreview' ? 'generation' : 'polish';
   $(hintSelector).textContent = sources.length ? `${sources.length} 张参考图` : '未添加参考图';
   preview.hidden = sources.length === 0;
-  preview.innerHTML = sources.map((src, index) => `<div class="polish-reference-item" data-order-index="${index}" draggable="true"><button class="polish-reference-thumb" type="button" data-polish-reference-index="${index}" title="预览${label} ${index + 1}" aria-label="预览${label} ${index + 1}"><img src="${escapeHtml(src)}" alt="${label} ${index + 1}" draggable="false"><span class="polish-reference-badge">${label.replace('参考图', '')} ${index + 1}</span></button><button class="replace-polish-reference" type="button" data-polish-reference-replace="${index}" title="更换${label} ${index + 1}" aria-label="更换${label} ${index + 1}">↻</button><button class="remove-polish-reference" type="button" data-polish-reference-remove="${index}" title="移除${label} ${index + 1}" aria-label="移除${label} ${index + 1}">×</button></div>`).join('');
+  preview.innerHTML = sources.map((src, index) => `<div class="polish-reference-item" data-order-index="${index}" draggable="true"><button class="polish-reference-thumb" type="button" data-polish-reference-index="${index}" title="预览${label} ${index + 1}" aria-label="预览${label} ${index + 1}"><img alt="${label} ${index + 1}" draggable="false" decoding="async"><span class="polish-reference-badge">${label.replace('参考图', '')} ${index + 1}</span></button><button class="replace-polish-reference" type="button" data-polish-reference-replace="${index}" title="更换${label} ${index + 1}" aria-label="更换${label} ${index + 1}">↻</button><button class="remove-polish-reference" type="button" data-polish-reference-remove="${index}" title="移除${label} ${index + 1}" aria-label="移除${label} ${index + 1}">×</button></div>`).join('');
+  preview.querySelectorAll('.polish-reference-thumb img').forEach((image, index) => { image.src = sources[index]; });
   preview.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
   preview.querySelectorAll('[data-polish-reference-index]').forEach((button) => button.addEventListener('click', () => {
     const index = Number(button.dataset.polishReferenceIndex) || 0;
@@ -3868,10 +3942,16 @@ function appendUniqueImageItems(current, incoming, limit = 16) {
 async function appendPolishReferenceFiles(files, references, renderPreview) {
   const incomingFiles = [...files].filter((file) => file.type.startsWith('image/')).slice(0, 16 - references.length);
   if (incomingFiles.length) {
-    const incoming = await Promise.all(incomingFiles.map(async (file) => ({ file, data: await fileToDataUrl(file) })));
-    const result = appendUniqueImageItems(references, incoming);
-    references.splice(0, references.length, ...result.items);
-    if (result.duplicateCount) showWarningToast(`已忽略 ${result.duplicateCount} 张重复图片`);
+    let duplicateCount = 0;
+    for (const file of incomingFiles) {
+      const data = await fileToDataUrl(file);
+      const result = appendUniqueImageItems(references, [{ file, data }]);
+      references.splice(0, references.length, ...result.items);
+      duplicateCount += result.duplicateCount;
+      renderPreview();
+      await yieldToBrowser();
+    }
+    if (duplicateCount) showWarningToast(`已忽略 ${duplicateCount} 张重复图片`);
   }
   renderPreview();
   resetPolishSuggestion();
@@ -3895,6 +3975,17 @@ async function addPolishReferenceFiles(files, target = 'polish') {
     return;
   }
   await appendPolishReferenceFiles(files, references, renderPreview);
+}
+
+async function prepareImageItemsForRequest(references) {
+  const prepared = [];
+  for (let index = 0; index < references.length; index += 1) {
+    const reference = references[index];
+    const file = reference.file || await dataUrlToFile(reference.data, reference.name || `reference-${index + 1}.png`);
+    prepared.push({ ...reference, file });
+    await yieldToBrowser();
+  }
+  return prepared;
 }
 
 function handlePolishReferencePaste(event, target) {
@@ -3927,7 +4018,7 @@ async function getStoredPolishReferenceIds() {
 function setPolishReferencesFromIds(imageIds) {
   polishReferences = (imageIds || []).map((imageId, index) => {
     const data = storedImages.get(imageId)?.src;
-    return data ? { imageId, data, file: dataUrlToFile(data, `polish-reference-${index + 1}.png`) } : null;
+    return data ? { imageId, data, name: `polish-reference-${index + 1}.png`, file: null } : null;
   }).filter(Boolean);
   renderPolishReferencePreview();
 }
@@ -4072,7 +4163,7 @@ async function generatePolishResult() {
       result = `${sourceInput || '请根据参考图生成生图关键词'}\n\n${instructionInput}`;
       $('#polishStatus').textContent = referenceCount ? '演示建议（未分析参考图）' : '演示建议';
     } else {
-      const requestReferences = [...generationReferences, ...polishRequestReferences];
+      const requestReferences = await prepareImageItemsForRequest([...generationReferences, ...polishRequestReferences]);
       const preparedReferences = requestReferences.length ? await prepareRequestImages(requestReferences, state.settings.compressRequestImages, state.settings.requestImageCompressionLimitMb, (completed, total) => {
         $('#polishStatus').textContent = `准备参考图 ${completed}/${total}`;
       }, true) : [];
@@ -4103,7 +4194,8 @@ async function applyPolishResult() {
   if (!result) { showErrorToast('还没有可使用的润色结果'); return; }
   savePolishInstructionDraft();
   setImagePromptText(result);
-  await setImageReferencesFromSources(polishGenerationReferences.map((reference) => reference.data));
+  imageReferences = polishGenerationReferences.map((reference) => ({ ...reference }));
+  renderImageReferences();
   clearPolishReferences();
   $('#promptPolishBackdrop').hidden = true;
   $('#imagePrompt').focus();
@@ -4132,11 +4224,16 @@ async function addImageReferenceFiles(files) {
   }
   const incomingFiles = [...files].filter((file) => file.type.startsWith('image/')).slice(0, 16 - imageReferences.length);
   if (!incomingFiles.length) return;
-  const references = await Promise.all(incomingFiles.map(async (file) => ({ file, data: await fileToDataUrl(file) })));
-  const result = appendUniqueImageItems(imageReferences, references);
-  imageReferences = result.items;
-  renderImageReferences();
-  if (result.duplicateCount) showWarningToast(`已忽略 ${result.duplicateCount} 张重复图片`);
+  let duplicateCount = 0;
+  for (const file of incomingFiles) {
+    const data = await fileToDataUrl(file);
+    const result = appendUniqueImageItems(imageReferences, [{ file, data }]);
+    imageReferences = result.items;
+    duplicateCount += result.duplicateCount;
+    renderImageReferences();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+  }
+  if (duplicateCount) showWarningToast(`已忽略 ${duplicateCount} 张重复图片`);
 }
 
 function handleImagePromptPaste(event) {
@@ -4568,7 +4665,8 @@ function getSubmittedPolishText(text, input) {
 function renderImageReferences() {
   const preview = $('#imageReferencePreview');
   preview.hidden = imageReferences.length === 0;
-  preview.innerHTML = imageReferences.map((reference, index) => `<div class="reference-preview-item" data-order-index="${index}" draggable="true"><img src="${escapeHtml(reference.data)}" alt="生图参考图 ${index + 1}" draggable="false"><span class="reference-preview-index">${index + 1}</span><button type="button" class="replace-reference" data-reference-index="${index}" title="更换参考图 ${index + 1}" aria-label="更换参考图 ${index + 1}">↻</button><button type="button" class="remove-reference" data-reference-index="${index}" title="移除参考图 ${index + 1}" aria-label="移除参考图 ${index + 1}">×</button></div>`).join('');
+  preview.innerHTML = imageReferences.map((reference, index) => `<div class="reference-preview-item" data-order-index="${index}" draggable="true"><img alt="生图参考图 ${index + 1}" draggable="false" decoding="async"><span class="reference-preview-index">${index + 1}</span><button type="button" class="replace-reference" data-reference-index="${index}" title="更换参考图 ${index + 1}" aria-label="更换参考图 ${index + 1}">↻</button><button type="button" class="remove-reference" data-reference-index="${index}" title="移除参考图 ${index + 1}" aria-label="移除参考图 ${index + 1}">×</button></div>`).join('');
+  preview.querySelectorAll('.reference-preview-item img').forEach((image, index) => { image.src = imageReferences[index].data; });
   preview.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
   preview.querySelectorAll('.remove-reference').forEach((button) => button.addEventListener('click', () => {
     const index = Number(button.dataset.referenceIndex);
@@ -4608,7 +4706,7 @@ async function replaceReferenceFile(event, references, renderPreview) {
     showWarningToast('这张图片已在当前参考图列表中');
     return;
   }
-  references[index] = { file, data };
+  references[index] = { ...references[index], file, data };
   renderPreview();
 }
 
@@ -4635,7 +4733,26 @@ function updateImageTask(id, patch) {
   Object.assign(task, patch);
   const storedTask = createStoredImageTask(task);
   storedImages.set(storedTask.id, storedTask);
-  saveImageHistory(storedTask).catch(() => {});
+  const pendingTimer = imageTaskPersistTimers.get(id);
+  if (pendingTimer) window.clearTimeout(pendingTimer);
+  if (task.status === 'running') {
+    imageTaskPersistTimers.set(id, window.setTimeout(() => {
+      imageTaskPersistTimers.delete(id);
+      saveImageHistory(createStoredImageTask(task)).catch(() => {});
+    }, 180));
+  } else {
+    imageTaskPersistTimers.delete(id);
+    saveImageHistory(storedTask).catch(() => {});
+  }
+  const currentCard = $('#imageHistory').querySelector(`.generation-task-card[data-task-id="${id}"]`);
+  if (currentCard && task.status === 'running' && patch.status === undefined) {
+    const replacement = document.createElement('div');
+    replacement.innerHTML = renderGenerationRecord({ task, batch: imageHistory.find((batch) => batch.id === task.batchId) || null, image: null, index: 0 });
+    const nextCard = replacement.firstElementChild;
+    currentCard.replaceWith(nextCard);
+    bindGenerationTaskActions(nextCard);
+    return;
+  }
   renderImageHistory();
 }
 
@@ -4659,7 +4776,7 @@ function recordImageTaskResponse(taskId, requestIndex, response) {
 }
 
 async function setImageReferencesFromSources(sources, replace = true) {
-  const incoming = sources.slice(0, 16).map((data, index) => ({ data, file: dataUrlToFile(data, `reference-${Date.now()}-${index}.png`) }));
+  const incoming = sources.slice(0, 16).map((data) => ({ data, file: null }));
   imageReferences = appendUniqueImageItems(replace ? [] : imageReferences, incoming).items;
   renderImageReferences();
 }
@@ -5009,7 +5126,11 @@ async function clearLocalData() {
   const label = scope === 'all' ? '全部数据' : getExportScopeLabel(scope);
   if (!window.confirm(`清除${label}?\n\n${scope === 'config' ? '会删除接口配置、模板和模型列表。' : scope === 'workspace' ? '会删除对话和生图记录, 保留接口配置。' : scope === 'chat' ? '会删除对话及其未被生图工作区引用的图片。' : scope === 'image' ? '会删除生图记录及其未被对话引用的图片。' : '会删除对话、生图记录、图片缓存、接口配置和模板。'}`)) return;
   if (scope !== 'config') compressedRequestImageCache.clear();
-  if (scope === 'image' || scope === 'workspace' || scope === 'all') localDataGeneration += 1;
+  if (scope === 'image' || scope === 'workspace' || scope === 'all') {
+    localDataGeneration += 1;
+    imageTaskPersistTimers.forEach((timer) => window.clearTimeout(timer));
+    imageTaskPersistTimers.clear();
+  }
   if (scope === 'chat' || scope === 'workspace' || scope === 'all') {
     requestController?.abort();
     requestController = null;
@@ -5267,10 +5388,15 @@ async function addChatImageFiles(files) {
   }
   const incomingFiles = [...files].filter((file) => file.type.startsWith('image/')).slice(0, 16 - pendingAttachments.length);
   if (!incomingFiles.length) return;
-  const items = await Promise.all(incomingFiles.map(async (file) => ({ data: await fileToDataUrl(file), name: file.name || '图片' })));
-  const result = appendUniqueImageItems(pendingAttachments, items);
-  setChatAttachments(result.items);
-  if (result.duplicateCount) showWarningToast(`已忽略 ${result.duplicateCount} 张重复图片`);
+  let duplicateCount = 0;
+  for (const file of incomingFiles) {
+    const data = await fileToDataUrl(file);
+    const result = appendUniqueImageItems(pendingAttachments, [{ data, file, name: file.name || '图片' }]);
+    duplicateCount += result.duplicateCount;
+    setChatAttachments(result.items);
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+  }
+  if (duplicateCount) showWarningToast(`已忽略 ${duplicateCount} 张重复图片`);
 }
 
 async function insertTextFile(file) {
@@ -5578,7 +5704,7 @@ function bindEvents() {
 
 bindEvents();
 render();
-loadImageHistory();
+imageHistoryReady = loadImageHistory();
 if (state.settings.chatApiKey && state.settings.chatBaseUrl) loadModels('chat');
 if (state.settings.imageApiKey && state.settings.imageBaseUrl) loadModels('image');
 
