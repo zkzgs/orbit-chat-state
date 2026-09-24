@@ -32,6 +32,9 @@ input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
 input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 button { color: inherit; cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not(:disabled):hover,
+textarea:not(:disabled):hover,
+select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 
 .app-shell { min-height: 0; flex: 1; display: flex; overflow: hidden; background: #0e1622; }
 .sidebar { width: 274px; flex: 0 0 274px; height: 100%; display: flex; flex-direction: column; padding: 24px 14px 16px; background: #0d1623; border-right: 1px solid var(--line); }
@@ -95,9 +98,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .chat-conversation-tools button { min-height: 29px; padding: 0 10px; border: 1px solid var(--line); border-radius: 5px; background: rgba(255,255,255,.025); color: var(--muted); font-size: 10px; }
 .chat-conversation-tools button:hover { border-color: rgba(116,212,203,.45); background: rgba(116,212,203,.06); color: var(--ink); }
 .chat-conversation-tools button:disabled { cursor: default; opacity: .35; }
-.conversation-export-menu { position: relative; display: flex; gap: 3px; }
-.conversation-export-menu > button:first-child { border-radius: 5px 0 0 5px; }
-.conversation-export-toggle { padding-right: 8px !important; padding-left: 8px !important; border-radius: 0 5px 5px 0 !important; }
+.conversation-export-menu { position: relative; }
+.conversation-export-toggle { display: flex; align-items: center; gap: 7px; }
+.conversation-export-toggle::after { color: var(--muted-2); content: "▾"; font-size: 9px; }
 .conversation-export-options { position: absolute; top: calc(100% + 5px); right: 0; z-index: 12; min-width: 145px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: #162235; box-shadow: 0 12px 28px rgba(0,0,0,.3); }
 .conversation-export-options[hidden] { display: none; }
 .conversation-export-options button { display: block; width: 100%; padding: 8px 9px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); text-align: left; }
@@ -268,8 +271,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .lightbox-header h2 { margin: 5px 0 0; font-size: 16px; }
 .lightbox-image-wrap { min-height: 0; flex: 1; display: grid; place-items: center; padding: 18px; background: #09111c; }
 .lightbox-image-wrap img { display: block; width: 100%; height: min(70vh, 650px); object-fit: contain; }
+.lightbox-image-wrap img[hidden] { display: none !important; }
 .lightbox-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 13px 19px; border-top: 1px solid var(--line); }
 .lightbox-footer > span { min-width: 0; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+#lightboxPrompt { color: var(--ink); }
 .lightbox-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 @media (max-width: 780px) {
   .image-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -336,6 +341,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .lightbox-header .icon-button { background: rgba(0,0,0,.35); }
 .lightbox-body { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 420px; }
 .lightbox-image-wrap { position: relative; height: min(64vh, 680px); min-height: 320px; overflow: hidden; padding: 0; cursor: zoom-in; }
+.lightbox-image-wrap.is-error { cursor: default; }
+.lightbox-error-state { width: min(300px, 75%); display: flex; align-items: center; flex-direction: column; gap: 9px; padding: 24px; color: var(--muted-2); text-align: center; }
+.lightbox-error-state[hidden] { display: none; }
+.lightbox-error-state-symbol { color: var(--danger); font-size: 28px; line-height: 1; }
+.lightbox-error-state strong { color: var(--ink); font-size: 14px; }
+.lightbox-error-state p { margin: 0; color: var(--muted-2); font-size: 10px; line-height: 1.55; overflow-wrap: anywhere; }
 .detail-nav { position: absolute; top: 50%; z-index: 2; width: 38px; height: 64px; display: grid; place-items: center; transform: translateY(-50%); border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(0,0,0,.38); color: var(--ink); font-size: 36px; line-height: 1; opacity: .75; }
 .detail-nav:hover { background: rgba(0,0,0,.65); opacity: 1; }
 .detail-nav:disabled { cursor: default; opacity: .22; }
@@ -426,8 +437,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .selection-actions button { min-height: 27px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: rgba(255,255,255,.04); color: var(--muted); font-size: 10px; }
 .selection-actions button:hover { border-color: rgba(116,212,203,.45); color: var(--ink); }
 .selection-actions .danger-action { color: var(--danger); }
-.history-select { position: absolute; top: 7px; left: 7px; z-index: 2; width: 18px; height: 18px; margin: 0; accent-color: var(--cyan); cursor: pointer; }
-.history-item.selected { border-color: var(--cyan); box-shadow: 0 0 0 1px rgba(116,212,203,.4); }
+.history-select { position: absolute; top: 7px; left: 7px; z-index: 10; width: 18px; height: 18px; margin: 0; accent-color: var(--cyan); cursor: pointer; }
+.history-item.selected, .generation-task-card.selected { border-color: var(--cyan); box-shadow: 0 0 0 1px rgba(116,212,203,.4); }
 .history-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 4px; }
 .history-actions button { flex: 0 0 32px; width: 32px; min-width: 32px; height: 27px; padding: 0; border-radius: 5px; font-size: 0; text-align: center; white-space: nowrap; }
 .history-actions button::before { display: none; }
@@ -503,9 +514,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .image-history-section { position: relative; }
 .image-history ::selection { background: transparent; color: inherit; }
 .history-select { opacity: 0; pointer-events: none; transition: opacity .12s ease; }
-.history-item:hover .history-select, .history-item.selected .history-select, .image-history.is-selecting .history-select { opacity: 1; pointer-events: auto; }
+.history-item:hover .history-select, .history-item.selected .history-select, .generation-task-card:hover .history-select, .generation-task-card.selected .history-select, .image-history.is-selecting .history-select { opacity: 1; pointer-events: auto; }
 .custom-tooltip { position: fixed; z-index: 100; max-width: 260px; padding: 6px 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 5px; background: #263348; color: var(--ink); font-size: 11px; line-height: 1.35; box-shadow: 0 8px 24px rgba(0,0,0,.32); pointer-events: none; opacity: 0; }
 .custom-tooltip.show { opacity: 1; transform: translateY(0); }
+.custom-tooltip { z-index: 220; }
+.toast { z-index: 300; }
 .image-viewer img, .lightbox-image-wrap img { -webkit-user-drag: none; user-select: none; }
 .lightbox-details { gap: 10px; }
 .select-control input { width: 100%; min-width: 0; padding: 7px 8px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: #101a28; color: var(--ink); font-size: 11px; }
@@ -519,7 +532,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .custom-select-trigger:hover, .custom-select-trigger[aria-expanded="true"] { border-color: rgba(116,212,203,.55); }
 .custom-select-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .custom-select-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.custom-select-menu { position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 120; max-height: min(280px, 45vh); overflow-y: auto; padding: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: #162235; box-shadow: 0 16px 36px rgba(0,0,0,.42); }
+.custom-select-menu { position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 120; max-height: none; overflow-y: hidden; padding: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: #162235; box-shadow: 0 16px 36px rgba(0,0,0,.42); }
 .custom-select-host.open-up .custom-select-menu { top: auto; bottom: calc(100% + 4px); }
 .custom-select-menu[hidden] { display: none; }
 .custom-select-option { display: block; width: 100%; min-height: 30px; padding: 6px 8px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 11px; text-align: left; }
@@ -602,15 +615,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .generation-record.partial { border-color: rgba(244,185,107,.42); }
 .generation-task-card { position: relative; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-soft); text-align: left; }
 .generation-task-card.running { border-color: rgba(244,185,107,.35); }
-.generation-task-card.error { border-color: rgba(255,150,150,.35); }
+.generation-task-card.error { border-color: rgba(255,150,150,.35); cursor: pointer; }
+.generation-task-card.error .history-actions { cursor: default; }
 .generation-task-visual { flex: 0 0 160px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 9px; padding: 16px; border-bottom: 1px solid var(--line); background: #09111c; color: var(--muted-2); text-align: center; }
 .generation-task-visual strong { color: var(--ink); font-size: 11px; }
 .generation-task-visual span:last-child { max-width: 100%; overflow: hidden; font-size: 9px; line-height: 1.45; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .generation-task-symbol { color: var(--danger); font-size: 20px; line-height: 1; }
 .generation-task-card .history-actions:empty::after { content: "任务进行中"; grid-column: 1 / -1; align-self: center; color: var(--muted-2); font-size: 9px; text-align: center; }
-.generation-record-delete { position: absolute; top: 5px; right: 5px; z-index: 2; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: rgba(8,14,23,.75); color: #d6e0eb; font-size: 13px; opacity: 0; }
-.history-item:hover .generation-record-delete, .generation-task-card:hover .generation-record-delete { opacity: 1; }
-.generation-record-delete:hover { color: var(--danger); }
 .task-audit-modal { width: min(820px, 100%); }
 .task-audit-body { min-height: 0; flex: 1 1 auto; overflow: auto; padding: 20px 25px 25px; }
 .task-audit-body pre { max-height: min(65vh, 620px); margin: 0; overflow: auto; padding: 13px; border: 1px solid var(--line); border-radius: 6px; background: #0b121d; color: var(--muted); font-size: 10px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -622,7 +633,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .image-mode .selection-action-group button { flex: 1 1 auto; }
 .image-mode .selection-file-actions { margin-left: auto; }
 @media (max-width: 780px) {
-  .generation-record-delete { opacity: 1; }
   .image-mode .history-selection-bar { position: fixed; right: 18px; bottom: 18px; left: 18px; width: auto; }
   .image-mode .selection-actions { gap: 7px; }
   .image-mode .selection-action-group { flex: 1 1 100%; }
@@ -633,6 +643,143 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 /* 保留真实内边距, 避免窄卡片裁掉按钮末尾文字 */
 .image-mode .history-actions button { display: flex; align-items: center; justify-content: center; padding: 0 8px; overflow: hidden; }
+
+@keyframes modal-settle { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes backdrop-appear { from { opacity: 0; } to { opacity: 1; } }
+.modal-backdrop:not([hidden]), .image-lightbox:not([hidden]) { animation: backdrop-appear .16s ease-out both; }
+.modal-backdrop:not([hidden]) .settings-modal, .image-lightbox:not([hidden]) .lightbox-panel { animation: modal-settle .2s cubic-bezier(.2,.75,.25,1) both; }
+.history-heading { align-items: center; }
+.history-heading-actions { flex-wrap: wrap; }
+.history-heading h3 { letter-spacing: 0; }
+.history-filterbar { display: flex; align-items: center; gap: 8px; padding-top: 10px; }
+.history-search-wrap { position: relative; min-width: 120px; flex: 1 1 180px; }
+.history-search-wrap svg { position: absolute; top: 50%; left: 10px; width: 15px; height: 15px; transform: translateY(-50%); color: var(--muted-2); stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; fill: none; pointer-events: none; }
+.history-search { width: 100%; height: 34px; padding: 0 10px 0 32px; border: 1px solid var(--line); border-radius: 6px; outline: 0; background: rgba(255,255,255,.025); color: var(--ink); font-size: 11px; }
+.history-search:focus { border-color: rgba(116,212,203,.48); box-shadow: none; }
+.history-search:focus-visible, .favorite-folder-create input:focus-visible { outline: 0; outline-offset: 0; }
+.history-filterbar > .custom-select-host { width: 108px; flex: 0 0 108px; }
+.history-filterbar > .history-filter-select { width: 108px; min-width: 108px; flex: 0 0 108px; }
+.history-filter-select { width: 100%; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.025); color: var(--muted); font-size: 11px; }
+.history-filterbar .custom-select-value, .history-filterbar .custom-select-option { white-space: nowrap; }
+.history-view-button { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
+.history-view-button:hover, .history-view-button.active { background: rgba(230,243,107,.09); color: var(--accent); }
+.history-view-button svg { width: 19px; height: 19px; }
+.history-action-button { width: 27px; height: 28px; display: grid !important; place-items: center; flex: 0 0 27px !important; padding: 0 !important; border: 0 !important; border-radius: 5px !important; background: transparent !important; color: var(--muted) !important; }
+.history-action-button svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.history-action-button:hover { background: rgba(255,255,255,.08) !important; color: var(--ink) !important; }
+.history-action-button.is-favorite { color: var(--accent) !important; }
+.history-actions { display: flex !important; flex: 0 0 36px; align-items: center; justify-content: flex-end !important; gap: 0 !important; padding: 0 6px 4px !important; }
+.history-actions .history-action-button { width: 27px !important; min-width: 27px; flex: 0 0 27px !important; }
+.history-actions [data-history-action="delete"] { color: var(--danger) !important; }
+.history-actions [data-generation-action="delete-task"] { color: var(--danger) !important; }
+.favorite-folder-card { position: relative; min-width: 0; height: 274px; min-height: 274px; max-height: 274px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-soft); }
+.favorite-folder-open { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; padding: 0; border: 0; background: transparent; text-align: left; }
+.favorite-folder-visual { flex: 0 0 160px; display: grid; place-items: center; background: #09111c; color: var(--muted-2); }
+.favorite-folder-visual svg { width: 38px; height: 38px; stroke: currentColor; stroke-width: 1.5; }
+.favorite-folder-card.is-default .favorite-folder-visual { color: var(--accent); }
+.favorite-folder-info { min-width: 0; flex: 1 1 auto; padding: 8px; }
+.favorite-folder-name { display: block; overflow: hidden; color: #c4cfdd; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.favorite-folder-count { display: block; margin-top: 5px; color: var(--muted-2); font-size: 10px; }
+.favorite-folder-actions { min-height: 37px; display: flex; align-items: center; justify-content: flex-end; gap: 2px; padding: 0 7px 5px; }
+.favorite-folder-actions .history-action-button.is-default { color: var(--accent) !important; }
+.favorite-dialog { width: min(520px, 100%); }
+.favorite-dialog-body { min-height: 0; overflow-y: auto; padding: 18px 24px; }
+.favorite-dialog-note { margin: 0 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.favorite-folder-list { display: grid; gap: 5px; max-height: min(44vh, 360px); overflow-y: auto; }
+.favorite-folder-row { min-height: 43px; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; color: var(--ink); }
+.favorite-folder-row:hover { border-color: var(--line); background: rgba(255,255,255,.025); }
+.favorite-folder-row input { width: 16px; height: 16px; margin: 0; accent-color: #4388f5; }
+.favorite-folder-row label, .favorite-folder-row-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.favorite-folder-row small { color: var(--muted-2); font-size: 10px; }
+.favorite-folder-row-actions { display: flex; align-items: center; gap: 2px; }
+.favorite-folder-create { display: flex; gap: 8px; margin-top: 14px; }
+.favorite-folder-create input { min-width: 0; flex: 1; height: 37px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; outline: 0; background: #0d1725; color: var(--ink); font-size: 12px; box-shadow: none; }
+.favorite-folder-create input:hover { border-color: rgba(116,212,203,.38); }
+.favorite-folder-create input:focus { border-color: rgba(116,212,203,.55); box-shadow: none; }
+.favorite-folder-create button { min-width: 68px; }
+.favorite-delete-choice { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 10px; border: 1px solid rgba(255,150,150,.2); border-radius: 6px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.favorite-delete-choice input { margin: 2px 0 0; accent-color: var(--danger); }
+.favorite-folder-row .history-action-button svg { width: 16px; height: 16px; }
+.history-empty { grid-column: 1 / -1; }
+.history-filterbar > .custom-select-host { width: 108px; flex: 0 0 108px; }
+.reference-upload-actions { display: inline-flex; align-items: center; gap: 5px; }
+.reference-clear { min-height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--muted); font-size: 10px; white-space: nowrap; }
+.reference-clear:hover:not(:disabled) { border-color: rgba(255,150,150,.4); color: var(--danger); }
+.reference-clear:disabled { opacity: .4; cursor: not-allowed; }
+.polish-reference-row .reference-upload-actions { flex: 0 0 auto; }
+.polish-reference-row .reference-upload { white-space: nowrap; }
+.favorite-delete-modal { width: min(520px, 100%); }
+.favorite-delete-body { padding: 20px 24px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.favorite-delete-body p { margin: 0; }
+.favorite-delete-choice { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 10px; border: 1px solid rgba(255,150,150,.2); border-radius: 6px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.favorite-delete-choice input { margin: 2px 0 0; accent-color: var(--danger); }
+.favorite-delete-confirm { border-color: rgba(255,150,150,.35); background: rgba(255,150,150,.12); color: var(--danger); }
+.favorite-folder-row { cursor: pointer; }
+.favorite-folder-row:has(input:checked) { border-color: rgba(116,212,203,.38); background: rgba(116,212,203,.08); }
+.history-item[hidden], .generation-task-card[hidden], .favorite-folder-card[hidden] { display: none !important; }
+@media (max-width: 780px) {
+  .history-heading { align-items: flex-start; }
+  .history-heading-actions { gap: 3px; }
+  .history-filterbar { flex-wrap: wrap; }
+  .history-search-wrap { flex-basis: 100%; }
+  .history-filterbar > .custom-select-host { width: 100%; flex: 1 1 100%; }
+  .history-filterbar > .history-filter-select { width: 100%; min-width: 0; flex: 1 1 100%; }
+  .history-actions { flex-wrap: nowrap !important; gap: 0 !important; padding-right: 4px !important; padding-left: 4px !important; }
+  .history-action-button { width: 27px; flex-basis: 27px !important; }
+  .favorite-dialog-body { padding: 16px 18px; }
+}
+.history-library-toggle { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 5px; background: rgba(255,255,255,.025); }
+.history-library-toggle button { min-height: 25px; padding: 0 8px; border: 0; border-radius: 3px; background: transparent; color: var(--muted-2); font-size: 10px; white-space: nowrap; }
+.history-library-toggle button.active { background: rgba(116,212,203,.14); color: var(--cyan); }
+.favorite-folder-back, .favorite-folder-new { width: 76px; height: 29px; min-height: 29px; display: inline-flex; align-items: center; justify-content: center; padding: 0 8px; font-size: 10px; line-height: 1; white-space: nowrap; }
+.favorite-folder-back[hidden], .favorite-folder-new[hidden] { display: none; }
+.favorite-folder-back { border-color: rgba(116,212,203,.42); background: rgba(116,212,203,.12); color: var(--cyan); }
+.history-action-button[data-history-action="favorite"] svg { fill: none; }
+.history-action-button.is-favorite svg { fill: currentColor; }
+.image-mode .history-actions { display: flex !important; flex: 0 0 36px; align-items: center; justify-content: flex-end !important; padding: 0 5px 4px !important; }
+.image-mode .history-item.group-card .history-actions { flex-basis: 36px; }
+.image-mode .history-action-button { width: 27px !important; height: 29px; min-width: 27px; flex-basis: 27px !important; }
+.image-mode .history-item.group-card .history-action-button svg { width: 16px; height: 16px; }
+.history-item.generation-record { height: 274px; min-height: 274px; max-height: 274px; display: flex; flex-direction: column; }
+.history-item.generation-record .history-image-button { min-height: 0; flex: 0 0 160px; }
+.history-item.generation-record .history-item-info { min-height: 0; flex: 1 1 auto; }
+.generation-task-card .history-item-info { min-height: 0; flex: 1 1 auto; }
+.favorite-folder-card { position: relative; min-width: 0; height: 274px; min-height: 274px; max-height: 274px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-soft); }
+.favorite-folder-open { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; padding: 0; border: 0; background: transparent; text-align: left; }
+.favorite-folder-visual { flex: 0 0 160px; display: grid; place-items: center; background: #09111c; color: var(--muted-2); }
+.favorite-folder-visual svg { width: 38px; height: 38px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+.favorite-folder-card.is-default .favorite-folder-visual { color: var(--accent); }
+.favorite-folder-info { min-width: 0; flex: 1 1 auto; padding: 8px; }
+.favorite-folder-name { display: block; overflow: hidden; color: #c4cfdd; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.favorite-folder-count { display: block; margin-top: 5px; color: var(--muted-2); font-size: 10px; }
+.favorite-folder-actions { min-height: 37px; display: flex; align-items: center; justify-content: flex-end; gap: 2px; padding: 0 7px 5px; }
+.favorite-folder-actions .history-action-button.is-default { color: var(--accent) !important; }
+.favorite-dialog { width: min(520px, 100%); }
+.favorite-dialog-body { min-height: 0; overflow-y: auto; padding: 18px 24px; }
+.favorite-folder-list { display: grid; gap: 5px; max-height: min(44vh, 360px); overflow-y: auto; }
+.favorite-folder-row { min-height: 43px; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; color: var(--ink); }
+.favorite-folder-row:hover { border-color: var(--line); background: rgba(255,255,255,.025); }
+.favorite-folder-row input { width: 16px; height: 16px; margin: 0; accent-color: var(--cyan); }
+.favorite-folder-row label { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.favorite-folder-row small { color: var(--muted-2); font-size: 10px; }
+.favorite-folder-row-actions { display: flex; align-items: center; gap: 2px; }
+.favorite-folder-create { display: flex; gap: 8px; margin-top: 14px; }
+.favorite-folder-create input { min-width: 0; flex: 1; height: 37px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: #0d1725; color: var(--ink); font-size: 12px; }
+.favorite-folder-create button { min-width: 68px; }
+@media (max-width: 780px) {
+  .history-heading { align-items: flex-start; }
+  .history-heading-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .history-filterbar { flex-wrap: wrap; }
+  .history-search-wrap { flex-basis: 100%; }
+  .history-filter-select { flex: 1; }
+  .history-library-toggle button { padding: 0 6px; }
+  .history-actions { justify-content: flex-end !important; gap: 1px !important; }
+  .history-action-button { width: 27px !important; min-width: 27px; flex-basis: 27px !important; }
+  .favorite-dialog-body { padding: 16px 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop:not([hidden]), .image-lightbox:not([hidden]), .modal-backdrop:not([hidden]) .settings-modal, .image-lightbox:not([hidden]) .lightbox-panel { animation-duration: .01ms; }
+}
 
 </style>
 </head>
@@ -646,16 +793,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
       </div>
     </div>
     <div class="mobile-brand-row">
-      <button class="icon-button" id="openSidebar" title="打开侧栏" aria-label="打开侧栏">☰</button>
+      <button class="icon-button" id="openSidebar" title="打开侧栏" aria-label="打开侧栏" hidden>☰</button>
       <div class="mobile-title">Orbit Chat</div>
     </div>
     <div class="mode-switcher" role="tablist" aria-label="工作模式">
-      <button class="mode-tab active" data-view="chat" role="tab" aria-selected="true"><span>对话</span><small>Chat</small></button>
-      <button class="mode-tab" data-view="image" role="tab" aria-selected="false"><span>生图</span><small>Image</small></button>
+      <button class="mode-tab active" data-view="image" role="tab" aria-selected="true"><span>生图</span><small>Image</small></button>
+      <button class="mode-tab" data-view="chat" role="tab" aria-selected="false"><span>对话</span><small>Chat</small></button>
     </div>
     <div class="topbar-context">
       <div class="eyebrow">当前工作区</div>
-      <div class="workspace-title" id="workspaceTitle">新对话</div>
+      <div class="workspace-title" id="workspaceTitle">生图工作区</div>
     </div>
     <div class="topbar-actions">
       <div class="connection-pill" id="connectionPill"><span class="connection-dot"></span><span id="connectionText">演示模式</span></div>
@@ -663,7 +810,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
     </div>
   </header>
 
-  <div class="app-shell">
+  <div class="app-shell image-mode">
     <aside class="sidebar" id="sidebar" aria-label="会话侧栏">
       <button class="icon-button mobile-only" id="closeSidebar" title="关闭侧栏" aria-label="关闭侧栏">×</button>
       <button class="new-chat-button" id="newChatButton"><span class="button-glyph">＋</span> 新建对话 <span class="shortcut-hint">⌘ K</span></button>
@@ -682,12 +829,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
     <main class="main-panel">
       <section class="content-stage">
-        <div class="chat-view" id="chatView">
-          <div class="chat-conversation-tools"><button type="button" id="copyCurrentConversation" title="复制当前对话的 Markdown 内容">复制 Markdown</button><div class="conversation-export-menu"><button type="button" id="exportCurrentConversation" title="导出当前对话为 Markdown">导出当前对话</button><button type="button" class="conversation-export-toggle" id="toggleConversationExportMenu" aria-expanded="false" aria-label="选择对话导出格式">格式</button><div class="conversation-export-options" id="conversationExportMenu" hidden><button type="button" data-conversation-export-format="markdown">导出 Markdown（.md）</button><button type="button" data-conversation-export-format="html">导出 HTML（.html）</button></div></div></div>
+        <div class="chat-view" id="chatView" hidden>
+          <div class="chat-conversation-tools"><div class="conversation-export-menu"><button type="button" class="conversation-export-toggle" id="toggleConversationExportMenu" aria-expanded="false" aria-haspopup="menu">导出当前对话</button><div class="conversation-export-options" id="conversationExportMenu" role="menu" hidden><button type="button" role="menuitem" data-conversation-export-format="markdown">Markdown（.md）</button><button type="button" role="menuitem" data-conversation-export-format="html">HTML（.html）</button></div></div></div>
           <div class="welcome-panel" id="welcomePanel">
             <div class="welcome-kicker"><span class="sparkle">✦</span> Personal AI workspace</div>
             <h1>把想法, 变成<br><em>下一步行动</em></h1>
-            <p>连接你自己的 GPT 接口, 保留真正重要的上下文<br>图片理解和生图, 也在同一个工作区完成</p>
             <div class="quick-actions">
               <button class="quick-action" data-prompt="帮我把下面这段内容整理成一份清晰的行动清单:"><span class="quick-icon">↗</span><span>整理成行动清单</span></button>
               <button class="quick-action" data-prompt="用产品经理的视角, 帮我分析这个想法的优先级, 风险和下一步:"><span class="quick-icon">◒</span><span>分析一个想法</span></button>
@@ -698,19 +844,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <div class="typing-indicator" id="typingIndicator" hidden><span></span><span></span><span></span><em>正在思考</em></div>
         </div>
 
-        <div class="image-view" id="imageView" hidden>
+        <div class="image-view" id="imageView">
           <div class="image-workspace">
             <div class="image-generator-column">
               <div class="image-copy">
                 <div class="welcome-kicker"><span class="sparkle">✦</span> Image studio</div>
                 <h2>把描述, 变成<br><em>一张画面</em></h2>
-                <p>使用独立的生图接口和密钥, 你可以在设置里切换服务商和模型</p>
               </div>
               <div class="image-generator-panel">
                 <div class="panel-label-row"><span>描述你想要的画面</span><div class="panel-label-actions"><span class="panel-label-hint">支持中文, 可粘贴参考图</span><button class="field-action" id="polishImagePrompt" type="button">润色关键词</button></div></div>
                 <div class="profile-manager image-prompt-template-manager"><label class="profile-select-label">关键词模板<select id="imagePromptTemplateSelect" aria-label="选择生图关键词模板"><option value="">临时关键词(未保存)</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveImagePromptTemplate" type="button">另存为</button><button class="secondary-button" id="updateImagePromptTemplate" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteImagePromptTemplate" type="button" title="删除当前关键词模板" aria-label="删除当前关键词模板" disabled>×</button></div><small class="profile-help">模板保存关键词和生成参考图, 不保存尺寸, 质量等生成参数</small></div>
                 <div class="image-prompt-wrap"><textarea id="imagePrompt" rows="4" placeholder="例如: 雨后的上海街头, 霓虹倒影, 35mm 胶片质感, 电影感构图"></textarea><div class="image-prompt-mirror" id="imagePromptMirror" aria-hidden="true"></div><div class="image-mention-menu" id="imageMentionMenu" hidden></div></div>
-                <div class="reference-row"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><div class="reference-options"><span class="panel-label-hint" id="imageRequestMode">图片生成 · 无参考图</span></div></div>
+                <div class="reference-row"><div class="reference-upload-actions"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><button class="reference-clear" id="clearImageReferences" type="button" disabled>清空</button></div><div class="reference-options"><span class="panel-label-hint" id="imageRequestMode">图片生成 · 无参考图</span></div></div>
                 <div class="image-reference-preview" id="imageReferencePreview" hidden></div><input type="file" id="imageReferenceReplaceUpload" accept="image/png,image/jpeg,image/webp" hidden>
                 <div class="image-controls">
                   <label class="select-control image-size-control"><span>尺寸</span><button class="size-button" id="imageSizeButton" type="button">自动 · 1K · 1:1</button><select id="imageRatio" hidden><option value="auto">自动</option><option value="1:1">1:1 方形</option><option value="3:2">3:2 横向</option><option value="2:3">2:3 竖向</option><option value="16:9">16:9 横向</option><option value="9:16">9:16 竖向</option><option value="4:3">4:3 横向</option><option value="3:4">3:4 竖向</option><option value="21:9">21:9 超宽</option></select></label>
@@ -725,7 +870,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
               </div>
             </div>
             <section class="image-history-section" id="imageHistorySection">
-              <div class="history-heading"><div><span class="eyebrow">Saved locally</span><h3>生成记录 <span class="history-count" id="imageHistoryCount">0</span></h3></div><div class="history-heading-actions"><div class="history-view-toggle" id="historyViewToggle" hidden><button type="button" data-history-view="group" class="active">按组</button><button type="button" data-history-view="single">按单图</button></div></div></div>
+              <div class="history-heading"><div><span class="eyebrow">Saved locally</span><h3 id="imageHistoryTitle">生成记录 <span class="history-count">0</span></h3></div><div class="history-heading-actions"><div class="history-library-toggle" id="historyLibraryToggle"><button type="button" data-history-library="history" class="active">生成记录</button><button type="button" data-history-library="favorites">收藏夹</button></div><button class="secondary-button favorite-folder-back" id="favoriteFolderBack" type="button" hidden>返回收藏夹</button><button class="secondary-button favorite-folder-new" id="newFavoriteFolder" type="button" hidden>新建收藏夹</button><div class="history-view-toggle" id="historyViewToggle" hidden><button type="button" data-history-view="group" class="active">按组</button><button type="button" data-history-view="single">按单图</button></div></div></div>
+              <div class="history-filterbar" id="historyFilterbar"><label class="history-search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg><input class="history-search" id="historySearch" type="search" placeholder="搜索提示词" autocomplete="off"></label><select class="history-filter-select" id="historyStatusFilter" aria-label="按状态筛选"><option value="all">全部状态</option><option value="success">已完成</option><option value="partial">部分完成</option><option value="error">失败</option><option value="running">进行中</option></select></div>
               <div class="image-history" id="imageHistory" aria-live="polite"></div>
               <div class="history-selection-bar" id="historySelectionBar" hidden><span class="selection-count" id="historySelectionCount">已选择 0 项</span><div class="selection-actions"><div class="selection-action-group"><button type="button" class="selection-clear" id="historyClearSelection">取消选择</button><button type="button" id="historySelectAll">全选</button><button type="button" id="historyInvertSelection">反选</button></div><div class="selection-action-group selection-file-actions"><button type="button" id="historyDownloadSelected">下载</button><button type="button" class="danger-action" id="historyDeleteSelected">删除</button></div></div></div>
             </section>
@@ -733,7 +879,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
         </div>
       </section>
 
-      <footer class="composer-wrap" id="composerWrap">
+      <footer class="composer-wrap" id="composerWrap" hidden>
         <div class="context-toolbar">
           <div class="context-mode" role="group" aria-label="上下文策略">
             <span class="toolbar-label">上下文</span>
@@ -768,7 +914,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   <div class="image-lightbox" id="imageLightbox" hidden>
     <section class="lightbox-panel" role="dialog" aria-modal="true" aria-labelledby="lightboxTitle">
       <div class="lightbox-header"><div><div class="eyebrow">Image details</div><h2 id="lightboxTitle">生成详情</h2></div><button class="icon-button" id="closeLightbox" title="关闭详情" aria-label="关闭详情">×</button></div>
-      <div class="lightbox-body"><div class="lightbox-image-wrap" id="lightboxImageWrap"><button class="detail-nav detail-nav-prev" id="lightboxPrevious" type="button" title="上一张" aria-label="上一张">‹</button><img id="lightboxImage" src="" alt="生成图片全图" draggable="false"><button class="detail-nav detail-nav-next" id="lightboxNext" type="button" title="下一张" aria-label="下一张">›</button></div><aside class="lightbox-details"><div class="lightbox-reference-section" id="lightboxReferenceSection" hidden><div class="details-section-title">参考图</div><div class="lightbox-reference-thumbnails" id="lightboxReferenceThumbnails"></div></div><div class="lightbox-thumbnails" id="lightboxThumbnails"></div><dl class="image-metadata" id="imageMetadata"></dl></aside></div>
+      <div class="lightbox-body"><div class="lightbox-image-wrap" id="lightboxImageWrap"><button class="detail-nav detail-nav-prev" id="lightboxPrevious" type="button" title="上一张" aria-label="上一张">‹</button><img id="lightboxImage" src="" alt="生成图片全图" draggable="false"><div class="lightbox-error-state" id="lightboxErrorState" hidden><span class="lightbox-error-state-symbol">!</span><strong>生成失败</strong><p id="lightboxErrorMessage"></p></div><button class="detail-nav detail-nav-next" id="lightboxNext" type="button" title="下一张" aria-label="下一张">›</button></div><aside class="lightbox-details"><div class="lightbox-reference-section" id="lightboxReferenceSection" hidden><div class="details-section-title">参考图</div><div class="lightbox-reference-thumbnails" id="lightboxReferenceThumbnails"></div></div><div class="lightbox-thumbnails" id="lightboxThumbnails"></div><dl class="image-metadata" id="imageMetadata"></dl></aside></div>
       <div class="lightbox-footer"><span id="lightboxPrompt"></span><div class="lightbox-actions"><button class="secondary-button" id="lightboxReuse" title="恢复提示词、参数和原参考图">复用配置</button><button class="secondary-button" id="lightboxCopyImage" title="复制图片">复制图片</button><button class="secondary-button" id="lightboxDownload" title="下载原图">下载原图</button><button class="secondary-button" id="lightboxDownloadAll" hidden title="下载这一批全部图片">下载全部</button><button class="secondary-button" id="lightboxCopyChat" title="把图片放入当前对话">发到对话</button><button class="primary-button" id="lightboxEdit" title="把输出图追加到当前参考图列表">编辑输出</button></div></div>
     </section>
   </div>
@@ -777,6 +923,22 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
     <section class="settings-modal task-audit-modal" role="dialog" aria-modal="true" aria-labelledby="taskAuditTitle">
       <div class="modal-header"><div><div class="eyebrow">Request audit</div><h2 id="taskAuditTitle">请求与响应</h2></div><button class="icon-button" id="closeTaskAudit" title="关闭请求详情" aria-label="关闭请求详情">×</button></div>
       <div class="task-audit-body"><pre id="taskAuditContent"></pre></div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="favoriteFolderBackdrop" hidden>
+    <section class="settings-modal favorite-dialog" role="dialog" aria-modal="true" aria-labelledby="favoriteDialogTitle">
+      <div class="modal-header"><div><div class="eyebrow">Favorites</div><h2 id="favoriteDialogTitle">添加到收藏夹</h2></div><button class="icon-button" id="closeFavoriteFolderDialog" type="button" aria-label="关闭" data-tooltip="关闭">×</button></div>
+      <div class="favorite-dialog-body"><div class="favorite-folder-list" id="favoriteFolderChoices"></div><form class="favorite-folder-create" id="favoriteFolderCreateForm"><input id="favoriteFolderName" type="text" maxlength="40" placeholder="新建收藏夹" aria-label="收藏夹名称"><button class="secondary-button" type="submit">新建</button></form></div>
+      <div class="modal-footer"><span></span><div><button class="secondary-button" id="cancelFavoriteFolderDialog" type="button">取消</button><button class="primary-button" id="saveFavoriteFolderChoices" type="button">保存</button></div></div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="favoriteDeleteBackdrop" hidden>
+    <section class="settings-modal favorite-delete-modal" role="dialog" aria-modal="true" aria-labelledby="favoriteDeleteTitle">
+      <div class="modal-header"><div><div class="eyebrow">Favorites</div><h2 id="favoriteDeleteTitle">删除收藏夹</h2></div><button class="icon-button" id="closeFavoriteDelete" type="button" aria-label="关闭" data-tooltip="关闭">×</button></div>
+      <div class="favorite-delete-body"><p id="favoriteDeleteMessage"></p><label class="favorite-delete-choice"><input id="deleteFavoriteImages" type="checkbox"><span id="deleteFavoriteImagesLabel">同时删除收藏夹中的图片</span></label></div>
+      <div class="modal-footer"><button class="secondary-button" id="cancelFavoriteDelete" type="button">取消</button><div><button class="primary-button favorite-delete-confirm" id="confirmFavoriteDelete" type="button">确认删除</button></div></div>
     </section>
   </div>
 
@@ -794,12 +956,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
         <div class="profile-manager polish-template-manager"><label class="profile-select-label">润色模板<select id="polishTemplateSelect" aria-label="选择润色模板"><option value="">临时模板（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="savePolishTemplate" type="button">另存为</button><button class="secondary-button" id="updatePolishTemplate" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deletePolishTemplate" type="button" title="删除当前润色模板" aria-label="删除当前润色模板" disabled>×</button></div><small class="profile-help">模板保存润色要求和润色参考图, 不保存生成参考图</small></div>
         <div class="polish-reference-groups">
           <div class="polish-reference-group">
-            <div class="polish-reference-row"><div class="polish-reference-heading"><strong>生成参考图</strong><span class="panel-label-hint" id="polishGenerationReferenceHint">未添加参考图</span></div><label class="reference-upload"><span>⊕</span> 添加<input type="file" id="polishGenerationReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label></div>
+            <div class="polish-reference-row"><div class="polish-reference-heading"><strong>生成参考图</strong><span class="panel-label-hint" id="polishGenerationReferenceHint">未添加参考图</span></div><div class="reference-upload-actions"><label class="reference-upload"><span>⊕</span> 添加<input type="file" id="polishGenerationReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><button class="reference-clear" id="clearPolishGenerationReferences" type="button" disabled>清空</button></div></div>
             <label class="polish-reference-toggle"><input type="checkbox" id="polishUseGenerationReferences"><span>润色时分析这组图片</span></label>
             <div class="polish-reference-preview" id="polishGenerationReferencePreview" hidden></div><input type="file" id="polishGenerationReplaceUpload" accept="image/png,image/jpeg,image/webp" hidden>
           </div>
           <div class="polish-reference-group">
-            <div class="polish-reference-row"><div class="polish-reference-heading"><strong>润色参考图</strong><span class="panel-label-hint" id="polishReferenceHint">未添加参考图</span></div><label class="reference-upload"><span>⊕</span> 添加<input type="file" id="polishReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label></div>
+            <div class="polish-reference-row"><div class="polish-reference-heading"><strong>润色参考图</strong><span class="panel-label-hint" id="polishReferenceHint">未添加参考图</span></div><div class="reference-upload-actions"><label class="reference-upload"><span>⊕</span> 添加<input type="file" id="polishReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><button class="reference-clear" id="clearPolishReferences" type="button" disabled>清空</button></div></div>
             <div class="polish-reference-preview" id="polishReferencePreview" hidden></div><input type="file" id="polishReferenceReplaceUpload" accept="image/png,image/jpeg,image/webp" hidden>
           </div>
         </div>
@@ -840,7 +1002,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <div class="section-title"><span class="section-number">03</span><div><strong>本地请求代理</strong><small>用于访问不支持浏览器跨域的接口</small></div></div>
           <div class="field-label"><label for="proxyUrl">代理地址</label><div class="proxy-address-row"><input id="proxyUrl" type="url" placeholder="http://127.0.0.1:8787"><button class="secondary-button" id="testProxyConnection" type="button">测试连接</button></div><small class="proxy-test-status" id="proxyTestStatus">尚未测试代理服务</small></div>
           <label class="toggle-row is-disabled" id="proxyToggleRow"><span><strong>使用本地代理</strong><small>测试成功后才可开启, 开启后对话, 模型, 润色和生图接口统一转发</small></span><input type="checkbox" id="proxyEnabled" disabled><span class="toggle-ui"></span></label>
-          <p class="field-help">代理只处理请求转发和跨域响应, 不保存 Key 或请求内容, Key 仍保存在当前浏览器, 公开部署时应使用由服务端保管 Key 的专用后端</p>
+          <p class="field-help">代理只处理请求转发和跨域响应, 不保存 Key 或请求内容, Key 仍保存在当前浏览器</p>
         </div>
         <div class="settings-section">
           <div class="section-title"><span class="section-number">04</span><div><strong>图片请求</strong><small>统一处理发送到接口的图片副本</small></div></div>
@@ -857,7 +1019,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
           <div class="section-title"><span class="section-number">06</span><div><strong>数据管理</strong><small>操作时选择需要导出或清除的范围</small></div></div>
           <div class="data-management-actions"><button class="secondary-button" id="exportWorkspace" type="button">导出</button><button class="secondary-button" id="importWorkspace" type="button">导入</button><button class="secondary-button danger" id="resetLocalData" type="button">清除数据</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
         </div>
-        <div class="security-callout"><span>⌁</span><p>Key、接口模板和润色模板默认只保存在当前浏览器；选择“配置”或“全部数据”导出时才会写入文件。部署到公开环境前，建议通过自己的后端代理请求，避免在前端暴露密钥</p></div>
+        <div class="security-callout"><span>⌁</span><p>Key、接口模板和润色模板默认只保存在当前浏览器；选择“配置”或“全部数据”导出时才会写入文件。</p></div>
       </div>
       <div class="modal-footer"><span></span><div><button class="secondary-button" id="cancelSettings">取消</button><button class="primary-button" id="saveSettings">保存设置</button></div></div>
     </section>
@@ -1030,6 +1192,8 @@ self.onmessage = async (event) => {
   </script>
   <script>
 const STORAGE_KEY = 'orbit-chat-state-v1';
+const FAVORITE_FOLDER_STORAGE_KEY = 'orbit-image-favorite-folders-v1';
+const DEFERRED_IMAGE_PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 const defaultState = {
   settings: {
@@ -1085,6 +1249,16 @@ const imageTaskPersistTimers = new Map();
 let imageHistoryReady = Promise.resolve();
 let localDataGeneration = 0;
 let imageHistoryView = 'group';
+let imageHistoryLibrary = 'history';
+let activeFavoriteFolderId = '';
+let historyViewBeforeFavorites = 'group';
+let favoriteDialogImageIds = [];
+let favoriteDialogTaskIds = [];
+let favoriteDialogSelectedFolderIds = new Set();
+let pendingFavoriteFolderDeleteId = '';
+let pendingFavoriteFolderDeleteInDialog = false;
+let pendingFavoriteTaskDeleteIds = [];
+let favoriteFolders = loadFavoriteFolders();
 let imageSizeDraft = null;
 let imageSizeOriginalConfig = null;
 let selectedHistoryKeys = new Set();
@@ -1255,6 +1429,29 @@ function normalizeImagePromptTemplates(templates) {
 
 function createId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeFavoriteFolders(folders) {
+  const normalized = Array.isArray(folders) ? folders.filter((folder) => folder && String(folder.name || '').trim()).map((folder) => ({ id: String(folder.id || createId()), name: String(folder.name).trim().slice(0, 40), isDefault: Boolean(folder.isDefault) })) : [];
+  const unique = [...new Map(normalized.map((folder) => [folder.id, folder])).values()];
+  if (!unique.length) unique.push({ id: 'favorites-default', name: '默认收藏夹', isDefault: true });
+  if (!unique.some((folder) => folder.isDefault)) unique[0].isDefault = true;
+  let defaultFound = false;
+  unique.forEach((folder) => {
+    if (!folder.isDefault) return;
+    if (defaultFound) folder.isDefault = false;
+    defaultFound = true;
+  });
+  return unique;
+}
+
+function loadFavoriteFolders() {
+  try { return normalizeFavoriteFolders(JSON.parse(localStorage.getItem(FAVORITE_FOLDER_STORAGE_KEY))); } catch { return normalizeFavoriteFolders([]); }
+}
+
+function saveFavoriteFolders() {
+  favoriteFolders = normalizeFavoriteFolders(favoriteFolders);
+  try { localStorage.setItem(FAVORITE_FOLDER_STORAGE_KEY, JSON.stringify(favoriteFolders)); } catch { }
 }
 
 function persist() {
@@ -1457,18 +1654,35 @@ function renderImageHistoryNow() {
   section.hidden = false;
   const hasGroups = imageHistory.some((item) => getBatchImages(item).length > 1);
   const toggle = $('#historyViewToggle');
-  toggle.hidden = !hasGroups;
-  const items = getGenerationTimelineEntries();
-  $('#imageHistoryCount').textContent = items.length;
-  list.innerHTML = items.length ? items.map(renderGenerationRecord).join('') : '<div class="history-empty">生成任务和图片会显示在这里</div>';
+  const isFavorites = imageHistoryLibrary === 'favorites';
+  const isFolderIndex = isFavorites && !activeFavoriteFolderId;
+  const folder = favoriteFolders.find((entry) => entry.id === activeFavoriteFolderId);
+  const title = isFavorites ? (folder?.name || '收藏夹') : '生成记录';
+  $('#imageHistoryTitle').innerHTML = `${escapeHtml(title)} <span class="history-count" id="imageHistoryCount">0</span>`;
+  $('#historyLibraryToggle').querySelectorAll('button').forEach((button) => button.classList.toggle('active', button.dataset.historyLibrary === imageHistoryLibrary));
+  $('#favoriteFolderBack').hidden = !isFavorites || isFolderIndex;
+  $('#newFavoriteFolder').hidden = !isFolderIndex;
+  const statusControl = $('#historyStatusFilter').closest('.custom-select-host') || $('#historyStatusFilter');
+  statusControl.hidden = isFolderIndex;
+  $('#historySearch').placeholder = isFolderIndex ? '搜索收藏夹' : '搜索提示词';
+  toggle.hidden = isFavorites || !hasGroups;
+  if (isFolderIndex) {
+    list.innerHTML = `${favoriteFolders.map(renderFavoriteFolderCard).join('')}<div class="history-empty" hidden>没有匹配的收藏夹</div>`;
+  } else {
+    const items = isFavorites ? getFavoriteFolderEntries(activeFavoriteFolderId) : getGenerationTimelineEntries();
+    list.innerHTML = `${items.map(renderGenerationRecord).join('')}<div class="history-empty" hidden>${isFavorites ? '这个收藏夹里还没有内容' : '没有匹配的生成记录'}</div>`;
+  }
+  filterRenderedHistory();
   hydrateDeferredImages(list, 'history');
   list.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
-  $$('.generation-record-delete').forEach((button) => button.addEventListener('click', () => deleteGenerationRecord(button.dataset.historyId, button.dataset.taskId)));
+  list.querySelectorAll('[data-favorite-folder-open]').forEach((button) => button.addEventListener('click', () => openFavoriteFolder(button.dataset.favoriteFolderOpen)));
+  list.querySelectorAll('[data-favorite-folder-action]').forEach((button) => button.addEventListener('click', () => handleFavoriteFolderAction(button.dataset.favoriteFolderAction, button.dataset.favoriteFolderId)));
   $$('.history-image-button').forEach((button) => button.addEventListener('click', (event) => {
     const batch = imageHistory.find((entry) => entry.id === button.dataset.historyId);
     if (batch) openHistoryDetail(batch, Number(button.dataset.historyImageIndex) || 0);
   }));
   $$('.history-actions button').forEach((button) => button.addEventListener('click', () => {
+    if (button.dataset.historyAction === 'delete') { deleteGenerationRecord(button.dataset.historyId, button.dataset.taskId); return; }
     const batch = imageHistory.find((entry) => entry.id === button.dataset.historyId);
     if (!batch) return;
     const image = getBatchImages(batch)[Number(button.dataset.historyImageIndex) || 0] || getBatchImages(batch)[0];
@@ -1476,8 +1690,23 @@ function renderImageHistoryNow() {
     if (button.dataset.historyAction === 'download') downloadImageOriginal(image, batch);
     if (button.dataset.historyAction === 'download-all') downloadBatch(batch);
     if (button.dataset.historyAction === 'edit') editGeneratedImage(batch);
-    if (button.dataset.historyAction === 'new-chat') copyImageToNewChat(image, batch);
+    if (button.dataset.historyAction === 'favorite') openFavoriteFolderDialog((button.dataset.favoriteImageIds || image?.id || '').split(',').filter(Boolean));
   }));
+  list.querySelectorAll('.generation-task-card').forEach((card) => {
+    const openDetails = () => {
+      const task = imageTasks.find((entry) => entry.id === card.dataset.taskId);
+      if (task && task.status !== 'running') openImageTaskDetail(task);
+    };
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('.history-actions, .history-select')) return;
+      openDetails();
+    });
+    card.addEventListener('keydown', (event) => {
+      if (!['Enter', ' '].includes(event.key) || event.target.closest('.history-actions, .history-select')) return;
+      event.preventDefault();
+      openDetails();
+    });
+  });
   bindGenerationTaskActions(list);
   $$('.history-select').forEach((checkbox) => checkbox.addEventListener('click', (event) => event.stopPropagation()));
   $$('.history-select').forEach((checkbox) => checkbox.addEventListener('change', () => {
@@ -1490,9 +1719,254 @@ function renderImageHistoryNow() {
   updateHistorySelectionBar();
 }
 
+function filterRenderedHistory() {
+  const list = $('#imageHistory');
+  if (!list) return;
+  const isFolderIndex = imageHistoryLibrary === 'favorites' && !activeFavoriteFolderId;
+  const query = $('#historySearch').value.trim().toLocaleLowerCase();
+  const statusFilter = $('#historyStatusFilter').value;
+  const cards = [...list.children].filter((element) => element.matches('.history-item, .generation-task-card, .favorite-folder-card'));
+  let visibleCount = 0;
+  cards.forEach((card) => {
+    const matchesQuery = !query || String(card.dataset.searchText || '').includes(query);
+    const matchesStatus = isFolderIndex || statusFilter === 'all' || card.dataset.status === statusFilter;
+    card.hidden = !(matchesQuery && matchesStatus);
+    if (!card.hidden) visibleCount += 1;
+  });
+  $('#imageHistoryCount').textContent = visibleCount;
+  const empty = list.querySelector('.history-empty');
+  if (empty) empty.hidden = visibleCount > 0;
+  updateHistorySelectionBar();
+}
+
+function getFavoriteFolderEntries(folderId) {
+  const imageEntries = imageHistory.flatMap((batch) => {
+    const task = imageTasks.find((entry) => entry.batchId === batch.id || entry.id === batch.taskId) || null;
+    return getBatchImages(batch).map((image, index) => ({ task, batch, image, index, favoriteSingle: true, timestamp: task?.startedAt || batch.startedAt || batch.createdAt || 0 }));
+  }).filter((entry) => entry.image.favoriteFolderIds?.includes(folderId));
+  const taskEntries = imageTasks.filter((task) => task.favoriteFolderIds?.includes(folderId)).map((task) => {
+    const batch = imageHistory.find((entry) => entry.id === task.batchId || entry.taskId === task.id) || null;
+    return { task, batch, image: getBatchImages(batch)[0] || null, index: 0, favoriteSingle: true, favoriteTaskOnly: true, timestamp: task.startedAt || 0 };
+  });
+  return [...imageEntries, ...taskEntries].sort((left, right) => right.timestamp - left.timestamp);
+}
+
+function renderFavoriteFolderCard(folder) {
+  const imageCount = [...storedImages.values()].filter((image) => image.type === 'image' && image.favoriteFolderIds?.includes(folder.id)).length;
+  const taskCount = imageTasks.filter((task) => task.favoriteFolderIds?.includes(folder.id)).length;
+  const folderIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h6l2 2h9v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"></path><path d="M3.5 8.5h17"></path></svg>';
+  return `<article class="favorite-folder-card ${folder.isDefault ? 'is-default' : ''}" data-search-text="${escapeHtml(folder.name.toLocaleLowerCase())}"><button class="favorite-folder-open" type="button" data-favorite-folder-open="${escapeHtml(folder.id)}" aria-label="打开收藏夹 ${escapeHtml(folder.name)}"><span class="favorite-folder-visual">${folderIcon}</span><span class="favorite-folder-info"><span class="favorite-folder-name">${escapeHtml(folder.name)}</span><span class="favorite-folder-count">${imageCount} 张图片 · ${taskCount} 条任务${folder.isDefault ? ' · 默认' : ''}</span></span></button><div class="favorite-folder-actions">${folderActionButton('default', '设为默认收藏夹', folder.id, folder.isDefault)}${folderActionButton('rename', '重命名收藏夹', folder.id)}${folderActionButton('delete', '删除收藏夹', folder.id)}</div></article>`;
+}
+
+function folderActionButton(action, label, folderId, active = false) {
+  return `<button class="history-action-button ${active ? 'is-default' : ''}" type="button" data-favorite-folder-action="${action}" data-favorite-folder-id="${escapeHtml(folderId)}" data-tooltip="${label}" aria-label="${label}">${historyActionIcon(action)}</button>`;
+}
+
+function openFavoriteFolder(folderId) {
+  if (!favoriteFolders.some((folder) => folder.id === folderId)) return;
+  activeFavoriteFolderId = folderId;
+  imageHistoryLibrary = 'favorites';
+  selectedHistoryKeys.clear();
+  renderImageHistory();
+}
+
+function openFavoriteFolderDialog(imageIds = [], taskIds = []) {
+  favoriteDialogImageIds = [...new Set(imageIds)].filter((id) => storedImages.get(id)?.type === 'image');
+  favoriteDialogTaskIds = [...new Set(taskIds)].filter((id) => imageTasks.some((task) => task.id === id));
+  favoriteDialogSelectedFolderIds = new Set(favoriteDialogImageIds.length
+    ? favoriteFolders.filter((folder) => favoriteDialogImageIds.every((id) => storedImages.get(id)?.favoriteFolderIds?.includes(folder.id))).map((folder) => folder.id)
+    : favoriteDialogTaskIds.length ? favoriteFolders.filter((folder) => favoriteDialogTaskIds.every((id) => imageTasks.find((task) => task.id === id)?.favoriteFolderIds?.includes(folder.id))).map((folder) => folder.id) : []);
+  const hasExistingFavorite = favoriteDialogImageIds.some((id) => storedImages.get(id)?.favoriteFolderIds?.length)
+    || favoriteDialogTaskIds.some((id) => imageTasks.find((task) => task.id === id)?.favoriteFolderIds?.length);
+  if (!hasExistingFavorite && (favoriteDialogImageIds.length || favoriteDialogTaskIds.length)) {
+    const defaultFolder = favoriteFolders.find((folder) => folder.isDefault);
+    if (defaultFolder) favoriteDialogSelectedFolderIds.add(defaultFolder.id);
+  }
+  $('#favoriteDialogTitle').textContent = favoriteDialogImageIds.length ? `收藏 ${favoriteDialogImageIds.length} 张图片` : favoriteDialogTaskIds.length ? `收藏 ${favoriteDialogTaskIds.length} 条任务` : '管理收藏夹';
+  renderFavoriteFolderChoices();
+  $('#favoriteFolderBackdrop').hidden = false;
+}
+
+function renderFavoriteFolderChoices() {
+  const list = $('#favoriteFolderChoices');
+  list.innerHTML = favoriteFolders.map((folder) => {
+    const checked = favoriteDialogSelectedFolderIds.has(folder.id);
+    const hasTargets = favoriteDialogImageIds.length || favoriteDialogTaskIds.length;
+    const input = hasTargets ? `<input type="checkbox" data-favorite-choice="${escapeHtml(folder.id)}" ${checked ? 'checked' : ''} aria-label="收藏到 ${escapeHtml(folder.name)}">` : '';
+    return `<div class="favorite-folder-row">${input}<span class="favorite-folder-row-name">${escapeHtml(folder.name)}</span><small>${folder.isDefault ? '默认' : ''}</small><span class="favorite-folder-row-actions">${folderActionButton('default', '设为默认收藏夹', folder.id, folder.isDefault)}${folderActionButton('rename', '重命名收藏夹', folder.id)}${folderActionButton('delete', '删除收藏夹', folder.id)}</span></div>`;
+  }).join('');
+  list.querySelectorAll('[data-favorite-choice]').forEach((checkbox) => checkbox.addEventListener('change', () => {
+    if (checkbox.checked) favoriteDialogSelectedFolderIds.add(checkbox.dataset.favoriteChoice);
+    else favoriteDialogSelectedFolderIds.delete(checkbox.dataset.favoriteChoice);
+  }));
+  list.querySelectorAll('.favorite-folder-row').forEach((row) => row.addEventListener('click', (event) => {
+    if (event.target.closest('.favorite-folder-row-actions')) return;
+    const checkbox = row.querySelector('[data-favorite-choice]');
+    if (!checkbox || event.target === checkbox) return;
+    checkbox.checked = !checkbox.checked;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+  }));
+  list.querySelectorAll('[data-favorite-folder-action]').forEach((button) => button.addEventListener('click', () => handleFavoriteFolderAction(button.dataset.favoriteFolderAction, button.dataset.favoriteFolderId, true)));
+}
+
+function closeFavoriteFolderDialog() {
+  $('#favoriteFolderBackdrop').hidden = true;
+  favoriteDialogImageIds = [];
+  favoriteDialogTaskIds = [];
+}
+
+function saveFavoriteFolderSelection() {
+  favoriteDialogImageIds.forEach((id) => {
+    const image = storedImages.get(id);
+    if (!image) return;
+    image.favoriteFolderIds = favoriteFolders.filter((folder) => favoriteDialogSelectedFolderIds.has(folder.id)).map((folder) => folder.id);
+    saveImageHistory(createStoredImage(image)).catch(() => {});
+  });
+  favoriteDialogTaskIds.forEach((id) => {
+    const task = imageTasks.find((entry) => entry.id === id);
+    if (!task) return;
+    task.favoriteFolderIds = favoriteFolders.filter((folder) => favoriteDialogSelectedFolderIds.has(folder.id)).map((folder) => folder.id);
+    saveImageHistory(createStoredImageTask(task)).catch(() => {});
+  });
+  closeFavoriteFolderDialog();
+  renderImageHistory();
+  showToast('收藏夹已更新');
+}
+
+function createFavoriteFolder(name) {
+  const normalizedName = String(name || '').trim();
+  if (!normalizedName) return false;
+  if (favoriteFolders.some((folder) => folder.name.toLocaleLowerCase() === normalizedName.toLocaleLowerCase())) {
+    showErrorToast('已存在同名收藏夹');
+    return false;
+  }
+  const folder = { id: createId(), name: normalizedName.slice(0, 40), isDefault: favoriteFolders.length === 0 };
+  favoriteFolders.push(folder);
+  favoriteDialogSelectedFolderIds.add(folder.id);
+  saveFavoriteFolders();
+  renderFavoriteFolderChoices();
+  renderImageHistory();
+  return true;
+}
+
+function handleFavoriteFolderAction(action, folderId, inDialog = false) {
+  const folder = favoriteFolders.find((entry) => entry.id === folderId);
+  if (!folder) return;
+  if (action === 'default') {
+    favoriteFolders.forEach((entry) => { entry.isDefault = entry.id === folderId; });
+    if (inDialog && (favoriteDialogImageIds.length || favoriteDialogTaskIds.length) && favoriteDialogSelectedFolderIds.size === 0) favoriteDialogSelectedFolderIds.add(folderId);
+    saveFavoriteFolders();
+    if (inDialog) renderFavoriteFolderChoices(); else renderImageHistory();
+    return;
+  }
+  if (action === 'rename') {
+    const name = window.prompt('输入新的收藏夹名称', folder.name);
+    if (name === null) return;
+    const normalizedName = name.trim().slice(0, 40);
+    if (!normalizedName) { showErrorToast('收藏夹名称不能为空'); return; }
+    if (favoriteFolders.some((entry) => entry.id !== folderId && entry.name.toLocaleLowerCase() === normalizedName.toLocaleLowerCase())) { showErrorToast('已存在同名收藏夹'); return; }
+    folder.name = normalizedName;
+    saveFavoriteFolders();
+    if (inDialog) renderFavoriteFolderChoices(); else renderImageHistory();
+    return;
+  }
+  if (action === 'delete') {
+    pendingFavoriteFolderDeleteId = folderId;
+    pendingFavoriteFolderDeleteInDialog = inDialog;
+    const imageCount = [...storedImages.values()].filter((image) => image.type === 'image' && image.favoriteFolderIds?.includes(folderId)).length;
+    $('#favoriteDeleteMessage').textContent = `确定要删除收藏夹“${folder.name}”吗？`;
+    $('#deleteFavoriteImagesLabel').textContent = `同时删除收藏夹中的图片（${imageCount} 张）`;
+    $('#deleteFavoriteImages').checked = false;
+    $('#deleteFavoriteImages').disabled = imageCount === 0;
+    $('#favoriteDeleteBackdrop').hidden = false;
+    return;
+  }
+}
+
+async function confirmFavoriteFolderDelete() {
+  const folderId = pendingFavoriteFolderDeleteId;
+  const folder = favoriteFolders.find((entry) => entry.id === folderId);
+  if (!folder) return closeFavoriteDeleteDialog();
+  const deleteImages = $('#deleteFavoriteImages').checked;
+  const imageIds = [...storedImages.values()].filter((image) => image.type === 'image' && image.favoriteFolderIds?.includes(folderId)).map((image) => image.id);
+  const imageIdSet = new Set(imageIds);
+  favoriteFolders = favoriteFolders.filter((entry) => entry.id !== folderId);
+  storedImages.forEach((image) => {
+    if (image.type !== 'image' || !image.favoriteFolderIds?.includes(folderId)) return;
+    image.favoriteFolderIds = image.favoriteFolderIds.filter((id) => id !== folderId);
+    if (deleteImages) image.favoriteFolderIds = [];
+  });
+  imageTasks.forEach((task) => {
+    if (task.favoriteFolderIds?.includes(folderId)) task.favoriteFolderIds = task.favoriteFolderIds.filter((id) => id !== folderId);
+  });
+  let deletedBatchIds = new Set();
+  if (deleteImages) {
+    imageHistory.forEach((batch) => {
+      batch.imageIds = batch.imageIds.filter((id) => !imageIdSet.has(id));
+      batch.imageCount = batch.imageIds.length;
+      if (!batch.imageIds.length) deletedBatchIds.add(batch.id);
+    });
+    imageHistory = imageHistory.filter((batch) => !deletedBatchIds.has(batch.id));
+    const deletedTaskIds = new Set(imageTasks.filter((task) => deletedBatchIds.has(task.batchId)).map((task) => task.id));
+    imageTasks = imageTasks.filter((task) => !deletedTaskIds.has(task.id));
+    deletedTaskIds.forEach((id) => storedImages.delete(id));
+    deletedBatchIds.forEach((id) => storedImages.delete(id));
+    imageHistory.forEach((batch) => storedImages.set(batch.id, createStoredBatch(batch)));
+    pendingFavoriteTaskDeleteIds = [...deletedTaskIds];
+  } else {
+    pendingFavoriteTaskDeleteIds = [];
+  }
+  try {
+    const db = await openImageDb();
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction(IMAGE_STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(IMAGE_STORE_NAME);
+      if (deleteImages) {
+        pendingFavoriteTaskDeleteIds.forEach((id) => store.delete(id));
+        deletedBatchIds.forEach((id) => store.delete(id));
+        imageHistory.forEach((batch) => store.put(createStoredBatch(batch)));
+      }
+      imageTasks.forEach((task) => store.put(createStoredImageTask(task)));
+      imageIds.forEach((id) => {
+        const image = storedImages.get(id);
+        if (image?.type === 'image') store.put(createStoredImage(image));
+      });
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+    });
+    db.close();
+  } catch { }
+  saveFavoriteFolders();
+  if (activeFavoriteFolderId === folderId) activeFavoriteFolderId = '';
+  const shouldRefreshDialog = pendingFavoriteFolderDeleteInDialog;
+  closeFavoriteDeleteDialog();
+  await removeUnreferencedImages();
+  if (shouldRefreshDialog) renderFavoriteFolderChoices();
+  renderImageHistory();
+}
+
+function closeFavoriteDeleteDialog() {
+  $('#favoriteDeleteBackdrop').hidden = true;
+  pendingFavoriteFolderDeleteId = '';
+  pendingFavoriteFolderDeleteInDialog = false;
+  pendingFavoriteTaskDeleteIds = [];
+}
+
 function bindGenerationTaskActions(root) {
   root.querySelectorAll('[data-generation-action="reuse-task"]').forEach((button) => button.addEventListener('click', () => restoreImageTask(button.dataset.taskId)));
-  root.querySelectorAll('[data-generation-action="audit"]').forEach((button) => button.addEventListener('click', () => openImageTaskAudit(button.dataset.taskId)));
+  root.querySelectorAll('[data-generation-action="retry-task"]').forEach((button) => button.addEventListener('click', () => retryImageTask(button.dataset.taskId)));
+  root.querySelectorAll('[data-generation-action="favorite-task"]').forEach((button) => button.addEventListener('click', () => openFavoriteFolderDialog([], [button.dataset.taskId])));
+  root.querySelectorAll('[data-generation-action="delete-task"]').forEach((button) => button.addEventListener('click', () => deleteGenerationRecord('', button.dataset.taskId)));
+}
+
+async function retryImageTask(taskId) {
+  const task = imageTasks.find((entry) => entry.id === taskId);
+  if (!task || task.status === 'running') return;
+  setImagePromptText(task.prompt || '');
+  setImageConfig(task.config || {});
+  await setImageReferencesFromSources((task.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean));
+  setView('image');
+  await generateImage();
 }
 
 function getGenerationTimelineEntries() {
@@ -1513,30 +1987,56 @@ function getGenerationTimelineEntries() {
   });
 }
 
-function renderGenerationRecord({ task, batch, image, index }) {
+function renderGenerationRecord({ task, batch, image, index, favoriteSingle = false, favoriteTaskOnly = false }) {
   const images = getBatchImages(batch);
   const status = task?.status || 'success';
   const isRunning = status === 'running';
-  const isGroup = imageHistoryView === 'group' && images.length > 1;
-  const selectable = Boolean(batch && image);
-  const key = selectable ? entryKey(batch, index) : '';
+  const isGroup = imageHistoryView === 'group' && images.length > 1 && !favoriteSingle;
+  const selectable = Boolean(batch && image && !favoriteTaskOnly);
+  const key = selectable ? (favoriteSingle ? `${batch.id}:${index}` : entryKey(batch, index)) : '';
   const selected = key && selectedHistoryKeys.has(key);
   const elapsed = isRunning ? formatDuration(Date.now() - task.startedAt) : formatDuration(task ? (task.finishedAt || task.startedAt) - task.startedAt : batch?.durationMs || 0);
   const statusLabel = { running: '进行中', success: '已完成', partial: '部分完成', error: '失败' }[status] || '已完成';
   const title = task?.prompt || batch?.prompt || '未命名生成任务';
   const detail = task?.detail || `已生成 ${images.length} 张图片`;
-  const requestRecord = task && (task.requestLog || task.responses?.length || task.error) ? { request: task.requestLog || null, responses: task.responses || [], error: task.error || null } : null;
   if (selectable) {
-    const thumbs = isGroup ? `<div class="history-item-thumb-grid">${images.slice(0, 4).map((entry) => `<img data-image-id="${escapeHtml(entry.id)}" alt="${escapeHtml(title)}" decoding="async" draggable="false">`).join('')}</div>` : `<img data-image-id="${escapeHtml(image?.id || images[0].id)}" alt="${escapeHtml(title)}" decoding="async" draggable="false">`;
+    const thumbs = isGroup ? `<div class="history-item-thumb-grid">${images.slice(0, 4).map((entry) => `<img src="${DEFERRED_IMAGE_PLACEHOLDER}" data-image-id="${escapeHtml(entry.id)}" alt="" decoding="async" draggable="false">`).join('')}</div>` : `<img src="${DEFERRED_IMAGE_PLACEHOLDER}" data-image-id="${escapeHtml(image?.id || images[0].id)}" alt="" decoding="async" draggable="false">`;
     const countText = `<span class="history-item-batch">数量 ${images.length}</span>`;
     const statusText = status === 'partial' ? ' · 部分完成' : '';
-    const actions = isGroup ? `${historyActionButton('config', '复制配置', '配置', batch.id)}${historyActionButton('download', '下载首图', '下载', batch.id)}${historyActionButton('download-all', '下载全部', '全下', batch.id)}${historyActionButton('edit', '编辑输出', '编辑', batch.id)}${historyActionButton('new-chat', '放入对话', '对话', batch.id)}` : `${historyActionButton('config', '复制配置', '配置', batch.id)}${historyActionButton('download', '下载原图', '下载', batch.id, index)}${historyActionButton('edit', '编辑输出', '编辑', batch.id)}${historyActionButton('new-chat', '放入对话', '对话', batch.id, index)}`;
-    return `<article class="history-item generation-record ${status} ${isGroup ? 'group-card' : 'single-card'} ${selected ? 'selected' : ''}" data-history-key="${key}" data-task-id="${task?.id || ''}" data-history-id="${batch.id}"><input class="history-select" type="checkbox" data-history-key="${key}" ${selected ? 'checked' : ''} aria-label="选择历史图片"><button class="generation-record-delete" data-history-id="${batch.id}" data-task-id="${task?.id || ''}" title="删除生成记录" aria-label="删除生成记录">×</button><button class="history-image-button" data-history-id="${batch.id}" data-history-image-index="${index}" aria-label="查看生成图片">${thumbs}</button><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(title)}</div><time class="history-item-time">${formatTime(batch.createdAt)} · ${elapsed} · ${countText}${statusText}</time></div><div class="history-actions">${actions}</div></article>`;
+  const favoriteImageIds = isGroup ? images.map((entry) => entry.id) : [image?.id || images[0]?.id].filter(Boolean);
+  const isFavorite = favoriteImageIds.some((id) => storedImages.get(id)?.favoriteFolderIds?.length);
+  const actions = isGroup
+    ? `${historyActionButton('favorite', '收藏到文件夹', batch.id, 0, favoriteImageIds, isFavorite)}${historyActionButton('config', '复制配置', batch.id)}${historyActionButton('download-all', '下载全部', batch.id)}${historyActionButton('edit', '编辑输出', batch.id)}${historyActionButton('delete', '删除生成记录', batch.id, 0, [], false, task?.id || '')}`
+    : `${historyActionButton('favorite', '收藏到文件夹', batch.id, index, favoriteImageIds, isFavorite)}${historyActionButton('config', '复制配置', batch.id)}${historyActionButton('download', '下载原图', batch.id, index)}${historyActionButton('edit', '编辑输出', batch.id)}${historyActionButton('delete', '删除生成记录', batch.id, 0, [], false, task?.id || '')}`;
+    return `<article class="history-item generation-record ${status} ${isGroup ? 'group-card' : 'single-card'} ${selected ? 'selected' : ''}" data-history-key="${key}" data-task-id="${task?.id || ''}" data-history-id="${batch.id}" data-search-text="${escapeHtml(`${title} ${detail}`.toLocaleLowerCase())}" data-status="${status}"><input class="history-select" type="checkbox" data-history-key="${key}" ${selected ? 'checked' : ''} aria-label="选择历史图片"><button class="history-image-button" data-history-id="${batch.id}" data-history-image-index="${index}" aria-label="查看生成图片">${thumbs}</button><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(title)}</div><time class="history-item-time">${formatTime(batch.createdAt)} · ${elapsed} · ${countText}${statusText}</time></div><div class="history-actions">${actions}</div></article>`;
   }
-  const taskActions = task ? `${requestRecord ? `<button type="button" data-generation-action="audit" data-task-id="${task.id}">请求响应</button>` : ''}${!isRunning ? `<button type="button" data-generation-action="reuse-task" data-task-id="${task.id}">恢复配置</button>` : ''}` : '';
+  const taskIsFavorite = Boolean(task?.favoriteFolderIds?.length);
+  const taskActions = task ? `${taskActionButton('favorite-task', '收藏任务', task.id, taskIsFavorite)}${!isRunning ? taskActionButton('reuse-task', '恢复配置', task.id) : ''}${['error', 'partial'].includes(status) ? taskActionButton('retry-task', '重试任务', task.id) : ''}${!isRunning ? taskActionButton('delete-task', '删除生成记录', task.id) : ''}` : '';
+  const taskSelectionKey = task && !isRunning ? `task:${task.id}` : '';
+  const taskSelected = taskSelectionKey && selectedHistoryKeys.has(taskSelectionKey);
   const symbol = isRunning ? '<span class="generation-record-spinner" aria-hidden="true"></span>' : `<span class="generation-task-symbol" aria-hidden="true">${status === 'error' ? '!' : '○'}</span>`;
-  const deleteButton = isRunning ? '' : `<button class="generation-record-delete" data-history-id="${batch?.id || ''}" data-task-id="${task?.id || ''}" title="删除生成记录" aria-label="删除生成记录">×</button>`;
-  return `<article class="generation-task-card ${status}" data-task-id="${task?.id || ''}">${deleteButton}<div class="generation-task-visual">${symbol}<strong>${statusLabel}</strong><span>${escapeHtml(detail)}</span></div><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(title)}</div><time class="history-item-time" data-task-elapsed="${task?.id || ''}">${isRunning ? `已用时 ${elapsed}` : elapsed} · ${statusLabel}</time></div><div class="history-actions">${taskActions}</div></article>`;
+  return `<article class="generation-task-card ${status} ${taskSelected ? 'selected' : ''}" data-history-key="${escapeHtml(taskSelectionKey)}" data-task-id="${task?.id || ''}" data-search-text="${escapeHtml(`${title} ${detail}`.toLocaleLowerCase())}" data-status="${status}" ${!isRunning ? 'tabindex="0" role="button"' : ''}>${!isRunning ? `<input class="history-select" type="checkbox" data-history-key="${escapeHtml(taskSelectionKey)}" ${taskSelected ? 'checked' : ''} aria-label="选择失败任务">` : ''}<div class="generation-task-visual">${symbol}<strong>${statusLabel}</strong><span>${escapeHtml(detail)}</span></div><div class="history-item-info"><div class="history-item-prompt">${escapeHtml(title)}</div><time class="history-item-time" data-task-elapsed="${task?.id || ''}">${isRunning ? `已用时 ${elapsed}` : elapsed} · ${statusLabel}${images.length ? ` · 数量 ${images.length}` : ''}</time></div><div class="history-actions">${taskActions}</div></article>`;
+}
+
+function taskActionButton(action, label, taskId, active = false) {
+  return `<button type="button" class="history-action-button ${active ? 'is-favorite' : ''}" data-generation-action="${action}" data-task-id="${escapeHtml(taskId)}" data-tooltip="${label}" aria-label="${label}">${historyActionIcon(action === 'favorite-task' ? 'favorite' : action === 'delete-task' ? 'delete' : action)}</button>`;
+}
+
+function historyActionIcon(action) {
+  const icons = {
+    config: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg>',
+    download: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 19h14"></path></svg>',
+    'download-all': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 19h14"></path></svg>',
+    edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="13" height="14" rx="2"></rect><circle cx="7" cy="9" r="1"></circle><path d="m4 16 3.5-3.5 2.5 2.5 2-2 4 4"></path><path d="M19 5v8M15 9h8"></path></svg>',
+    favorite: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"></path></svg>',
+    audit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h11a2 2 0 0 1 2 2v13H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z"></path><path d="M8 4v12a3 3 0 0 0 3 3"></path><path d="M10 9h7M10 13h7"></path></svg>',
+    'retry-task': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"></path><path d="M19 12a7 7 0 1 1-2-5l3 5"></path></svg>',
+    'reuse-task': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h11a4 4 0 0 1 0 8H8"></path><path d="m11 11-4 4 4 4"></path><path d="M4 4v6"></path></svg>',
+    default: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 21 5-6a6 6 0 1 0-10 0z"></path><circle cx="12" cy="9" r="2"></circle></svg>',
+    rename: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="m16.5 3.5 4 4L9 19l-5 1 1-5z"></path></svg>',
+    delete: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"></path></svg>'
+  };
+  return icons[action] || icons.favorite;
 }
 
 function openImageTaskAudit(taskId) {
@@ -1578,18 +2078,25 @@ function invertVisibleHistorySelection() {
 
 async function downloadSelectedHistory() {
   const entries = getSelectedHistoryEntries();
-  const images = imageHistoryView === 'group' ? entries.flatMap((entry) => getBatchImages(entry.batch)) : entries.map((entry) => entry.image);
-  for (const image of images) await downloadImageOriginal(image, imageHistoryView === 'group' ? entries.find((entry) => getBatchImages(entry.batch).includes(image))?.batch : null);
+  const grouped = imageHistoryLibrary !== 'favorites' && imageHistoryView === 'group';
+  const images = grouped ? entries.flatMap((entry) => entry.batch ? getBatchImages(entry.batch) : []) : entries.map((entry) => entry.image).filter(Boolean);
+  for (const image of images) await downloadImageOriginal(image, grouped ? entries.find((entry) => getBatchImages(entry.batch).includes(image))?.batch : null);
 }
 
 async function deleteSelectedHistory() {
   const entries = getSelectedHistoryEntries();
   if (!entries.length) return;
-  const imageCount = imageHistoryView === 'group' ? entries.reduce((count, entry) => count + getBatchImages(entry.batch).length, 0) : entries.length;
-  if (!window.confirm(`删除已选择的 ${imageCount} 张图片?`)) return;
+  const grouped = imageHistoryLibrary !== 'favorites' && imageHistoryView === 'group';
+  const imageCount = grouped ? entries.reduce((count, entry) => count + (entry.batch ? getBatchImages(entry.batch).length || 1 : 1), 0) : entries.length;
+  if (!window.confirm(`删除已选择的 ${imageCount} 项?`)) return;
   const touchedBatches = new Map();
+  const directlyDeletedTaskIds = new Set();
   entries.forEach((entry) => {
-    if (imageHistoryView === 'group') touchedBatches.set(entry.batch.id, { batch: entry.batch, indexes: null, removedImages: [] });
+    if (!entry.batch) {
+      if (entry.task?.id) directlyDeletedTaskIds.add(entry.task.id);
+      return;
+    }
+    if (grouped) touchedBatches.set(entry.batch.id, { batch: entry.batch, indexes: null, removedImages: [] });
     else {
       const current = touchedBatches.get(entry.batch.id) || { batch: entry.batch, indexes: new Set(), removedImages: [] };
       current.indexes.add(entry.index);
@@ -1618,7 +2125,7 @@ async function deleteSelectedHistory() {
   touchedBatches.forEach(({ batch, deleteBatch }) => {
     if (deleteBatch) deletedBatchIds.add(batch.id);
   });
-  const deletedTaskIds = new Set(imageTasks.filter((task) => deletedBatchIds.has(task.batchId) || imageHistory.some((batch) => deletedBatchIds.has(batch.id) && batch.taskId === task.id)).map((task) => task.id));
+  const deletedTaskIds = new Set([...directlyDeletedTaskIds, ...imageTasks.filter((task) => deletedBatchIds.has(task.batchId) || imageHistory.some((batch) => deletedBatchIds.has(batch.id) && batch.taskId === task.id)).map((task) => task.id)]);
   imageHistory = imageHistory.filter((entry) => !deletedBatchIds.has(entry.id));
   imageTasks = imageTasks.filter((task) => !deletedTaskIds.has(task.id));
   try {
@@ -1669,6 +2176,9 @@ function getReferencedImageIds(excludedBatchIds = new Set()) {
     const record = findStoredImageBySource(reference.data);
     if (record) ids.add(record.id);
   });
+  storedImages.forEach((record) => {
+    if (record.type === 'image' && record.favoriteFolderIds?.length) ids.add(record.id);
+  });
   return ids;
 }
 
@@ -1716,17 +2226,6 @@ function writeTextToClipboard(text) {
   const copied = document.execCommand('copy');
   textarea.remove();
   return copied ? Promise.resolve() : Promise.reject(new Error('当前浏览器不支持复制'));
-}
-
-async function copyCurrentConversation() {
-  const conversation = activeConversation();
-  if (!conversation?.messages?.length) { showErrorToast('当前对话还没有消息'); return; }
-  try {
-    await writeTextToClipboard(formatConversationTranscript(conversation));
-    showToast('当前对话已复制');
-  } catch (error) {
-    showErrorToast('复制对话失败');
-  }
 }
 
 function buildConversationExportHtml(conversation) {
@@ -1815,22 +2314,41 @@ function getHistorySelectionKey(batchId, imageIndex = 0) {
 }
 
 function getVisibleHistoryEntries() {
-  return imageHistoryView === 'single'
-    ? imageHistory.flatMap((batch) => getBatchImages(batch).map((image, index) => ({ batch, image, index, key: getHistorySelectionKey(batch.id, index) })))
-    : imageHistory.map((batch) => ({ batch, image: getBatchImages(batch)[0], index: 0, key: getHistorySelectionKey(batch.id) }));
+  if (imageHistoryLibrary === 'favorites') {
+    if (!activeFavoriteFolderId) return [];
+    return getFavoriteFolderEntries(activeFavoriteFolderId).map((entry) => ({ ...entry, key: entry.favoriteTaskOnly ? getTaskSelectionKey(entry.task.id) : `${entry.batch.id}:${entry.index}` })).filter((entry) => {
+      const element = document.querySelector(`.history-item[data-history-key="${CSS.escape(entry.key)}"]`);
+      const taskElement = document.querySelector(`.generation-task-card[data-history-key="${CSS.escape(entry.key)}"]`);
+      return (element || taskElement) && !(element || taskElement).hidden;
+    });
+  }
+  return getGenerationTimelineEntries().map((entry) => ({
+    ...entry,
+    key: entry.batch ? getHistorySelectionKey(entry.batch.id, entry.index) : getTaskSelectionKey(entry.task.id)
+  })).filter((entry) => {
+    const element = document.querySelector(`.history-item[data-history-key="${CSS.escape(entry.key)}"], .generation-task-card[data-history-key="${CSS.escape(entry.key)}"]`);
+    return element && !element.hidden;
+  });
 }
 
 function getSelectedHistoryEntries() {
   return getVisibleHistoryEntries().filter((entry) => selectedHistoryKeys.has(entry.key));
 }
 
-function historyActionButton(action, title, symbol, batchId, imageIndex = 0) {
-  return `<button type="button" class="history-action-button" data-history-action="${action}" data-history-id="${batchId}" data-history-image-index="${imageIndex}" title="${title}" aria-label="${title}">${symbol}</button>`;
+function getTaskSelectionKey(taskId) {
+  return `task:${taskId}`;
+}
+
+function historyActionButton(action, title, batchId, imageIndex = 0, imageIds = [], active = false, taskId = '') {
+  const targetIds = action === 'favorite' ? ` data-favorite-image-ids="${imageIds.join(',')}"` : '';
+  return `<button type="button" class="history-action-button ${active ? 'is-favorite' : ''}" data-history-action="${action}" data-history-id="${escapeHtml(batchId)}" data-task-id="${escapeHtml(taskId)}" data-history-image-index="${imageIndex}" data-tooltip="${title}" aria-label="${title}"${targetIds}>${historyActionIcon(action)}</button>`;
 }
 
 function updateHistorySelectionBar() {
   const entries = getSelectedHistoryEntries();
-  const imageCount = imageHistoryView === 'group' ? entries.reduce((count, entry) => count + getBatchImages(entry.batch).length, 0) : entries.length;
+  const imageCount = imageHistoryLibrary !== 'favorites' && imageHistoryView === 'group'
+    ? entries.reduce((count, entry) => count + (entry.batch ? getBatchImages(entry.batch).length || 1 : 1), 0)
+    : entries.length;
   const bar = $('#historySelectionBar');
   bar.hidden = entries.length === 0;
   $('#historySelectionCount').textContent = `已选择 ${imageCount} 张`;
@@ -1839,25 +2357,25 @@ function updateHistorySelectionBar() {
 function applyHistorySelection(nextSelection) {
   selectedHistoryKeys = new Set(nextSelection);
   syncHistorySelectionControls();
-  historySelecto?.setSelectedTargets($$('.history-item').filter((element) => selectedHistoryKeys.has(element.dataset.historyKey)));
+  historySelecto?.setSelectedTargets($$('.history-item, .generation-task-card.error').filter((element) => selectedHistoryKeys.has(element.dataset.historyKey)));
   updateHistorySelectionBar();
 }
 
 function bindHistorySelecto() {
   if (!window.Selecto) return;
   if (historySelecto) {
-    historySelecto.setSelectedTargets($$('.history-item').filter((element) => selectedHistoryKeys.has(element.dataset.historyKey)));
+    historySelecto.setSelectedTargets($$('.history-item, .generation-task-card.error').filter((element) => selectedHistoryKeys.has(element.dataset.historyKey)));
     return;
   }
   historySelecto = new window.Selecto({
     // Keep the selection layer outside imageHistory; renderImageHistory replaces that node's children.
     container: $('#imageHistorySection'),
     dragContainer: $('#imageHistory'),
-    selectableTargets: ['.history-item'],
+    selectableTargets: ['.history-item', '.generation-task-card.error'],
     selectByClick: false,
     selectFromInside: true,
     preventDragFromInside: false,
-    dragCondition: ({ inputEvent }) => !inputEvent.target.closest?.('.history-actions, .history-image-button, .generation-record-delete, .history-select, .history-view-toggle'),
+    dragCondition: ({ inputEvent }) => !inputEvent.target.closest?.('.history-actions, .history-select, .history-view-toggle'),
     preventClickEventOnDrag: true,
     keyContainer: window,
     hitRate: 1,
@@ -1875,7 +2393,7 @@ function bindHistorySelecto() {
       }
     }
   });
-  historySelecto.setSelectedTargets($$('.history-item').filter((element) => selectedHistoryKeys.has(element.dataset.historyKey)));
+  historySelecto.setSelectedTargets($$('.history-item, .generation-task-card.error').filter((element) => selectedHistoryKeys.has(element.dataset.historyKey)));
   let selectionBeforeDrag = new Set(selectedHistoryKeys);
   historySelecto.on('selectStart', () => {
     selectionBeforeDrag = new Set(selectedHistoryKeys);
@@ -1904,7 +2422,7 @@ function toggleHistorySelection(baseSelection, elements) {
 }
 
 function syncHistorySelectionControls() {
-  $$('.history-item').forEach((element) => {
+  $$('.history-item, .generation-task-card.error').forEach((element) => {
     const selected = selectedHistoryKeys.has(element.dataset.historyKey);
     element.classList.toggle('selected', selected);
     const checkbox = element.querySelector('.history-select');
@@ -1955,7 +2473,7 @@ function bindCustomTooltips() {
 }
 
 function clearHistorySelection(event) {
-  if (event.target.closest?.('.history-item, .history-selection-bar, .history-heading')) return;
+  if (event.target.closest?.('.history-item, .generation-task-card, .history-selection-bar, .history-heading')) return;
   if (!selectedHistoryKeys.size) return;
   applyHistorySelection(new Set());
 }
@@ -2067,25 +2585,36 @@ function hydrateDeferredImages(root, observerName) {
   previousObserver?.disconnect();
   const images = [...root.querySelectorAll('img[data-image-id]')];
   if (!images.length) return;
+  const hydrateImage = (image) => {
+    const source = storedImages.get(image.dataset.imageId)?.src;
+    if (source) image.src = source;
+    image.removeAttribute('data-image-id');
+  };
   if (!('IntersectionObserver' in window)) {
-    images.forEach((image) => {
-      const source = storedImages.get(image.dataset.imageId)?.src;
-      if (source) image.src = source;
-      image.removeAttribute('data-image-id');
-    });
+    images.forEach(hydrateImage);
     return;
   }
+  const scrollRoot = observerName === 'history' && getComputedStyle(root).overflowY === 'auto' ? root : $('.content-stage');
+  const rootRect = scrollRoot.getBoundingClientRect();
+  const nearbyImages = [];
+  const deferredImages = [];
+  images.forEach((image) => {
+    const imageRect = image.getBoundingClientRect();
+    const nearby = imageRect.bottom >= rootRect.top - 300 && imageRect.top <= rootRect.bottom + 300;
+    (nearby ? nearbyImages : deferredImages).push(image);
+  });
+  // 同步恢复视口附近缩略图，避免列表重绘后浏览器短暂显示破图或空白占位。
+  nearbyImages.forEach(hydrateImage);
+  if (!deferredImages.length) return;
   const observer = new IntersectionObserver((entries, activeObserver) => {
     entries.forEach((entry) => {
       if (!entry.isIntersecting) return;
       const image = entry.target;
-      const source = storedImages.get(image.dataset.imageId)?.src;
-      if (source) image.src = source;
-      image.removeAttribute('data-image-id');
+      hydrateImage(image);
       activeObserver.unobserve(image);
     });
-  }, { root: observerName === 'history' && getComputedStyle(root).overflowY === 'auto' ? root : $('.content-stage'), rootMargin: '300px' });
-  images.forEach((image) => observer.observe(image));
+  }, { root: scrollRoot, rootMargin: '300px' });
+  deferredImages.forEach((image) => observer.observe(image));
   if (observerName === 'history') historyImageObserver = observer;
   else messageImageObserver = observer;
 }
@@ -2094,12 +2623,11 @@ function renderMessages() {
   const conversation = activeConversation();
   const list = $('#messageList');
   const hasMessages = conversation.messages.length > 0;
-  $('#copyCurrentConversation').disabled = !hasMessages;
-  $('#exportCurrentConversation').disabled = !hasMessages;
+  $('#toggleConversationExportMenu').disabled = !hasMessages;
   $('#welcomePanel').hidden = hasMessages;
   list.innerHTML = conversation.messages.map((message) => {
     const imageRecords = getMessageImageRecords(message);
-  const image = imageRecords.map((record, index) => `<button class="message-image-button" data-image-id="${escapeHtml(record.id)}" aria-label="预览消息图片"><img class="message-image" data-image-id="${escapeHtml(record.id)}" alt="用户上传的图片 ${index + 1}" decoding="async"></button>`).join('');
+  const image = imageRecords.map((record, index) => `<button class="message-image-button" data-image-id="${escapeHtml(record.id)}" aria-label="预览消息图片"><img class="message-image" src="${DEFERRED_IMAGE_PLACEHOLDER}" data-image-id="${escapeHtml(record.id)}" alt="" decoding="async"></button>`).join('');
     const editAction = message.role === 'user' ? `<button class="message-action edit-message" data-message-id="${message.id}">修改</button>` : '';
     return `<article class="message ${message.role}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div><div class="message-text markdown-body">${renderMarkdown(message.content)}</div>${image}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
   }).join('');
@@ -2365,9 +2893,14 @@ async function copyImageToNewChat(item) {
 
 function openLightbox(src, prompt = '', item = null) {
   currentImage = { ...(item || {}), src, prompt };
+  const isErrorTask = !src && currentImage.status === 'error';
   resetLightboxZoom();
   $('#lightboxImageWrap').classList.remove('is-zoomed', 'is-dragging');
-  $('#lightboxImage').src = src;
+  $('#lightboxImageWrap').classList.toggle('is-error', isErrorTask);
+  $('#lightboxImage').hidden = isErrorTask;
+  $('#lightboxImage').src = src || '';
+  $('#lightboxErrorState').hidden = !isErrorTask;
+  $('#lightboxErrorMessage').textContent = isErrorTask ? (currentImage.error?.message || currentImage.detail || '接口未返回图片') : '';
   $('#lightboxPrompt').textContent = prompt || '生成图片';
   $('#imageMetadata').innerHTML = renderImageMetadata(currentImage);
   $('#lightboxThumbnails').innerHTML = '';
@@ -2376,7 +2909,16 @@ function openLightbox(src, prompt = '', item = null) {
   $('#lightboxPrevious').hidden = true;
   $('#lightboxNext').hidden = true;
   $('#lightboxDownloadAll').hidden = true;
+  $('#lightboxCopyImage').hidden = isErrorTask;
+  $('#lightboxDownload').hidden = isErrorTask;
+  $('#lightboxCopyChat').hidden = isErrorTask;
+  $('#lightboxEdit').hidden = isErrorTask;
+  $('#lightboxReuse').textContent = isErrorTask ? '恢复配置' : '复用配置';
   $('#imageLightbox').hidden = false;
+  if (isErrorTask) {
+    $('#lightboxImage').onload = null;
+    return;
+  }
   $('#lightboxImage').onload = async () => {
     if (currentImage?.src !== src) return;
     currentImage.width = $('#lightboxImage').naturalWidth;
@@ -2384,6 +2926,25 @@ function openLightbox(src, prompt = '', item = null) {
     try { Object.assign(currentImage, await readImageDetails(src)); } catch { }
     $('#imageMetadata').innerHTML = renderImageMetadata(currentImage);
   };
+}
+
+function renderLightboxReferences(batch) {
+  const references = getBatchReferenceSources(batch);
+  if (!references.length) return;
+  $('#lightboxReferenceSection').hidden = false;
+  $('#lightboxReferenceThumbnails').innerHTML = references.map((src, referenceIndex) => `<button class="lightbox-reference-button" type="button" data-reference-index="${referenceIndex}" title="预览参考图 ${referenceIndex + 1}"><img src="${escapeHtml(src)}" alt="参考图 ${referenceIndex + 1}" draggable="false"></button>`).join('');
+  $$('.lightbox-reference-button').forEach((button) => button.addEventListener('click', () => {
+    const index = Number(button.dataset.referenceIndex) || 0;
+    openChatImageViewer(references[index], references, index);
+  }));
+}
+
+function openImageTaskDetail(task) {
+  const batch = imageHistory.find((item) => item.id === task.batchId || item.taskId === task.id) || task;
+  const detail = { ...task, batch, config: task.config || {}, prompt: task.prompt || '', status: task.status || 'error', isTaskError: true };
+  openLightbox('', detail.prompt, detail);
+  renderLightboxReferences(task);
+  $('#lightboxTitle').textContent = '生成失败';
 }
 
 function openChatImageViewer(src, sources = [src], index = -1) {
@@ -2520,32 +3081,35 @@ function formatBytes(bytes) {
 function renderImageMetadata(image) {
   const batch = image.batch || image;
   const config = image.config || batch.config || {};
-  const task = imageTasks.find((item) => item.id === batch.taskId || item.batchId === batch.id);
+  const task = imageTasks.find((item) => item.id === batch.taskId || item.batchId === batch.id) || (image.isTaskError ? image : null);
   const taskAudit = task ? { requestLog: task.requestLog, responses: task.responses || [], error: task.error } : {};
   const response = { ...(batch.responseMeta || {}), ...(image.responseMeta || {}), ...taskAudit };
+  const imageSource = String(image.src || '');
   const responseDimensions = parseImageSize(response.size);
   const actualWidth = image.width || response.width || response.output_width || responseDimensions.width;
   const actualHeight = image.height || response.height || response.output_height || responseDimensions.height;
   const actualSize = actualWidth && actualHeight ? `${actualWidth} × ${actualHeight}` : '';
   const requestSize = config.size || ratioToSize(config.ratio, config.resolution, config.width, config.height, config.sizeMode);
-  const actualFormat = normalizeImageFormat(image.detectedFormat || image.format || response.format || response.output_format || image.src.match(/\.(png|jpe?g|webp)(?:[?#]|$)/i)?.[1]?.toLowerCase() || '');
+  const actualFormat = normalizeImageFormat(image.detectedFormat || image.format || response.format || response.output_format || imageSource.match(/\.(png|jpe?g|webp)(?:[?#]|$)/i)?.[1]?.toLowerCase() || '');
   const requestRatio = config.ratio && config.ratio !== 'auto' ? config.ratio : sizeToRatio(requestSize);
   const actualRatio = actualWidth && actualHeight ? formatActualRatio(actualWidth, actualHeight) : '';
   const requestedCount = Number(config.count) || 1;
-  const actualCount = getBatchImages(batch).length || 1;
+  const actualCount = getBatchImages(batch).length;
   const actualModel = response.model || response.apiResponse?.model || '';
   const source = response.source || state.settings.imageBaseUrl || '演示模式';
   const requestBackground = config.background || 'auto';
   const requestModeration = config.moderation || 'auto';
   const moderationDisplay = response.moderationSent === true ? requestModeration : response.moderationSent === false ? '演示模式未发送' : requestModeration;
-  const responseSummary = { status: response.status || '', requestId: response.requestId || response.apiResponse?.requestId || '', id: response.id || response.apiResponse?.id || '', created: response.created || response.apiResponse?.created || '', model: actualModel, usage: response.usage || response.apiResponse?.usage || undefined };
+  const responseSummary = { status: response.status || (image.isTaskError ? 'error' : ''), requestId: response.requestId || response.apiResponse?.requestId || '', id: response.id || response.apiResponse?.id || '', created: response.created || response.apiResponse?.created || '', model: actualModel, usage: response.usage || response.apiResponse?.usage || undefined };
   const actualBackground = image.hasTransparency === true ? 'transparent' : image.hasTransparency === false ? 'opaque' : '';
   const rawRequest = response.requestLog ? JSON.stringify(response.requestLog, null, 2) : '';
   const rawResponseRecord = response.upstreamResponse || (response.responses?.length ? response.responses : response.apiResponse);
   const rawResponse = rawResponseRecord ? JSON.stringify(rawResponseRecord, null, 2) : '';
-  const responseDataKind = response.delivery === 'b64_json' ? (response.providedUrl ? 'b64_json（同时返回 URL）' : 'b64_json') : response.delivery === 'url' ? (image.src.startsWith('data:') ? '接口 URL（已保存为本地 Base64）' : '接口 URL') : image.src.startsWith('data:') ? '本地 Base64 数据' : '本地对象';
+  const responseDataKind = image.isTaskError ? '未生成图片' : response.delivery === 'b64_json' ? (response.providedUrl ? 'b64_json（同时返回 URL）' : 'b64_json') : response.delivery === 'url' ? (imageSource.startsWith('data:') ? '接口 URL（已保存为本地 Base64）' : '接口 URL') : imageSource.startsWith('data:') ? '本地 Base64 数据' : '本地对象';
   const referenceSources = getBatchReferenceSources(batch);
-  return `<div class="metadata-card full"><dt>请求 / 实际模型</dt><dd>${renderComparison(config.model || state.settings.imageModel || '未知', actualModel, actualModel || '响应未提供')}</dd></div><div class="metadata-card full"><dt>来源</dt><dd>${escapeHtml(source)}</dd></div><div class="metadata-card"><dt>请求 / 实际尺寸</dt><dd>${renderComparison(requestSize, actualSize, actualSize || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际比例</dt><dd>${renderComparison(requestRatio || '自动', actualRatio, actualRatio || '响应未提供', true)}</dd></div><div class="metadata-card"><dt>请求 / 实际格式</dt><dd>${renderComparison(config.format || 'png', actualFormat, actualFormat || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际数量</dt><dd>${renderComparison(String(requestedCount), String(actualCount), String(actualCount))}</dd></div><div class="metadata-card"><dt>质量</dt><dd>${escapeHtml(config.quality || 'auto')}</dd></div><div class="metadata-card"><dt>压缩</dt><dd>${escapeHtml(['jpeg', 'webp'].includes(config.format) ? (config.compression === undefined || config.compression === 'auto' ? 'auto' : `${config.compression}%`) : 'PNG 不支持')}</dd></div><div class="metadata-card"><dt>选项 / 实际透明度</dt><dd>${renderComparison(requestBackground, actualBackground, actualBackground || '未检测')}</dd></div><div class="metadata-card"><dt>审核</dt><dd>${escapeHtml(moderationDisplay)}</dd></div><div class="metadata-card"><dt>参考图</dt><dd>${escapeHtml(`${referenceSources.length} 张`)}</dd></div><div class="metadata-card"><dt>数据来源</dt><dd>${escapeHtml(responseDataKind)}</dd></div><div class="metadata-card"><dt>文件大小</dt><dd>${escapeHtml(formatBytes(image.fileSize || 0))}</dd></div><div class="metadata-card"><dt>创建时间</dt><dd>${escapeHtml(formatTime(batch.startedAt || batch.createdAt || image.createdAt))}</dd></div><div class="metadata-card"><dt>耗时</dt><dd>${escapeHtml(formatDuration(batch.durationMs || 0))}</dd></div><div class="metadata-card full"><dt>完整请求配置</dt><dd>${escapeHtml(formatImageConfig(config, response.requestType, image.prompt || batch.prompt || ''))}</dd>${rawRequest ? `<details class="metadata-disclosure"><summary>查看实际请求</summary><pre>${escapeHtml(rawRequest)}</pre></details>` : ''}</div>${response.revised_prompt ? `<div class="metadata-card full"><dt>接口修订提示词</dt><dd>${escapeHtml(response.revised_prompt)}</dd></div>` : ''}<div class="metadata-card full"><dt>接口响应</dt><dd>${escapeHtml(JSON.stringify(responseSummary))}</dd>${rawResponse ? `<details class="metadata-disclosure"><summary>查看上游响应</summary><pre>${escapeHtml(rawResponse)}</pre></details>` : ''}</div>`;
+  const durationMs = batch.durationMs || (task?.finishedAt && task.startedAt ? task.finishedAt - task.startedAt : 0);
+  const errorMessage = image.isTaskError ? (image.error?.message || image.detail || '生成失败') : '';
+  return `<div class="metadata-card full"><dt>请求 / 实际模型</dt><dd>${renderComparison(config.model || state.settings.imageModel || '未知', actualModel, actualModel || '响应未提供')}</dd></div><div class="metadata-card full"><dt>来源</dt><dd>${escapeHtml(source)}</dd></div>${errorMessage ? `<div class="metadata-card full"><dt>错误信息</dt><dd>${escapeHtml(errorMessage)}</dd></div>` : ''}<div class="metadata-card"><dt>请求 / 实际尺寸</dt><dd>${renderComparison(requestSize, actualSize, actualSize || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际比例</dt><dd>${renderComparison(requestRatio || '自动', actualRatio, actualRatio || '响应未提供', true)}</dd></div><div class="metadata-card"><dt>请求 / 实际格式</dt><dd>${renderComparison(config.format || 'png', actualFormat, actualFormat || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际数量</dt><dd>${renderComparison(String(requestedCount), actualCount ? String(actualCount) : '', actualCount ? String(actualCount) : '未生成')}</dd></div><div class="metadata-card"><dt>质量</dt><dd>${escapeHtml(config.quality || 'auto')}</dd></div><div class="metadata-card"><dt>压缩</dt><dd>${escapeHtml(['jpeg', 'webp'].includes(config.format) ? (config.compression === undefined || config.compression === 'auto' ? 'auto' : `${config.compression}%`) : 'PNG 不支持')}</dd></div><div class="metadata-card"><dt>选项 / 实际透明度</dt><dd>${renderComparison(requestBackground, actualBackground, actualBackground || '未检测')}</dd></div><div class="metadata-card"><dt>审核</dt><dd>${escapeHtml(moderationDisplay)}</dd></div><div class="metadata-card"><dt>参考图</dt><dd>${escapeHtml(`${referenceSources.length} 张`)}</dd></div><div class="metadata-card"><dt>数据来源</dt><dd>${escapeHtml(responseDataKind)}</dd></div><div class="metadata-card"><dt>文件大小</dt><dd>${escapeHtml(image.isTaskError ? '未生成' : formatBytes(image.fileSize || 0))}</dd></div><div class="metadata-card"><dt>创建时间</dt><dd>${escapeHtml(formatTime(batch.startedAt || batch.createdAt || image.createdAt))}</dd></div><div class="metadata-card"><dt>耗时</dt><dd>${escapeHtml(formatDuration(durationMs))}</dd></div><div class="metadata-card full"><dt>完整请求配置</dt><dd>${escapeHtml(formatImageConfig(config, response.requestType, image.prompt || batch.prompt || ''))}</dd>${rawRequest ? `<details class="metadata-disclosure"><summary>查看实际请求</summary><pre>${escapeHtml(rawRequest)}</pre></details>` : ''}</div>${response.revised_prompt ? `<div class="metadata-card full"><dt>接口修订提示词</dt><dd>${escapeHtml(response.revised_prompt)}</dd></div>` : ''}<div class="metadata-card full"><dt>接口响应</dt><dd>${escapeHtml(JSON.stringify(responseSummary))}</dd>${rawResponse ? `<details class="metadata-disclosure"><summary>查看上游响应</summary><pre>${escapeHtml(rawResponse)}</pre></details>` : ''}</div>`;
 }
 
 function renderComparison(requested, actual, actualLabel, ratioMode = false) {
@@ -2629,15 +3193,7 @@ function openHistoryDetail(batch, index = 0) {
   openLightbox(selected.src, batch.prompt, { ...selected, batchId: batch.id, batch, images, batchIndex: safeIndex });
   $('#lightboxThumbnails').innerHTML = images.map((image, imageIndex) => `<button class="lightbox-thumb ${imageIndex === safeIndex ? 'active' : ''}" data-lightbox-index="${imageIndex}" type="button"><img src="${escapeHtml(image.src)}" alt="第 ${imageIndex + 1} 张生成图片" draggable="false"></button>`).join('');
   $$('.lightbox-thumb').forEach((button) => button.addEventListener('click', () => openHistoryDetail(batch, Number(button.dataset.lightboxIndex))));
-  const references = getBatchReferenceSources(batch);
-  if (references.length) {
-    $('#lightboxReferenceSection').hidden = false;
-    $('#lightboxReferenceThumbnails').innerHTML = references.map((src, referenceIndex) => `<button class="lightbox-reference-button" type="button" data-reference-index="${referenceIndex}" title="预览参考图 ${referenceIndex + 1}"><img src="${escapeHtml(src)}" alt="参考图 ${referenceIndex + 1}" draggable="false"></button>`).join('');
-    $$('.lightbox-reference-button').forEach((button) => button.addEventListener('click', () => {
-      const index = Number(button.dataset.referenceIndex) || 0;
-      openChatImageViewer(references[index], references, index);
-    }));
-  }
+  renderLightboxReferences(batch);
   $('#lightboxPrevious').hidden = images.length <= 1;
   $('#lightboxNext').hidden = images.length <= 1;
   $('#lightboxPrevious').disabled = false;
@@ -3590,6 +4146,8 @@ function closeCustomSelects(except = null) {
 
 function positionCustomSelectMenu(host, menu) {
   host.classList.remove('open-up');
+  menu.style.maxHeight = 'none';
+  menu.style.overflowY = 'hidden';
   const hostRect = host.getBoundingClientRect();
   let boundaryTop = 8;
   let boundaryBottom = window.innerHeight - 8;
@@ -3599,12 +4157,16 @@ function positionCustomSelectMenu(host, menu) {
     boundaryTop = Math.max(boundaryTop, parentRect.top + 4);
     boundaryBottom = Math.min(boundaryBottom, parentRect.bottom - 4);
   }
-  const desiredHeight = Math.min(menu.scrollHeight, window.innerHeight * .45, 280);
+  const contentHeight = menu.scrollHeight;
+  const desiredHeight = Math.min(contentHeight, window.innerHeight * .45, 280);
   const spaceBelow = Math.max(0, boundaryBottom - hostRect.bottom - 4);
   const spaceAbove = Math.max(0, hostRect.top - boundaryTop - 4);
   const openUp = spaceBelow < desiredHeight && spaceAbove > spaceBelow;
   host.classList.toggle('open-up', openUp);
-  menu.style.maxHeight = `${Math.max(60, Math.min(desiredHeight, openUp ? spaceAbove : spaceBelow))}px`;
+  const availableHeight = Math.max(30, Math.min(window.innerHeight * .45, 280, openUp ? spaceAbove : spaceBelow));
+  const needsScroll = contentHeight > availableHeight + 1;
+  menu.style.maxHeight = needsScroll ? `${Math.floor(availableHeight)}px` : 'none';
+  menu.style.overflowY = needsScroll ? 'auto' : 'hidden';
 }
 
 function renderCustomSelectMenu(select) {
@@ -3773,7 +4335,7 @@ async function selectImagePromptTemplate(templateId) {
   if (template) {
     const templateImageIds = template.referenceImageIds.filter((imageId) => storedImages.has(imageId));
     const templateImageCount = template.referenceImageIds.length;
-    const shouldApplyTemplateImages = !templateImageCount || !imageReferences.length || window.confirm(`当前已有 ${imageReferences.length} 张参考图, 此模板包含 ${templateImageCount} 张参考图。是否用模板图片覆盖当前列表?\n\n选择“取消”会保留当前图片, 仍应用模板关键词。`);
+    const shouldApplyTemplateImages = templateImageCount > 0 && (!imageReferences.length || window.confirm(`当前已有 ${imageReferences.length} 张参考图, 此模板包含 ${templateImageCount} 张参考图。是否用模板图片覆盖当前列表?\n\n选择“取消”会保留当前图片, 仍应用模板关键词。`));
     setImagePromptText(template.prompt);
     if (shouldApplyTemplateImages) setImagePromptReferencesFromIds(templateImageIds);
   }
@@ -3866,6 +4428,8 @@ function renderPolishReferenceList(references, previewSelector, hintSelector, la
   const preview = $(previewSelector);
   const kind = previewSelector === '#polishGenerationReferencePreview' ? 'generation' : 'polish';
   $(hintSelector).textContent = sources.length ? `${sources.length} 张参考图` : '未添加参考图';
+  const clearButton = $(kind === 'generation' ? '#clearPolishGenerationReferences' : '#clearPolishReferences');
+  if (clearButton) clearButton.disabled = sources.length === 0;
   preview.hidden = sources.length === 0;
   preview.innerHTML = sources.map((src, index) => `<div class="polish-reference-item" data-order-index="${index}" draggable="true"><button class="polish-reference-thumb" type="button" data-polish-reference-index="${index}" title="预览${label} ${index + 1}" aria-label="预览${label} ${index + 1}"><img alt="${label} ${index + 1}" draggable="false" decoding="async"><span class="polish-reference-badge">${label.replace('参考图', '')} ${index + 1}</span></button><button class="replace-polish-reference" type="button" data-polish-reference-replace="${index}" title="更换${label} ${index + 1}" aria-label="更换${label} ${index + 1}">↻</button><button class="remove-polish-reference" type="button" data-polish-reference-remove="${index}" title="移除${label} ${index + 1}" aria-label="移除${label} ${index + 1}">×</button></div>`).join('');
   preview.querySelectorAll('.polish-reference-thumb img').forEach((image, index) => { image.src = sources[index]; });
@@ -3875,7 +4439,6 @@ function renderPolishReferenceList(references, previewSelector, hintSelector, la
     openChatImageViewer(sources[index], sources, index);
   }));
   preview.querySelectorAll('[data-polish-reference-remove]').forEach((button) => button.addEventListener('click', () => {
-    if (!window.confirm(`移除${label} ${Number(button.dataset.polishReferenceRemove) + 1}?`)) return;
     onRemove(Number(button.dataset.polishReferenceRemove));
     resetPolishSuggestion();
   }));
@@ -4665,12 +5228,12 @@ function getSubmittedPolishText(text, input) {
 function renderImageReferences() {
   const preview = $('#imageReferencePreview');
   preview.hidden = imageReferences.length === 0;
+  $('#clearImageReferences').disabled = imageReferences.length === 0;
   preview.innerHTML = imageReferences.map((reference, index) => `<div class="reference-preview-item" data-order-index="${index}" draggable="true"><img alt="生图参考图 ${index + 1}" draggable="false" decoding="async"><span class="reference-preview-index">${index + 1}</span><button type="button" class="replace-reference" data-reference-index="${index}" title="更换参考图 ${index + 1}" aria-label="更换参考图 ${index + 1}">↻</button><button type="button" class="remove-reference" data-reference-index="${index}" title="移除参考图 ${index + 1}" aria-label="移除参考图 ${index + 1}">×</button></div>`).join('');
   preview.querySelectorAll('.reference-preview-item img').forEach((image, index) => { image.src = imageReferences[index].data; });
   preview.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
   preview.querySelectorAll('.remove-reference').forEach((button) => button.addEventListener('click', () => {
     const index = Number(button.dataset.referenceIndex);
-    if (!window.confirm(`移除生成参考图 ${index + 1}? 关键词中的关联引用会标记为 @图?`)) return;
     const previousLength = imageReferences.length;
     imageReferences.splice(index, 1);
     setImagePromptText(remapImageMentions($('#imagePrompt').value, Array.from({ length: previousLength }, (_, oldIndex) => oldIndex === index ? undefined : oldIndex > index ? oldIndex - 1 : oldIndex)));
@@ -4784,6 +5347,12 @@ async function setImageReferencesFromSources(sources, replace = true) {
 function clearImageReferences() {
   imageReferences = [];
   renderImageReferences();
+}
+
+function confirmClearReferences(label, references, clear) {
+  if (!references.length) return;
+  if (!window.confirm(`清空全部${label}？`)) return;
+  clear();
 }
 
 function getConnectionProfileFields(kind) {
@@ -5137,8 +5706,10 @@ async function clearLocalData() {
   }
   if (scope === 'all') {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(FAVORITE_FOLDER_STORAGE_KEY);
     await clearStoredImages();
     state = createInitialState();
+    favoriteFolders = loadFavoriteFolders();
     imageTasks = [];
     stopImageTaskTimerIfIdle();
     pendingAttachments = [];
@@ -5163,6 +5734,12 @@ async function clearLocalData() {
     if (scope === 'image' || scope === 'workspace') {
       imageHistory = [];
       imageTasks = [];
+      favoriteFolders = normalizeFavoriteFolders([]);
+      saveFavoriteFolders();
+      activeFavoriteFolderId = '';
+      imageHistoryLibrary = 'history';
+      $('#historySearch').value = '';
+      $('#historyStatusFilter').value = 'all';
       stopImageTaskTimerIfIdle();
       clearImageReferences();
       selectedHistoryKeys.clear();
@@ -5204,7 +5781,7 @@ async function exportWorkspace() {
       if (id) { reference.imageId = id; draftReferenceIds.push(id); imageIds.add(id); }
     }
   }
-  const workspace = { version: 11, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches, imageTasks: tasks };
+  const workspace = { version: 12, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches, imageTasks: tasks, ...(scope === 'chat' ? {} : { favoriteFolders: cloneValue(favoriteFolders) }) };
   if (scope === 'all') workspace.apiConfig = { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
   if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
   const label = getExportScopeLabel(scope);
@@ -5288,6 +5865,7 @@ async function importWorkspace(file) {
     const sourceImages = (Array.isArray(payload.images) ? payload.images : []).filter((image) => image && image.id && image.src).map((image) => createStoredImage(image));
     const sourceHistory = (Array.isArray(payload.imageHistory) ? payload.imageHistory : []).filter((batch) => batch && batch.id).map((batch) => createStoredBatch(batch));
     const sourceTasks = (Array.isArray(payload.imageTasks) ? payload.imageTasks : []).filter((task) => task && task.id).map((task) => createStoredImageTask(task));
+    const sourceFavoriteFolders = normalizeFavoriteFolders(payload.favoriteFolders);
     const sourceConversations = (Array.isArray(payload.conversations) ? payload.conversations : []).map((source) => ({
       ...source,
       id: source.id || createId(),
@@ -5301,6 +5879,31 @@ async function importWorkspace(file) {
     const mode = String(modeInput).trim().toLowerCase();
     if (!['覆盖', '合并', 'overwrite', 'merge'].includes(mode)) throw new Error('导入方式只能填写 "覆盖" 或 "合并"');
     const merge = mode === '合并' || mode === 'merge';
+    const favoriteFolderIdMap = new Map();
+    let importedFavoriteFolders = favoriteFolders;
+    if (Array.isArray(payload.favoriteFolders) && ['image', 'workspace', 'all'].includes(scope)) {
+      if (merge) {
+        const folders = favoriteFolders.map((folder) => ({ ...folder }));
+        sourceFavoriteFolders.forEach((folder) => {
+          const matchingFolder = folders.find((entry) => entry.id === folder.id && entry.name === folder.name)
+            || folders.find((entry) => entry.name.toLocaleLowerCase() === folder.name.toLocaleLowerCase());
+          if (matchingFolder) {
+            favoriteFolderIdMap.set(folder.id, matchingFolder.id);
+            return;
+          }
+          const id = folders.some((entry) => entry.id === folder.id) ? createId() : folder.id;
+          favoriteFolderIdMap.set(folder.id, id);
+          folders.push({ ...folder, id, isDefault: false });
+        });
+        importedFavoriteFolders = normalizeFavoriteFolders(folders);
+      } else {
+        sourceFavoriteFolders.forEach((folder) => favoriteFolderIdMap.set(folder.id, folder.id));
+        importedFavoriteFolders = sourceFavoriteFolders;
+      }
+      sourceImages.forEach((image) => {
+        image.favoriteFolderIds = [...new Set((image.favoriteFolderIds || []).map((id) => favoriteFolderIdMap.get(id) || id).filter(Boolean))];
+      });
+    }
     const templateImageIds = getTemplateImageIds();
     const preservedIds = scope === 'all' ? new Set() : scope === 'chat' ? new Set([...getImageWorkspaceImageIds(), ...templateImageIds]) : scope === 'image' ? new Set([...getConversationImageIds(), ...templateImageIds]) : scope === 'workspace' ? templateImageIds : new Set(storedImages.keys());
     const baseRecords = merge || scope === 'config' ? [...storedImages.values()].filter((record) => record.type === 'image') : [...storedImages.values()].filter((record) => preservedIds.has(record.id));
@@ -5355,6 +5958,10 @@ async function importWorkspace(file) {
     if (scope === 'image' || scope === 'workspace' || scope === 'all') {
       imageHistory = merge ? mergeImageBatches(imageHistory, batches) : batches;
       imageTasks = merge ? [...new Map([...imageTasks, ...tasks].map((task) => [task.id, task])).values()].sort((left, right) => right.startedAt - left.startedAt) : tasks;
+      if (Array.isArray(payload.favoriteFolders)) {
+        favoriteFolders = importedFavoriteFolders;
+        saveFavoriteFolders();
+      }
       if (payload.imageDraft && typeof payload.imageDraft === 'object') {
         setImagePromptText(payload.imageDraft.prompt || '');
         setImageConfig(payload.imageDraft.config || state.settings.imageOptions);
@@ -5565,8 +6172,6 @@ function bindEvents() {
     }
   });
   $('#sendButton').addEventListener('click', sendMessage);
-  $('#copyCurrentConversation').addEventListener('click', copyCurrentConversation);
-  $('#exportCurrentConversation').addEventListener('click', () => { downloadCurrentConversationAsMarkdown(); closeConversationExportMenu(); });
   $('#toggleConversationExportMenu').addEventListener('click', toggleConversationExportMenu);
   $('#conversationExportMenu').addEventListener('click', (event) => {
     const option = event.target.closest?.('[data-conversation-export-format]');
@@ -5580,6 +6185,12 @@ function bindEvents() {
   $('#imageUpload').addEventListener('change', handleAttachment);
   $('#fileUpload').addEventListener('change', handleFileAttachment);
   $('#imageReferenceUpload').addEventListener('change', handleImageReference);
+  $('#clearImageReferences').addEventListener('click', () => confirmClearReferences('生成参考图', imageReferences, () => {
+    const previousLength = imageReferences.length;
+    imageReferences = [];
+    setImagePromptText(remapImageMentions($('#imagePrompt').value, Array.from({ length: previousLength }, () => undefined)));
+    renderImageReferences();
+  }));
   $('#imageReferenceReplaceUpload').addEventListener('change', (event) => replaceReferenceFile(event, imageReferences, renderImageReferences));
   $('#imagePrompt').addEventListener('paste', handleImagePromptPaste);
   bindImageDropTarget($('#imagePrompt').parentElement, addImageReferenceFiles, $('#imagePrompt'));
@@ -5598,6 +6209,20 @@ function bindEvents() {
   $('#polishInstruction').addEventListener('change', savePolishInstructionDraft);
   $('#polishGenerationReferenceUpload').addEventListener('change', handlePolishGenerationReference);
   $('#polishReferenceUpload').addEventListener('change', handlePolishReference);
+  $('#clearPolishGenerationReferences').addEventListener('click', () => confirmClearReferences('生成参考图', polishGenerationReferences, () => {
+    const previousLength = polishGenerationReferences.length;
+    polishGenerationReferences = [];
+    remapPolishEditorMentions('generation', Array.from({ length: previousLength }, () => undefined));
+    renderPolishGenerationReferencePreview();
+    resetPolishSuggestion();
+  }));
+  $('#clearPolishReferences').addEventListener('click', () => confirmClearReferences('润色参考图', polishReferences, () => {
+    const previousLength = polishReferences.length;
+    polishReferences = [];
+    remapPolishEditorMentions('polish', Array.from({ length: previousLength }, () => undefined));
+    renderPolishReferencePreview();
+    resetPolishSuggestion();
+  }));
   $('#polishGenerationReplaceUpload').addEventListener('change', async (event) => { await replaceReferenceFile(event, polishGenerationReferences, renderPolishGenerationReferencePreview); resetPolishSuggestion(); });
   $('#polishReferenceReplaceUpload').addEventListener('change', async (event) => { await replaceReferenceFile(event, polishReferences, renderPolishReferencePreview); resetPolishSuggestion(); });
   $('#polishUseGenerationReferences').addEventListener('change', () => { closePolishMentionMenus(); renderPolishMentionEditors(); resetPolishSuggestion(); });
@@ -5645,7 +6270,39 @@ function bindEvents() {
   $('#viewerImage').addEventListener('dragstart', (event) => event.preventDefault());
   $('#lightboxImage').addEventListener('dragstart', (event) => event.preventDefault());
   $('#imageLightbox').addEventListener('click', (event) => { if (event.target === $('#imageLightbox')) closeLightbox(); });
-  $('#historyViewToggle').addEventListener('click', (event) => { const button = event.target.closest('button[data-history-view]'); if (!button) return; imageHistoryView = button.dataset.historyView; selectedHistoryKeys.clear(); renderImageHistory(); });
+  $('#historyViewToggle').addEventListener('click', (event) => { const button = event.target.closest('button[data-history-view]'); if (!button || imageHistoryView === button.dataset.historyView) return; imageHistoryView = button.dataset.historyView; selectedHistoryKeys.clear(); renderImageHistory(); });
+  $('#historyLibraryToggle').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-history-library]');
+    if (!button) return;
+    if (button.dataset.historyLibrary === 'favorites') {
+      historyViewBeforeFavorites = imageHistoryView;
+      imageHistoryView = 'single';
+      activeFavoriteFolderId = '';
+    } else {
+      imageHistoryView = historyViewBeforeFavorites;
+      activeFavoriteFolderId = '';
+    }
+    imageHistoryLibrary = button.dataset.historyLibrary;
+    selectedHistoryKeys.clear();
+    $('#historySearch').value = '';
+    $('#historyStatusFilter').value = 'all';
+    syncCustomSelect($('#historyStatusFilter'));
+    renderImageHistory();
+  });
+  $('#favoriteFolderBack').addEventListener('click', () => { activeFavoriteFolderId = ''; selectedHistoryKeys.clear(); renderImageHistory(); });
+  $('#newFavoriteFolder').addEventListener('click', () => openFavoriteFolderDialog([]));
+  $('#historySearch').addEventListener('input', filterRenderedHistory);
+  $('#historyStatusFilter').addEventListener('change', filterRenderedHistory);
+  $('#closeFavoriteFolderDialog').addEventListener('click', closeFavoriteFolderDialog);
+  $('#cancelFavoriteFolderDialog').addEventListener('click', closeFavoriteFolderDialog);
+  $('#saveFavoriteFolderChoices').addEventListener('click', saveFavoriteFolderSelection);
+  $('#closeFavoriteDelete').addEventListener('click', closeFavoriteDeleteDialog);
+  $('#cancelFavoriteDelete').addEventListener('click', closeFavoriteDeleteDialog);
+  $('#confirmFavoriteDelete').addEventListener('click', confirmFavoriteFolderDelete);
+  $('#favoriteFolderCreateForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (createFavoriteFolder($('#favoriteFolderName').value)) $('#favoriteFolderName').value = '';
+  });
   $('#historySelectAll').addEventListener('click', selectAllVisibleHistory);
   $('#historyInvertSelection').addEventListener('click', invertVisibleHistorySelection);
   $('#historyDownloadSelected').addEventListener('click', downloadSelectedHistory);
@@ -5692,6 +6349,8 @@ function bindEvents() {
     if ($('.custom-select-menu:not([hidden])')) { event.preventDefault(); closeCustomSelects(); return; }
     if (!$('#chatImageViewer').hidden) { event.preventDefault(); event.stopPropagation(); closeChatImageViewer(); return; }
     if (!$('#conversationExportMenu').hidden) { event.preventDefault(); event.stopPropagation(); closeConversationExportMenu(); return; }
+    if (!$('#favoriteDeleteBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closeFavoriteDeleteDialog(); return; }
+    if (!$('#favoriteFolderBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closeFavoriteFolderDialog(); return; }
     if (!$('#taskAuditBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closeImageTaskAudit(); return; }
     if (!$('#imageLightbox').hidden) { event.preventDefault(); event.stopPropagation(); closeLightbox(); return; }
     if (!$('#promptPolishBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closePromptPolish(); return; }
@@ -5704,6 +6363,7 @@ function bindEvents() {
 
 bindEvents();
 render();
+setView('image');
 imageHistoryReady = loadImageHistory();
 if (state.settings.chatApiKey && state.settings.chatBaseUrl) loadModels('chat');
 if (state.settings.imageApiKey && state.settings.imageBaseUrl) loadModels('image');
