@@ -274,7 +274,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .lightbox-image-wrap img[hidden] { display: none !important; }
 .lightbox-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 13px 19px; border-top: 1px solid var(--line); }
 .lightbox-footer > span { min-width: 0; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-#lightboxPrompt { color: var(--ink); }
+#lightboxPrompt { min-height: 0; max-height: 120px; overflow-y: auto; padding-right: 4px; color: var(--ink); line-height: 1.45; overflow-wrap: anywhere; white-space: normal; scrollbar-width: thin; overscroll-behavior: contain; }
 .lightbox-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 @media (max-width: 780px) {
   .image-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -515,6 +515,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .image-history ::selection { background: transparent; color: inherit; }
 .history-select { opacity: 0; pointer-events: none; transition: opacity .12s ease; }
 .history-item:hover .history-select, .history-item.selected .history-select, .generation-task-card:hover .history-select, .generation-task-card.selected .history-select, .image-history.is-selecting .history-select { opacity: 1; pointer-events: auto; }
+@media (hover: none), (pointer: coarse) { .image-history .history-select { opacity: 1; pointer-events: auto; } }
 .custom-tooltip { position: fixed; z-index: 100; max-width: 260px; padding: 6px 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 5px; background: #263348; color: var(--ink); font-size: 11px; line-height: 1.35; box-shadow: 0 8px 24px rgba(0,0,0,.32); pointer-events: none; opacity: 0; }
 .custom-tooltip.show { opacity: 1; transform: translateY(0); }
 .custom-tooltip { z-index: 220; }
@@ -583,6 +584,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
   .lightbox-image-wrap { height: 38vh; min-height: 38vh; }
   .lightbox-image-wrap img { width: auto; min-width: 0; max-width: 100%; height: auto; min-height: 0; max-height: 38vh; flex: 0 1 auto; }
   .lightbox-footer { overflow-y: auto; }
+  #lightboxPrompt { max-height: 96px; }
   .ratio-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .size-dialog-body { padding-left: 20px; padding-right: 20px; }
   .panel-label-row { align-items: flex-start; gap: 8px; }
@@ -594,6 +596,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
   .mode-switcher { margin-left: 8px; gap: 13px; padding: 0 4px; }
   .sidebar { top: var(--topbar-height); }
   .history-selection-bar { align-items: flex-start; flex-direction: column; }
+  .image-history .history-select { opacity: 1; pointer-events: auto; }
   .selection-actions { width: 100%; }
   .selection-action-group { flex: 1; }
   .selection-action-group button { flex: 1; }
@@ -2362,6 +2365,13 @@ function applyHistorySelection(nextSelection) {
 }
 
 function bindHistorySelecto() {
+  if (isMobileHistorySelection()) {
+    historySelecto?.destroy?.();
+    historySelecto = null;
+    $('#imageHistory').classList.remove('is-selecting');
+    syncHistorySelectionControls();
+    return;
+  }
   if (!window.Selecto) return;
   if (historySelecto) {
     historySelecto.setSelectedTargets($$('.history-item, .generation-task-card.error').filter((element) => selectedHistoryKeys.has(element.dataset.historyKey)));
@@ -2410,6 +2420,16 @@ function bindHistorySelecto() {
     applyHistorySelection(toggleHistorySelection(selectionBeforeDrag, selected));
   });
   historySelecto.on('dragEnd', () => $('#imageHistory').classList.remove('is-selecting'));
+}
+
+function isMobileHistorySelection() {
+  return window.matchMedia('(max-width: 780px), (hover: none) and (pointer: coarse)').matches;
+}
+
+let historySelectionViewportTimer = 0;
+function refreshHistorySelectionMode() {
+  window.clearTimeout(historySelectionViewportTimer);
+  historySelectionViewportTimer = window.setTimeout(() => bindHistorySelecto(), 100);
 }
 
 function toggleHistorySelection(baseSelection, elements) {
@@ -6308,6 +6328,7 @@ function bindEvents() {
   $('#historyDownloadSelected').addEventListener('click', downloadSelectedHistory);
   $('#historyClearSelection').addEventListener('click', () => applyHistorySelection(new Set()));
   $('#historyDeleteSelected').addEventListener('click', deleteSelectedHistory);
+  window.addEventListener('resize', refreshHistorySelectionMode);
   $('#imageHistory').addEventListener('click', clearHistorySelection);
   document.addEventListener('click', clearHistorySelection);
   $('#generatePolishResult').addEventListener('click', generatePolishResult);
