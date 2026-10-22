@@ -2551,7 +2551,7 @@ function render() {
   renderConnection();
   $$('.context-option').forEach((button) => button.classList.toggle('active', button.dataset.context === state.contextMode));
   $('#contextDescription').textContent = state.contextMode === 'client' ? '每次请求带上本会话历史' : '每次只发送当前问题';
-  setImageConfig({ ...state.settings.imageOptions, countMode: state.settings.imageCountMode, backgroundMode: state.settings.imageBackgroundMode });
+  setImageConfig(state.settings.imageOptions);
   renderImagePromptTemplates();
   renderImageReferences();
   renderImageHistory();
@@ -2762,7 +2762,7 @@ function getImageConfig() {
 }
 
 function setImageConfig(config = {}) {
-  if (config.model) state.settings.imageModel = config.model;
+  // 历史记录只恢复生图参数, 接口和请求方式沿用当前设置
   imageSizeDraft = { sizeMode: config.sizeMode || (config.ratio === 'auto' ? 'auto' : 'ratio'), resolution: config.resolution || '1K', width: Number(config.width) || 1024, height: Number(config.height) || 1024 };
   if (config.ratio) $('#imageRatio').value = config.ratio;
   if (config.quality) $('#imageQuality').value = config.quality;
@@ -2771,11 +2771,9 @@ function setImageConfig(config = {}) {
   if (config.background) $('#imageBackground').value = config.background;
   if (config.moderation) $('#imageModeration').value = config.moderation;
   if (config.count) $('#imageCount').value = Math.min(10, Math.max(1, Number(config.count)));
-  if (config.countMode) state.settings.imageCountMode = config.countMode;
-  if (config.backgroundMode) state.settings.imageBackgroundMode = config.backgroundMode;
   updateImageSizeButton();
   syncCustomSelects();
-  if (config.model) persist();
+  getImageConfig();
 }
 
 const ratioOptions = ['1:1', '3:2', '2:3', '16:9', '9:16', '4:3', '3:4', '21:9'];
@@ -3427,13 +3425,25 @@ function buildApiEndpoint(input, suffix) {
   const knownEndpoint = /\/(chat\/completions|images\/generations|images\/edits)$/;
   if (knownEndpoint.test(value)) return `${value.replace(knownEndpoint, '')}${suffix}`;
   if (value.endsWith('/v1') || value.endsWith('/api')) return `${value}${suffix}`;
+  if (!/^https?:\/\//i.test(value)) return value;
+  const url = new URL(value);
+  if (url.pathname === '/') {
+    url.pathname = `/v1${suffix}`;
+    return url.href;
+  }
   return value;
 }
 
 function buildModelsEndpoint(input) {
   const value = input.trim().replace(/\/$/, '').replace(/\/(chat\/completions|images\/generations|models)$/, '');
   if (!value) return '';
-  return value.endsWith('/v1') || value.endsWith('/api') ? `${value}/models` : `${value}/models`;
+  if (!/^https?:\/\//i.test(value)) return `${value}/models`;
+  const url = new URL(value);
+  if (url.pathname === '/') {
+    url.pathname = '/v1/models';
+    return url.href;
+  }
+  return `${value}/models`;
 }
 
 function normalizeProxyUrl(value) {
@@ -3594,8 +3604,8 @@ async function parseImageResponse(response, endpoint, hasReference) {
     const responseModel = parsedResult.responseModel || response.headers.get('x-model') || response.headers.get('x-openai-model') || '';
     const images = parsedResult.images.map((image) => image.responseMeta?.model || !responseModel ? image : { ...image, responseMeta: { ...image.responseMeta, model: responseModel } });
     const upstreamResponse = { status: response.status, statusText: response.statusText || '', headers: Object.fromEntries(response.headers.entries()), body: parsedResult.apiResponse, receivedAt: Date.now() };
-    if (!response.ok) {
-      const error = new Error(parsedResult.errorMessage || raw.slice(0, 500) || `接口返回 ${response.status}`);
+    if (!response.ok || !parsedResult.parsed) {
+      const error = new Error(response.ok ? `接口返回的不是 JSON 图片数据, 请检查生图接口地址: ${endpoint}` : parsedResult.errorMessage || raw.slice(0, 500) || `接口返回 ${response.status}`);
       error.upstreamResponse = upstreamResponse;
       throw error;
     }
@@ -3617,8 +3627,8 @@ function parseImageResponseOnMain(raw, response, endpoint, hasReference) {
     return { ...item, b64_json: item.b64_json ? abbreviateResponseValue(item.b64_json) : item.b64_json, delivery: item.b64_json ? 'b64_json' : item.url ? 'url' : 'unknown', base64Length: item.b64_json?.length || 0 };
   }) : payload.data } : raw;
   const upstreamResponse = { status: response.status, statusText: response.statusText || '', headers: Object.fromEntries(response.headers.entries()), body: apiResponse, receivedAt: Date.now() };
-  if (!response.ok) {
-    const error = new Error(payload?.error?.message || payload?.message || payload?.detail || raw.slice(0, 500) || `接口返回 ${response.status}`);
+  if (!response.ok || !parsed) {
+    const error = new Error(response.ok ? `接口返回的不是 JSON 图片数据, 请检查生图接口地址: ${endpoint}` : payload?.error?.message || payload?.message || payload?.detail || raw.slice(0, 500) || `接口返回 ${response.status}`);
     error.upstreamResponse = upstreamResponse;
     throw error;
   }
@@ -4127,7 +4137,7 @@ function renderModelDropdown(kind, activeInput = null, showAll = false) {
     dropdown.querySelectorAll('button').forEach((button) => button.addEventListener('mousedown', (event) => {
       event.preventDefault();
       input.value = button.dataset.modelValue;
-      if (kind === 'chat') { state.settings.chatModel = input.value; $('#chatModel').value = input.value; $('#chatModelQuick').value = input.value; } else { state.settings.imageModel = input.value; }
+      if (kind === 'chat') { state.settings.chatModel = input.value; $('#chatModel').value = input.value; $('#chatModelQuick').value = input.value; } else { state.settings.imageModel = input.value; state.settings.imageOptions.model = input.value; }
       persist();
       dropdown.hidden = true;
     }));

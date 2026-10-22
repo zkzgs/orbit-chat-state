@@ -2,6 +2,8 @@
 
 const http = require('node:http');
 const https = require('node:https');
+const tls = require('node:tls');
+const { execFileSync } = require('node:child_process');
 
 const host = '127.0.0.1';
 const port = Number(process.env.ORBIT_PROXY_PORT || process.argv[2] || 8787);
@@ -34,6 +36,55 @@ const blockedResponseHeaders = new Set([
   'access-control-allow-headers',
   'access-control-expose-headers'
 ]);
+
+function getUpstreamProxy() {
+  let value = process.env.ORBIT_UPSTREAM_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy;
+  if (!value && process.platform === 'win32') {
+    let systemProxy = '';
+    try {
+      systemProxy = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "$settings = Get-ItemProperty -LiteralPath 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Internet Settings'; if ($settings.ProxyEnable -eq 1) { $settings.ProxyServer }"], { encoding: 'utf8', windowsHide: true }).trim();
+    } catch {
+      // 读取系统代理只是便利功能, 失败时保持直连, 不影响代理服务启动
+    }
+    if (systemProxy.includes('=')) {
+      const entries = systemProxy.split(';');
+      systemProxy = (entries.find((item) => item.startsWith('https=')) || entries.find((item) => item.startsWith('http=')) || '').replace(/^https?=/, '');
+    }
+    value = systemProxy;
+  }
+  if (!value) return null;
+  const proxy = new URL(value.includes('://') ? value : `http://${value}`);
+  if (!['http:', 'https:'].includes(proxy.protocol)) throw new Error('上游代理只支持 HTTP 或 HTTPS');
+  return proxy;
+}
+
+function createUpstreamAgent(proxy) {
+  const agent = new https.Agent();
+  // Node 的 HTTPS 请求需要显式建立隧道, 才会使用系统网络代理
+  agent.createConnection = (options, callback) => {
+    const authority = `${options.host}:${options.port}`;
+    const headers = { Host: authority };
+    if (proxy.username || proxy.password) headers['Proxy-Authorization'] = `Basic ${Buffer.from(`${decodeURIComponent(proxy.username)}:${decodeURIComponent(proxy.password)}`).toString('base64')}`;
+    const transport = proxy.protocol === 'https:' ? https : http;
+    const connectRequest = transport.request(proxy, { method: 'CONNECT', path: authority, headers });
+    connectRequest.on('connect', (upstreamResponse, socket, head) => {
+      if (upstreamResponse.statusCode !== 200) {
+        socket.destroy();
+        callback(new Error(`上游代理连接失败: HTTP ${upstreamResponse.statusCode}`));
+        return;
+      }
+      if (head.length) socket.unshift(head);
+      callback(null, tls.connect({ ...options, socket, servername: options.servername || options.host }));
+    });
+    connectRequest.setTimeout(30 * 1000, () => connectRequest.destroy(new Error('连接上游代理超时')));
+    connectRequest.on('error', callback);
+    connectRequest.end();
+  };
+  return agent;
+}
+
+const upstreamProxy = getUpstreamProxy();
+const upstreamAgent = upstreamProxy ? createUpstreamAgent(upstreamProxy) : undefined;
 
 function isAllowedOrigin(origin) {
   if (!origin || origin === 'null') return true;
@@ -85,7 +136,8 @@ function forwardRequest(request, response) {
   const startedAt = Date.now();
   const upstreamRequest = transport.request(target, {
     method: request.method,
-    headers: getForwardHeaders(request.headers)
+    headers: getForwardHeaders(request.headers),
+    agent: target.protocol === 'https:' ? upstreamAgent : undefined
   }, (upstreamResponse) => {
     Object.entries(upstreamResponse.headers).forEach(([name, value]) => {
       if (!blockedResponseHeaders.has(name) && value !== undefined) response.setHeader(name, value);
@@ -139,6 +191,7 @@ server.requestTimeout = 0;
 server.headersTimeout = 60 * 1000;
 server.listen(port, host, () => {
   console.log(`Orbit API Proxy: http://${host}:${port}`);
+  console.log(upstreamProxy ? `HTTPS upstream proxy: ${upstreamProxy.origin}` : 'HTTPS upstream: direct');
   console.log('Keep this window open while using the proxy. Press Ctrl+C to stop.');
 });
 
