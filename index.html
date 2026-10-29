@@ -60,8 +60,10 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .conversation-row:hover .conversation-actions, .conversation-row:focus-within .conversation-actions { opacity: 1; }
 .conversation-action { width: 21px; height: 21px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted-2); }
 .conversation-action:hover { background: rgba(255,255,255,.1); color: var(--ink); }
-.conversation-icon { color: var(--muted-2); font-size: 15px; }
+.conversation-icon { width: 16px; height: 16px; flex: 0 0 16px; display: grid; place-items: center; color: var(--muted-2); font-size: 15px; line-height: 1; }
 .conversation-item.active .conversation-icon { color: var(--accent); }
+.conversation-icon.is-generating { box-sizing: border-box; border: 2px solid rgba(116,212,203,.25); border-top-color: var(--cyan); border-radius: 50%; color: transparent; animation: conversation-spin .8s linear infinite; }
+@keyframes conversation-spin { to { transform: rotate(360deg); } }
 .conversation-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .sidebar-footer { border-top: 1px solid var(--line); padding: 15px 8px 0; }
 .privacy-note { display: flex; gap: 7px; align-items: center; color: var(--muted-2); font-size: 11px; padding: 0 3px 13px; }
@@ -125,6 +127,10 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .message-meta { display: flex; align-items: baseline; gap: 9px; }
 .message-role { font-size: 12px; font-weight: 650; }
 .message-time { color: var(--muted-2); font-size: 10px; }
+.message-reasoning { margin-top: 10px; border-left: 2px solid rgba(116,212,203,.38); padding-left: 10px; color: var(--muted-2); font-size: 11px; }
+.message-reasoning summary { width: fit-content; cursor: pointer; color: var(--muted); }
+.message-reasoning summary:hover { color: var(--cyan); }
+.message-reasoning-content { margin-top: 7px; color: var(--muted-2); line-height: 1.65; overflow-wrap: anywhere; }
 .message-text { margin-top: 8px; color: #c4cfdd; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
 .message.user .message-text { color: #e0e7ef; }
 .message-image { display: block; max-width: min(320px, 100%); max-height: 260px; margin-top: 11px; border: 1px solid var(--line-strong); border-radius: 7px; object-fit: cover; }
@@ -165,6 +171,11 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .send-button { width: 29px; height: 29px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: var(--accent); color: var(--accent-ink); font-size: 18px; font-weight: 700; transition: .2s ease; }
 .send-button:hover { background: #f1fc88; transform: translateY(-1px); }
 .send-button:disabled { cursor: wait; opacity: .55; transform: none; }
+.send-button.is-stop { background: #314157; color: var(--ink); }
+.send-button.is-stop:hover { background: #3d516b; transform: none; }
+.send-button.is-stop:disabled { cursor: default; }
+.message.streaming .message-actions { display: none; }
+.message.streaming .message-text:empty::before { content: "正在生成"; color: var(--muted-2); }
 .attachment-preview { position: relative; width: fit-content; margin-bottom: 9px; }
 .attachment-preview img { width: 68px; height: 55px; border-radius: 5px; border: 1px solid var(--line-strong); object-fit: cover; }
 .remove-attachment { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--panel-soft); border-radius: 50%; background: #314157; color: var(--ink); font-size: 13px; line-height: 14px; }
@@ -417,7 +428,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .markdown-inline-image { display: block; max-width: min(360px, 100%); max-height: 280px; margin: 10px 0; border: 1px solid var(--line-strong); border-radius: 6px; object-fit: contain; cursor: zoom-in; }
 .message-image-button { display: inline-block; margin: 11px 7px 0 0; padding: 0; border: 0; background: transparent; vertical-align: top; }
 .message-image-button .message-image { margin-top: 0; cursor: zoom-in; }
-.model-dropdown { position: absolute; z-index: 80; top: calc(100% - 2px); right: 0; left: 0; max-height: 210px; overflow-y: auto; padding: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: #162235; box-shadow: 0 16px 36px rgba(0,0,0,.35); }
+.model-dropdown { position: fixed; z-index: 80; top: 0; left: 0; max-height: 210px; overflow-y: auto; padding: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: #162235; box-shadow: 0 16px 36px rgba(0,0,0,.35); }
 .model-dropdown[hidden] { display: none; }
 .model-option { display: block; width: 100%; padding: 7px 8px; overflow: hidden; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 11px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .model-option:hover, .model-option:focus { background: rgba(116,212,203,.1); color: var(--ink); }
@@ -571,7 +582,8 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
   .modal-footer .primary-button, .modal-footer .secondary-button { min-height: 42px; }
   .context-toolbar { align-items: stretch; flex-direction: column; gap: 8px; }
   .context-mode { width: 100%; flex-wrap: wrap; row-gap: 4px; }
-  .search-toggle { margin-left: auto; }
+  .context-mode .search-toggle { margin-left: 0; }
+  .context-mode .search-toggle:first-of-type { margin-left: auto; }
   .chat-quick-settings { width: 100%; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
   .quick-setting { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); }
   .quick-setting input, .quick-setting select { width: 100%; }
@@ -890,6 +902,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
             <button class="context-option" data-context="single" title="每次只发送当前问题和系统提示词">单轮请求</button>
             <span class="context-description" id="contextDescription">每次请求带上本会话历史</span>
             <label class="search-toggle" title="向对话接口发送 web_search_options；是否真正联网由接口和模型决定"><input type="checkbox" id="chatWebSearch"><span>联网搜索</span></label>
+            <label class="search-toggle" title="开启后边生成边显示回复；关闭则等完整回复后一次显示"><input type="checkbox" id="chatStream"><span>流式输出</span></label>
           </div>
           <div class="chat-quick-settings" aria-label="当前对话模型设置">
             <label class="quick-setting"><span>模型</span><input id="chatModelQuick" list="chatModelOptions" type="text" value="gpt-4o-mini" aria-label="当前对话模型"></label>
@@ -906,7 +919,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
               <label class="icon-button composer-icon file-upload-button" title="上传文本文件" aria-label="上传文本文件"><span>▤</span><input type="file" id="fileUpload" accept=".txt,.md,.json,.csv,.log,text/plain,application/json,text/csv" hidden></label>
               <span class="composer-hint">Enter 发送 · Shift + Enter 换行</span>
             </div>
-            <button class="send-button" id="sendButton" title="发送消息" aria-label="发送消息"><span>↑</span></button>
+            <button class="send-button" id="sendButton" title="发送消息" aria-label="发送消息" data-mode="send"><span>↑</span></button>
           </div>
         </div>
         <div class="composer-footnote">AI 可能会犯错, 请核对重要信息 <span>·</span> <button id="openSettingsFromFootnote">配置你的接口</button></div>
@@ -1214,6 +1227,7 @@ const defaultState = {
     systemPrompt: '你是一位简洁, 直接的中文助手',
     reasoningEffort: 'auto',
     chatWebSearch: false,
+    chatStream: false,
     imagePolishInstruction: '保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。',
     imagePolishSystemPrompt: '你是专业的图像生成提示词编辑器。严格按照用户的润色要求处理原始关键词；如果收到参考图，请结合参考图中的主体、构图、色彩、风格和视觉特征定制提示词。只输出润色后的完整提示词，不要解释。',
     imagePromptTemplates: [],
@@ -1235,6 +1249,11 @@ let state = loadState();
 let pendingAttachments = [];
 let toastTimer = null;
 let requestController = null;
+let isChatGenerating = false;
+let chatStopRequested = false;
+let streamingMessageId = null;
+let generatingConversationId = null;
+let streamingRenderTimer = 0;
 let imageHistory = [];
 let storedImages = new Map();
 let editingMessageId = null;
@@ -2212,7 +2231,8 @@ function formatConversationTranscript(conversation) {
   conversation.messages.forEach((message) => {
     const role = message.role === 'assistant' ? 'Orbit' : '你';
     const imageLines = getMessageImageRecords(message).map((image, index) => `> 图片 ${index + 1}${image.name ? `：${image.name}` : ''}`).join('\n');
-    sections.push(`## ${role} · ${formatTime(message.createdAt)}\n\n${message.content || ''}${imageLines ? `\n\n${imageLines}` : ''}`);
+    const reasoning = message.reasoning ? `> 思考过程\n> ${message.reasoning.replace(/\n/g, '\n> ')}\n\n` : '';
+    sections.push(`## ${role} · ${formatTime(message.createdAt)}\n\n${reasoning}${message.content || ''}${imageLines ? `\n\n${imageLines}` : ''}`);
   });
   return sections.join('\n\n---\n\n');
 }
@@ -2235,7 +2255,8 @@ function buildConversationExportHtml(conversation) {
   const messageHtml = conversation.messages.map((message) => {
     const role = message.role === 'assistant' ? 'Orbit' : '你';
     const images = getMessageImageRecords(message).map((image, index) => `<figure><img src="${escapeHtml(image.src)}" alt="${escapeHtml(image.name || `图片 ${index + 1}`)}"><figcaption>${escapeHtml(image.name || `图片 ${index + 1}`)}</figcaption></figure>`).join('');
-    return `<article><header><strong>${role}</strong><time>${escapeHtml(formatTime(message.createdAt))}</time></header><div class="message-content">${renderMarkdown(message.content || '')}</div>${images ? `<div class="message-images">${images}</div>` : ''}</article>`;
+    const reasoning = message.reasoning ? `<details class="message-reasoning"><summary>思考过程</summary><div class="message-reasoning-content">${renderMarkdown(message.reasoning)}</div></details>` : '';
+    return `<article><header><strong>${role}</strong><time>${escapeHtml(formatTime(message.createdAt))}</time></header>${reasoning}<div class="message-content">${renderMarkdown(message.content || '')}</div>${images ? `<div class="message-images">${images}</div>` : ''}</article>`;
   }).join('\n');
   const documentClose = '</bo' + 'dy></ht' + 'ml>';
   return `<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(conversation.title)}</title><style>body{max-width:860px;margin:0 auto;padding:32px 20px;color:#243447;background:#f6f8fb;font:15px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}h1{font-size:24px}h1,article{background:#fff;border:1px solid #dfe6ee;border-radius:10px;padding:18px 20px}article{margin-top:14px}header{display:flex;gap:12px;align-items:baseline;border-bottom:1px solid #edf1f5;padding-bottom:8px}time{color:#718096;font-size:12px}.message-content p{margin:0 0 10px}.message-content p:last-child{margin-bottom:0}.message-content pre{overflow:auto;padding:12px;background:#f1f4f7;border-radius:6px}.message-content code{padding:2px 4px;background:#eef2f5;border-radius:3px}.message-content a{color:#147d92}.message-images{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}figure{margin:0;max-width:360px}figure img{display:block;max-width:100%;max-height:420px;border-radius:7px}figcaption{margin-top:4px;color:#718096;font-size:12px}</style></head><body><h1>${escapeHtml(conversation.title)}</h1>${messageHtml}${documentClose}`;
@@ -2548,6 +2569,8 @@ function render() {
   $('#chatModelQuick').value = state.settings.chatModel || 'gpt-4o-mini';
   $('#reasoningEffortQuick').value = state.settings.reasoningEffort || 'auto';
   $('#chatWebSearch').checked = Boolean(state.settings.chatWebSearch);
+  $('#chatStream').checked = Boolean(state.settings.chatStream);
+  $('#typingIndicator').hidden = !isChatGenerating || state.activeConversationId !== generatingConversationId || Boolean(streamingMessageId);
   renderConnection();
   $$('.context-option').forEach((button) => button.classList.toggle('active', button.dataset.context === state.contextMode));
   $('#contextDescription').textContent = state.contextMode === 'client' ? '每次请求带上本会话历史' : '每次只发送当前问题';
@@ -2564,9 +2587,13 @@ function renderConversations() {
   list.innerHTML = state.conversations
     .slice()
     .sort((a, b) => b.createdAt - a.createdAt)
-    .map((conversation) => `<div class="conversation-row"><button class="conversation-item ${conversation.id === state.activeConversationId ? 'active' : ''}" data-conversation-id="${conversation.id}"><span class="conversation-icon">${conversation.id === state.activeConversationId ? '●' : '○'}</span><span class="conversation-title">${escapeHtml(conversation.title)}</span></button><div class="conversation-actions"><button class="conversation-action rename-conversation" data-conversation-id="${conversation.id}" title="重命名对话" aria-label="重命名对话">✎</button><button class="conversation-action delete-conversation" data-conversation-id="${conversation.id}" title="删除对话" aria-label="删除对话">×</button></div></div>`)
+    .map((conversation) => {
+      const generating = isChatGenerating && conversation.id === generatingConversationId;
+      return `<div class="conversation-row"><button class="conversation-item ${conversation.id === state.activeConversationId ? 'active' : ''}" data-conversation-id="${conversation.id}" aria-busy="${generating}"><span class="conversation-icon${generating ? ' is-generating' : ''}" title="${generating ? '正在生成' : ''}" aria-label="${generating ? '正在生成' : ''}">${generating ? '' : conversation.id === state.activeConversationId ? '●' : '○'}</span><span class="conversation-title">${escapeHtml(conversation.title)}</span></button><div class="conversation-actions"><button class="conversation-action rename-conversation" data-conversation-id="${conversation.id}" title="重命名对话" aria-label="重命名对话">✎</button><button class="conversation-action delete-conversation" data-conversation-id="${conversation.id}" title="删除对话" aria-label="删除对话">×</button></div></div>`;
+    })
     .join('');
   $$('.conversation-item').forEach((button) => button.addEventListener('click', () => {
+    if (button.dataset.conversationId === state.activeConversationId) return;
     resetComposerDraft();
     state.activeConversationId = button.dataset.conversationId;
     persist();
@@ -2590,6 +2617,7 @@ function renameConversation(id) {
 async function deleteConversation(id) {
   const conversation = state.conversations.find((entry) => entry.id === id);
   if (!conversation || !window.confirm(`删除对话“${conversation.title}”?`)) return;
+  if (id === generatingConversationId) stopChatGeneration();
   if (state.activeConversationId === id) resetComposerDraft();
   state.conversations = state.conversations.filter((entry) => entry.id !== id);
   if (state.activeConversationId === id) state.activeConversationId = state.conversations[0]?.id || null;
@@ -2649,7 +2677,8 @@ function renderMessages() {
     const imageRecords = getMessageImageRecords(message);
   const image = imageRecords.map((record, index) => `<button class="message-image-button" data-image-id="${escapeHtml(record.id)}" aria-label="预览消息图片"><img class="message-image" src="${DEFERRED_IMAGE_PLACEHOLDER}" data-image-id="${escapeHtml(record.id)}" alt="" decoding="async"></button>`).join('');
     const editAction = message.role === 'user' ? `<button class="message-action edit-message" data-message-id="${message.id}">修改</button>` : '';
-    return `<article class="message ${message.role}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div><div class="message-text markdown-body">${renderMarkdown(message.content)}</div>${image}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
+    const reasoning = message.reasoning ? `<details class="message-reasoning"${message.id === streamingMessageId ? ' open' : ''}><summary>${message.id === streamingMessageId && !message.content ? '正在思考' : '思考过程'}</summary><div class="message-reasoning-content markdown-body">${renderMarkdown(message.reasoning)}</div></details>` : '';
+    return `<article class="message ${message.role}${message.id === streamingMessageId ? ' streaming' : ''}" data-message-id="${message.id}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div>${reasoning}<div class="message-text markdown-body">${renderMarkdown(message.content)}</div>${image}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
   }).join('');
   hydrateDeferredImages(list, 'messages');
   $$('.copy-message').forEach((button) => button.addEventListener('click', async () => {
@@ -3388,6 +3417,7 @@ function renderConnection(status = '') {
 }
 
 function setView(view) {
+  $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
   $$('.mode-tab').forEach((tab) => {
     const active = tab.dataset.view === view;
     tab.classList.toggle('active', active);
@@ -3410,8 +3440,9 @@ function createMessage(role, content, imageIds = []) {
   return { id: createId(), role, content, imageIds: [...imageIds], createdAt: Date.now() };
 }
 
-function addMessage(message) {
-  const conversation = activeConversation();
+function addMessage(message, conversationId = state.activeConversationId) {
+  const conversation = state.conversations.find((entry) => entry.id === conversationId);
+  if (!conversation) return;
   conversation.messages.push(message);
   if (message.role === 'user' && conversation.title === '新对话') conversation.title = message.content.slice(0, 24) || '图片对话';
   persist();
@@ -3474,11 +3505,13 @@ function resourceFetch(source, options = {}) {
   return state.settings.proxyEnabled && /^https?:\/\//i.test(source) ? apiFetch(source, options) : fetch(source, options);
 }
 
-async function buildRequestMessages() {
-  const conversation = activeConversation();
+async function buildRequestMessages(conversationId = state.activeConversationId) {
+  const conversation = state.conversations.find((entry) => entry.id === conversationId);
+  if (!conversation) throw new Error('对话已不存在');
   const source = state.contextMode === 'single' ? conversation.messages.slice(-1) : conversation.messages;
   const messages = [];
   for (const message of source) {
+    if (message.role === 'assistant' && !message.content.trim()) continue;
     const imageRecords = (message.imageIds || []).map((id) => storedImages.get(id)).filter((record) => record?.src);
     if (!imageRecords.length) {
       messages.push({ role: message.role, content: message.content });
@@ -3503,11 +3536,163 @@ async function buildRequestMessages() {
   return messages;
 }
 
+function setChatGenerating(active, conversationId = generatingConversationId) {
+  isChatGenerating = active;
+  generatingConversationId = active ? conversationId : null;
+  const button = $('#sendButton');
+  if (!button) return;
+  if (active) {
+    button.disabled = false;
+    button.classList.add('is-stop');
+    button.dataset.mode = 'stop';
+    button.title = '暂停生成';
+    button.setAttribute('aria-label', '暂停生成');
+    button.innerHTML = '<span>■</span>';
+  } else {
+    button.classList.remove('is-stop');
+    button.dataset.mode = 'send';
+    button.title = '发送消息';
+    button.setAttribute('aria-label', '发送消息');
+    button.innerHTML = '<span>↑</span>';
+    button.disabled = false;
+  }
+  renderConversations();
+  $('#typingIndicator').hidden = !active || state.activeConversationId !== generatingConversationId || Boolean(streamingMessageId);
+}
+
+function stopChatGeneration() {
+  if (!isChatGenerating) return;
+  chatStopRequested = true;
+  requestController?.abort();
+}
+
+function createChatAbortError() {
+  const error = new Error(chatStopRequested ? '已暂停生成' : '请求超时或已中断, 请检查接口地址和网络');
+  error.code = chatStopRequested ? 'stopped' : 'timeout';
+  return error;
+}
+
+function extractChatText(content) {
+  if (Array.isArray(content)) return content.map((part) => part?.text || part?.content || '').join('');
+  return typeof content === 'string' ? content : '';
+}
+
+function extractStreamDelta(payload) {
+  const choice = payload?.choices?.[0];
+  if (!choice) return '';
+  if (choice.delta) {
+    if (typeof choice.delta.content === 'string') return choice.delta.content;
+    if (Array.isArray(choice.delta.content)) return extractChatText(choice.delta.content);
+    if (typeof choice.delta.text === 'string') return choice.delta.text;
+  }
+  if (typeof choice.text === 'string') return choice.text;
+  if (choice.message) return extractChatText(choice.message.content);
+  return '';
+}
+
+function extractReasoningText(value) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(extractReasoningText).join('');
+  if (value && typeof value === 'object' && value.type !== 'reasoning.encrypted') return extractReasoningText(value.text ?? value.summary);
+  return '';
+}
+
+function extractMessageReasoning(message) {
+  return extractReasoningText(message?.reasoning_content) || extractReasoningText(message?.reasoning) || extractReasoningText(message?.reasoning_details);
+}
+
+function extractStreamReasoning(payload) {
+  const choice = payload?.choices?.[0];
+  return extractMessageReasoning(choice?.delta || choice?.message);
+}
+
+function findStreamingMessage() {
+  if (!streamingMessageId) return null;
+  const conversation = state.conversations.find((entry) => entry.id === generatingConversationId);
+  return conversation?.messages.find((entry) => entry.id === streamingMessageId) || null;
+}
+
+function ensureStreamingMessage() {
+  const existing = findStreamingMessage();
+  if (existing) return existing;
+  const conversation = state.conversations.find((entry) => entry.id === generatingConversationId);
+  if (!conversation) throw new Error('对话已不存在');
+  const message = createMessage('assistant', '');
+  message.reasoning = '';
+  streamingMessageId = message.id;
+  addMessage(message, generatingConversationId);
+  $('#typingIndicator').hidden = true;
+  return message;
+}
+
+function updateStreamingMessage(content, immediate = false, reasoning = null) {
+  const message = ensureStreamingMessage();
+  message.content = content;
+  if (reasoning !== null) message.reasoning = reasoning;
+  if (state.activeConversationId !== generatingConversationId) {
+    return;
+  }
+  const apply = () => {
+    if (state.activeConversationId !== generatingConversationId) return;
+    const selectorId = window.CSS?.escape ? CSS.escape(message.id) : message.id.replace(/"/g, '');
+    const article = document.querySelector(`.message[data-message-id="${selectorId}"]`);
+    const text = article?.querySelector('.message-text');
+    const reasoningText = article?.querySelector('.message-reasoning-content');
+    if (text && (reasoningText || !message.reasoning)) {
+      text.innerHTML = renderMarkdown(message.content);
+      if (reasoningText) {
+        reasoningText.innerHTML = renderMarkdown(message.reasoning);
+        article.querySelector('.message-reasoning summary').textContent = message.content ? '思考过程' : '正在思考';
+      }
+    } else renderMessages();
+    const stage = $('.content-stage');
+    if (stage) stage.scrollTop = stage.scrollHeight;
+  };
+  if (immediate) {
+    window.clearTimeout(streamingRenderTimer);
+    streamingRenderTimer = 0;
+    apply();
+    return;
+  }
+  if (streamingRenderTimer) return;
+  streamingRenderTimer = window.setTimeout(() => {
+    streamingRenderTimer = 0;
+    apply();
+  }, 40);
+}
+
+function finalizeStreamingMessage(content, reasoning = null) {
+  window.clearTimeout(streamingRenderTimer);
+  streamingRenderTimer = 0;
+  if (!streamingMessageId) return;
+  const messageId = streamingMessageId;
+  const message = findStreamingMessage();
+  streamingMessageId = null;
+  if (!message) return;
+  message.content = content;
+  if (reasoning !== null) message.reasoning = reasoning;
+  if (!content.trim() && !message.reasoning?.trim()) {
+    const conversation = state.conversations.find((entry) => entry.messages.some((item) => item.id === messageId));
+    const index = conversation ? conversation.messages.findIndex((entry) => entry.id === messageId) : -1;
+    if (index >= 0) conversation.messages.splice(index, 1);
+  }
+  persist();
+  if (state.activeConversationId === generatingConversationId) renderMessages();
+}
+
 async function sendMessage() {
+  if (isChatGenerating) {
+    stopChatGeneration();
+    return;
+  }
   const input = $('#messageInput');
   const content = input.value.trim();
   if (!content && !pendingAttachments.length) return;
+  const conversationId = state.activeConversationId;
   const attachments = pendingAttachments.slice();
+  chatStopRequested = false;
+  streamingMessageId = null;
+  setChatGenerating(true, conversationId);
   input.value = '';
   autoResizeTextarea(input);
   clearAttachment();
@@ -3519,82 +3704,228 @@ async function sendMessage() {
     $('#editingBanner').hidden = true;
     persist();
   }
-  const imageIds = [];
-  for (const attachment of attachments) {
-    imageIds.push(attachment.imageId || await saveChatImage(attachment.data, attachment.name));
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-  }
-  addMessage(createMessage('user', content || '请分析这些图片', imageIds));
-  $('#sendButton').disabled = true;
-  $('#typingIndicator').hidden = false;
   renderConnection('loading');
   try {
-    let responseText;
-    if (state.settings.demoMode || !state.settings.chatApiKey || !state.settings.chatBaseUrl) responseText = await demoReply(content, Boolean(attachments.length));
-    else responseText = await requestChat();
-    addMessage(createMessage('assistant', responseText));
+    const imageIds = [];
+    for (const attachment of attachments) {
+      imageIds.push(attachment.imageId || await saveChatImage(attachment.data, attachment.name));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      if (chatStopRequested) throw createChatAbortError();
+    }
+    if (chatStopRequested) throw createChatAbortError();
+    addMessage(createMessage('user', content || '请分析这些图片', imageIds), conversationId);
+    const useDemo = state.settings.demoMode || !state.settings.chatApiKey || !state.settings.chatBaseUrl;
+    const streamEnabled = Boolean(state.settings.chatStream);
+    let response;
+    if (useDemo) response = await demoReply(content, Boolean(attachments.length), streamEnabled);
+    else response = await requestChat(streamEnabled, conversationId);
+    if (streamEnabled) finalizeStreamingMessage(response.content, response.reasoning);
+    else {
+      const message = createMessage('assistant', response.content);
+      if (response.reasoning) message.reasoning = response.reasoning;
+      addMessage(message, conversationId);
+    }
+    if (chatStopRequested) showToast('已暂停生成');
   } catch (error) {
-    showErrorToast(error.message || '请求失败, 请检查接口设置');
+    const partialMessage = findStreamingMessage();
+    finalizeStreamingMessage(partialMessage?.content || '', partialMessage?.reasoning || '');
+    if (error?.code === 'stopped' || chatStopRequested) showToast('已暂停生成');
+    else showErrorToast(error.message || '请求失败, 请检查接口设置');
   } finally {
+    window.clearTimeout(streamingRenderTimer);
+    streamingRenderTimer = 0;
     requestController?.abort();
     requestController = null;
-    $('#sendButton').disabled = false;
+    streamingMessageId = null;
+    chatStopRequested = false;
+    setChatGenerating(false, conversationId);
     $('#typingIndicator').hidden = true;
     renderConnection();
   }
 }
 
-function demoReply(content, hasImage) {
-  return new Promise((resolve) => {
-    window.setTimeout(() => {
-      if (hasImage) resolve('我已经收到这张图片。当前是演示模式, 你配置真实接口后, 我会根据图片内容进行分析。\n\n你可以继续补充想了解的角度, 例如: 识别物体, 提取文字, 总结画面或给出修改建议');
-      else if (/你好|嗨|hello/i.test(content)) resolve('你好, 我是 Orbit。先把接口配置好, 我就可以使用你的模型继续对话。现在也可以直接体验本地演示流程');
-      else resolve(`这是演示模式的回复。\n\n我收到了: “${content || '一张图片'}”\n\n在设置中填写对话接口地址和 API Key 后, 这里会切换成真实模型响应。上下文当前使用“${state.contextMode === 'client' ? '客户端拼接' : '单轮请求'}”`);
-    }, 780);
+function demoReply(content, hasImage, streamEnabled = false) {
+  let text = '';
+  if (hasImage) text = '我已经收到这张图片。当前是演示模式, 你配置真实接口后, 我会根据图片内容进行分析。\n\n你可以继续补充想了解的角度, 例如: 识别物体, 提取文字, 总结画面或给出修改建议';
+  else if (/你好|嗨|hello/i.test(content)) text = '你好, 我是 Orbit。先把接口配置好, 我就可以使用你的模型继续对话。现在也可以直接体验本地演示流程';
+  else text = `这是演示模式的回复。\n\n我收到了: “${content || '一张图片'}”\n\n在设置中填写对话接口地址和 API Key 后, 这里会切换成真实模型响应。上下文当前使用“${state.contextMode === 'client' ? '客户端拼接' : '单轮请求'}”`;
+  requestController = new AbortController();
+  const signal = requestController.signal;
+  if (!streamEnabled) {
+    return new Promise((resolve, reject) => {
+      const timer = window.setTimeout(() => {
+        if (signal.aborted) reject(createChatAbortError());
+        else resolve({ content: text, reasoning: '' });
+      }, 780);
+      signal.addEventListener('abort', () => {
+        window.clearTimeout(timer);
+        reject(createChatAbortError());
+      }, { once: true });
+    });
+  }
+  return new Promise(async (resolve, reject) => {
+    let output = '';
+    try {
+      for (const char of text) {
+        if (signal.aborted) throw createChatAbortError();
+        output += char;
+        updateStreamingMessage(output);
+        await new Promise((wait) => window.setTimeout(wait, 12));
+      }
+      updateStreamingMessage(output, true);
+      resolve({ content: output, reasoning: '' });
+    } catch (error) {
+      if (output.trim()) {
+        updateStreamingMessage(output, true);
+        resolve({ content: output, reasoning: '' });
+      } else reject(error);
+    }
   });
 }
 
-async function requestChat() {
+async function requestChat(streamEnabled = Boolean(state.settings.chatStream), conversationId = state.activeConversationId) {
   const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
-  const messages = await buildRequestMessages();
+  if (chatStopRequested) throw createChatAbortError();
+  const messages = await buildRequestMessages(conversationId);
+  if (chatStopRequested) throw createChatAbortError();
   await new Promise((resolve) => window.setTimeout(resolve, 0));
-  const body = { model: state.settings.chatModel, messages, temperature: 0.7, stream: false };
+  if (chatStopRequested) throw createChatAbortError();
+  const body = { model: state.settings.chatModel, messages, temperature: 0.7, stream: Boolean(streamEnabled) };
   const webSearchRequested = Boolean(state.settings.chatWebSearch);
   if (webSearchRequested) body.web_search_options = {};
   if (state.settings.reasoningEffort && state.settings.reasoningEffort !== 'auto') body.reasoning_effort = state.settings.reasoningEffort;
+  let timeout;
   const sendRequest = async () => {
-    requestController = new AbortController();
-    const timeout = window.setTimeout(() => requestController.abort(), 60000);
+    const controller = new AbortController();
+    requestController = controller;
+    const timeoutMs = streamEnabled ? 300000 : 60000;
+    timeout = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
       return await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
     } catch (error) {
-      if (error.name === 'AbortError') throw new Error('请求超时或已中断, 请检查接口地址和网络');
-      throw error;
-    } finally {
       window.clearTimeout(timeout);
+      timeout = 0;
+      if (error.name === 'AbortError') throw createChatAbortError();
+      throw error;
     }
   };
-  let response;
-  let payload;
-  let webSearchFallback = false;
-  response = await sendRequest();
-  await new Promise((resolve) => window.setTimeout(resolve, 0));
-  payload = await response.json();
-  if (!response.ok && webSearchRequested && [400, 404, 422].includes(response.status)) {
-    delete body.web_search_options;
-    state.settings.chatWebSearch = false;
-    $('#chatWebSearch').checked = false;
-    persist();
-    webSearchFallback = true;
-    response = await sendRequest();
-    payload = await response.json();
+  const clearRequestTimeout = () => {
+    window.clearTimeout(timeout);
+    timeout = 0;
+  };
+  const readErrorPayload = async (response) => {
+    try { return await response.clone().json(); } catch { return null; }
+  };
+  try {
+    let response = await sendRequest();
+    let webSearchFallback = false;
+    if (!response.ok && webSearchRequested && [400, 404, 422].includes(response.status)) {
+      await readErrorPayload(response);
+      if (requestController.signal.aborted) throw createChatAbortError();
+      clearRequestTimeout();
+      delete body.web_search_options;
+      state.settings.chatWebSearch = false;
+      $('#chatWebSearch').checked = false;
+      persist();
+      webSearchFallback = true;
+      response = await sendRequest();
+    }
+    if (streamEnabled) {
+      if (!response.ok) {
+        const payload = await readErrorPayload(response);
+        throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
+      }
+      if (webSearchFallback) showWarningToast('当前接口不支持 web_search_options，已关闭联网并按普通对话重试');
+      return await readChatStream(response);
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
+    if (webSearchFallback) showWarningToast('当前接口不支持 web_search_options，已关闭联网并按普通对话重试');
+    const assistantMessage = payload?.choices?.[0]?.message;
+    const content = extractChatText(assistantMessage?.content);
+    const reasoning = extractMessageReasoning(assistantMessage);
+    if (!content.trim() && !reasoning.trim()) throw new Error('接口没有返回可显示的内容');
+    return { content, reasoning };
+  } catch (error) {
+    if (error.name === 'AbortError') throw createChatAbortError();
+    throw error;
+  } finally {
+    clearRequestTimeout();
   }
-  if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
-  if (webSearchFallback) showWarningToast('当前接口不支持 web_search_options，已关闭联网并按普通对话重试');
-  const content = payload?.choices?.[0]?.message?.content;
-  if (Array.isArray(content)) return content.map((part) => part.text || '').join('');
-  if (!content) throw new Error('接口没有返回可显示的内容');
-  return content;
+}
+
+async function readChatStream(response) {
+  if (response.headers?.get('content-type')?.includes('application/json') || !response.body?.getReader) {
+    const payload = await response.json();
+    const assistantMessage = payload?.choices?.[0]?.message;
+    const content = extractChatText(assistantMessage?.content);
+    const reasoning = extractMessageReasoning(assistantMessage);
+    if (!content.trim() && !reasoning.trim()) throw new Error('接口没有返回可显示的内容');
+    updateStreamingMessage(content, true, reasoning);
+    return { content, reasoning };
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let content = '';
+  let reasoning = '';
+  const readLine = (line) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) return false;
+    const data = trimmed.slice(5).trim();
+    if (data === '[DONE]') return true;
+    if (!data) return false;
+    let payload;
+    try { payload = JSON.parse(data); } catch { return false; }
+    if (payload?.error?.message) throw new Error(payload.error.message);
+    const delta = extractStreamDelta(payload);
+    const reasoningDelta = extractStreamReasoning(payload);
+    if (delta || reasoningDelta) {
+      content += delta;
+      reasoning += reasoningDelta;
+      updateStreamingMessage(content, false, reasoning);
+    }
+    return false;
+  };
+  try {
+    let finished = false;
+    while (!finished) {
+      const { done, value } = await reader.read();
+      if (done) {
+        buffer += decoder.decode();
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      const chunks = buffer.split(/\r?\n/);
+      buffer = chunks.pop() || '';
+      for (const line of chunks) {
+        if (readLine(line)) {
+          finished = true;
+          break;
+        }
+      }
+    }
+    if (!finished && buffer.trim()) readLine(buffer);
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      if (chatStopRequested && (content.trim() || reasoning.trim())) {
+        updateStreamingMessage(content, true, reasoning);
+        return { content, reasoning };
+      }
+      throw createChatAbortError();
+    }
+    throw error;
+  } finally {
+    try { await reader.cancel(); } catch { }
+    try { reader.releaseLock(); } catch { }
+  }
+  updateStreamingMessage(content, true, reasoning);
+  if (!content.trim() && !reasoning.trim()) {
+    if (chatStopRequested) throw createChatAbortError();
+    throw new Error('接口没有返回可显示的内容');
+  }
+  return { content, reasoning };
 }
 
 async function parseImageResponse(response, endpoint, hasReference) {
@@ -4117,23 +4448,51 @@ function enhanceModelInput(input, kind) {
   const dropdown = document.createElement('div');
   dropdown.className = 'model-dropdown';
   dropdown.dataset.modelDropdown = kind;
+  dropdown.dataset.modelInput = input.id;
   dropdown.hidden = true;
-  host.appendChild(dropdown);
+  document.body.appendChild(dropdown);
   input.addEventListener('focus', () => renderModelDropdown(kind, input, true));
   input.addEventListener('click', () => renderModelDropdown(kind, input, true));
   input.addEventListener('input', () => renderModelDropdown(kind, input));
 }
 
+function positionModelDropdown(input, dropdown) {
+  const anchor = input.closest('.model-combo-host') || input;
+  const rect = anchor.getBoundingClientRect();
+  const spaceAbove = Math.max(0, rect.top - 8);
+  const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - 8);
+  const desiredHeight = Math.min(210, dropdown.scrollHeight);
+  const opensUpward = spaceBelow < desiredHeight && spaceAbove > spaceBelow;
+  const availableHeight = opensUpward ? spaceAbove : spaceBelow;
+  const width = Math.max(1, Math.min(rect.width, window.innerWidth - 16));
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+
+  dropdown.style.left = `${left}px`;
+  dropdown.style.width = `${width}px`;
+  dropdown.style.maxHeight = `${Math.max(1, Math.min(210, availableHeight))}px`;
+  dropdown.style.top = opensUpward ? 'auto' : `${Math.max(0, rect.bottom - 2)}px`;
+  dropdown.style.bottom = opensUpward ? `${Math.max(0, window.innerHeight - rect.top + 2)}px` : 'auto';
+}
+
+function positionOpenModelDropdowns() {
+  $$('.model-dropdown:not([hidden])').forEach((dropdown) => {
+    const input = document.getElementById(dropdown.dataset.modelInput);
+    if (input) positionModelDropdown(input, dropdown);
+  });
+}
+
 function renderModelDropdown(kind, activeInput = null, showAll = false) {
+  $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
   const inputIds = kind === 'chat' ? ['chatModel', 'chatModelQuick'] : ['imageModel'];
   inputIds.forEach((inputId) => {
     const input = $(`#${inputId}`);
-    const dropdown = input?.closest('.model-combo-host')?.querySelector(`[data-model-dropdown="${kind}"]`);
+    const dropdown = $(`[data-model-dropdown="${kind}"][data-model-input="${inputId}"]`);
     if (!input || !dropdown) return;
     const query = showAll ? '' : input.value.trim().toLowerCase();
     const models = modelCatalog[kind].filter((model) => !query || model.toLowerCase().includes(query));
     dropdown.innerHTML = models.length ? models.slice(0, 80).map((model) => `<button type="button" class="model-option" data-model-value="${escapeHtml(model)}" title="${escapeHtml(model)}">${escapeHtml(model)}</button>`).join('') : '<div class="model-option">暂无匹配模型，可直接输入模型名</div>';
     dropdown.hidden = activeInput !== input;
+    if (!dropdown.hidden) positionModelDropdown(input, dropdown);
     dropdown.querySelectorAll('button').forEach((button) => button.addEventListener('mousedown', (event) => {
       event.preventDefault();
       input.value = button.dataset.modelValue;
@@ -4145,7 +4504,7 @@ function renderModelDropdown(kind, activeInput = null, showAll = false) {
 }
 
 function closeModelDropdowns(event) {
-  if (event.target.closest('.model-combo-host')) return;
+  if (event.target.closest('.model-combo-host, .model-dropdown')) return;
   $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
 }
 
@@ -5585,6 +5944,7 @@ async function testProxyConnection() {
 }
 
 function openSettings() {
+  $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
   $('#chatBaseUrl').value = state.settings.chatBaseUrl;
   $('#chatApiKey').value = state.settings.chatApiKey;
   $('#chatModel').value = state.settings.chatModel;
@@ -5600,6 +5960,7 @@ function openSettings() {
   $('#reasoningEffort').value = state.settings.reasoningEffort || 'auto';
   syncCustomSelects();
   $('#chatWebSearch').checked = Boolean(state.settings.chatWebSearch);
+  $('#chatStream').checked = Boolean(state.settings.chatStream);
   $('#demoMode').checked = state.settings.demoMode;
   $('#proxyUrl').value = state.settings.proxyUrl || defaultState.settings.proxyUrl;
   $('#proxyEnabled').checked = Boolean(state.settings.proxyEnabled);
@@ -5612,6 +5973,7 @@ function openSettings() {
 }
 
 function closeSettings() {
+  $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
   $('#settingsBackdrop').hidden = true;
 }
 
@@ -5631,7 +5993,7 @@ function saveSettings() {
     showErrorToast('代理地址尚未通过连接测试');
     return;
   }
-  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, demoMode: $('#demoMode').checked };
+  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), chatStream: Boolean(state.settings.chatStream), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, demoMode: $('#demoMode').checked };
   persist();
   closeSettings();
   render();
@@ -5731,8 +6093,8 @@ async function clearLocalData() {
     imageTaskPersistTimers.clear();
   }
   if (scope === 'chat' || scope === 'workspace' || scope === 'all') {
-    requestController?.abort();
-    requestController = null;
+    stopChatGeneration();
+    $('#typingIndicator').hidden = true;
   }
   if (scope === 'all') {
     localStorage.removeItem(STORAGE_KEY);
@@ -6163,6 +6525,11 @@ function updateChatWebSearch() {
   persist();
 }
 
+function updateChatStream() {
+  state.settings.chatStream = Boolean($('#chatStream').checked);
+  persist();
+}
+
 function bindEvents() {
   enhanceModelInput($('#chatModel'), 'chat');
   enhanceModelInput($('#chatModelQuick'), 'chat');
@@ -6354,8 +6721,11 @@ function bindEvents() {
   $('#chatModelQuick').addEventListener('blur', updateChatModelQuick);
   $('#reasoningEffortQuick').addEventListener('change', updateReasoningQuick);
   $('#chatWebSearch').addEventListener('change', updateChatWebSearch);
+  $('#chatStream').addEventListener('change', updateChatStream);
   document.addEventListener('click', closeSidebarOnOutside);
   document.addEventListener('click', closeModelDropdowns);
+  document.addEventListener('scroll', positionOpenModelDropdowns, true);
+  window.addEventListener('resize', positionOpenModelDropdowns);
   document.addEventListener('click', () => closeCustomSelects());
   document.addEventListener('click', closeConversationExportMenu);
   bindCustomTooltips();
@@ -6363,7 +6733,11 @@ function bindEvents() {
     if (event.target.closest?.('.history-image-button, #viewerImageWrap, #lightboxImageWrap')) event.preventDefault();
   });
   $('#messageInput').addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      if (isChatGenerating) return;
+      sendMessage();
+    }
   });
   $$('.mode-tab').forEach((tab) => tab.addEventListener('click', () => setView(tab.dataset.view)));
   $$('.context-option').forEach((button) => button.addEventListener('click', () => { state.contextMode = button.dataset.context; persist(); render(); }));
