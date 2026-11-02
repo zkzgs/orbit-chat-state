@@ -756,6 +756,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .image-mode .history-action-button { width: 27px !important; height: 29px; min-width: 27px; flex-basis: 27px !important; }
 .image-mode .history-item.group-card .history-action-button svg { width: 16px; height: 16px; }
 .history-item.generation-record { height: 274px; min-height: 274px; max-height: 274px; display: flex; flex-direction: column; }
+.image-history > .history-item, .image-history > .generation-task-card, .image-history > .favorite-folder-card { content-visibility: auto; contain-intrinsic-size: auto 274px; }
 .history-item.generation-record .history-image-button { min-height: 0; flex: 0 0 160px; }
 .history-item.generation-record .history-item-info { min-height: 0; flex: 1 1 auto; }
 .generation-task-card .history-item-info { min-height: 0; flex: 1 1 auto; }
@@ -1265,6 +1266,7 @@ let currentImage = null;
 let imageTasks = [];
 let imageTaskTimer = null;
 let imageHistoryRenderTimer = 0;
+let imageHistoryRenderVersion = 0;
 let historyImageObserver = null;
 let messageImageObserver = null;
 const imageTaskPersistTimers = new Map();
@@ -1599,8 +1601,15 @@ async function loadImageHistory() {
   try {
     const db = await openImageDb();
     const items = await new Promise((resolve, reject) => {
-      const request = db.transaction(IMAGE_STORE_NAME, 'readonly').objectStore(IMAGE_STORE_NAME).getAll();
-      request.onsuccess = () => resolve(request.result);
+      const records = [];
+      // 每条记录分开读取, 避免一次反序列化全部原图阻塞主线程。
+      const request = db.transaction(IMAGE_STORE_NAME, 'readonly').objectStore(IMAGE_STORE_NAME).openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) { resolve(records); return; }
+        records.push(cursor.value);
+        cursor.continue();
+      };
       request.onerror = () => reject(request.error);
     });
     db.close();
@@ -1662,6 +1671,7 @@ async function clearStoredImages() {
 }
 
 function renderImageHistory() {
+  imageHistoryRenderVersion += 1;
   if (imageHistoryRenderTimer) return;
   imageHistoryRenderTimer = window.setTimeout(() => {
     imageHistoryRenderTimer = 0;
@@ -1669,7 +1679,8 @@ function renderImageHistory() {
   }, 50);
 }
 
-function renderImageHistoryNow() {
+async function renderImageHistoryNow() {
+  const renderVersion = imageHistoryRenderVersion;
   const section = $('#imageHistorySection');
   const list = $('#imageHistory');
   if (!section || !list) return;
@@ -1688,22 +1699,37 @@ function renderImageHistoryNow() {
   statusControl.hidden = isFolderIndex;
   $('#historySearch').placeholder = isFolderIndex ? '搜索收藏夹' : '搜索提示词';
   toggle.hidden = isFavorites || !hasGroups;
-  if (isFolderIndex) {
-    list.innerHTML = `${favoriteFolders.map(renderFavoriteFolderCard).join('')}<div class="history-empty" hidden>没有匹配的收藏夹</div>`;
-  } else {
-    const items = isFavorites ? getFavoriteFolderEntries(activeFavoriteFolderId) : getGenerationTimelineEntries();
-    list.innerHTML = `${items.map(renderGenerationRecord).join('')}<div class="history-empty" hidden>${isFavorites ? '这个收藏夹里还没有内容' : '没有匹配的生成记录'}</div>`;
+  const items = isFolderIndex ? favoriteFolders : isFavorites ? getFavoriteFolderEntries(activeFavoriteFolderId) : getGenerationTimelineEntries();
+  const renderCard = isFolderIndex ? renderFavoriteFolderCard : renderGenerationRecord;
+  list.innerHTML = `<div class="history-empty" hidden>${isFolderIndex ? '没有匹配的收藏夹' : isFavorites ? '这个收藏夹里还没有内容' : '没有匹配的生成记录'}</div>`;
+  // 分批插入卡片, 在批次之间给布局、绘制和用户操作留出时间。
+  for (let index = 0; index < items.length; index += 4) {
+    if (renderVersion !== imageHistoryRenderVersion) return;
+    const template = document.createElement('template');
+    template.innerHTML = items.slice(index, index + 4).map(renderCard).join('');
+    bindImageHistoryActions(template.content);
+    list.insertBefore(template.content, list.lastElementChild);
+    filterRenderedHistory();
+    if (index === 0) hydrateDeferredImages(list, 'history');
+    await new Promise((resolve) => window.setTimeout(resolve, 16));
   }
+  if (renderVersion !== imageHistoryRenderVersion) return;
   filterRenderedHistory();
   hydrateDeferredImages(list, 'history');
+  $$('.history-view-toggle button').forEach((button) => button.classList.toggle('active', button.dataset.historyView === imageHistoryView));
+  bindHistorySelecto();
+  updateHistorySelectionBar();
+}
+
+function bindImageHistoryActions(list) {
   list.querySelectorAll('[title]').forEach((target) => { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); });
   list.querySelectorAll('[data-favorite-folder-open]').forEach((button) => button.addEventListener('click', () => openFavoriteFolder(button.dataset.favoriteFolderOpen)));
   list.querySelectorAll('[data-favorite-folder-action]').forEach((button) => button.addEventListener('click', () => handleFavoriteFolderAction(button.dataset.favoriteFolderAction, button.dataset.favoriteFolderId)));
-  $$('.history-image-button').forEach((button) => button.addEventListener('click', (event) => {
+  list.querySelectorAll('.history-image-button').forEach((button) => button.addEventListener('click', (event) => {
     const batch = imageHistory.find((entry) => entry.id === button.dataset.historyId);
     if (batch) openHistoryDetail(batch, Number(button.dataset.historyImageIndex) || 0);
   }));
-  $$('.history-actions button').forEach((button) => button.addEventListener('click', () => {
+  list.querySelectorAll('.history-actions button').forEach((button) => button.addEventListener('click', () => {
     if (button.dataset.historyAction === 'delete') { deleteGenerationRecord(button.dataset.historyId, button.dataset.taskId); return; }
     const batch = imageHistory.find((entry) => entry.id === button.dataset.historyId);
     if (!batch) return;
@@ -1730,15 +1756,12 @@ function renderImageHistoryNow() {
     });
   });
   bindGenerationTaskActions(list);
-  $$('.history-select').forEach((checkbox) => checkbox.addEventListener('click', (event) => event.stopPropagation()));
-  $$('.history-select').forEach((checkbox) => checkbox.addEventListener('change', () => {
+  list.querySelectorAll('.history-select').forEach((checkbox) => checkbox.addEventListener('click', (event) => event.stopPropagation()));
+  list.querySelectorAll('.history-select').forEach((checkbox) => checkbox.addEventListener('change', () => {
     const nextSelection = new Set(selectedHistoryKeys);
     if (checkbox.checked) nextSelection.add(checkbox.dataset.historyKey); else nextSelection.delete(checkbox.dataset.historyKey);
     applyHistorySelection(nextSelection);
   }));
-  $$('.history-view-toggle button').forEach((button) => button.classList.toggle('active', button.dataset.historyView === imageHistoryView));
-  bindHistorySelecto();
-  updateHistorySelectionBar();
 }
 
 function filterRenderedHistory() {
@@ -2356,6 +2379,7 @@ function getVisibleHistoryEntries() {
 }
 
 function getSelectedHistoryEntries() {
+  if (!selectedHistoryKeys.size) return [];
   return getVisibleHistoryEntries().filter((entry) => selectedHistoryKeys.has(entry.key));
 }
 
@@ -2638,31 +2662,34 @@ function hydrateDeferredImages(root, observerName) {
     if (source) image.src = source;
     image.removeAttribute('data-image-id');
   };
+  const pending = [];
+  let loading = false;
+  const loadImages = async () => {
+    if (loading) return;
+    loading = true;
+    while (pending.length) {
+      const image = pending.shift();
+      if (root.contains(image) && image.dataset.imageId) hydrateImage(image);
+      await new Promise((resolve) => window.setTimeout(resolve, 16));
+    }
+    loading = false;
+  };
   if (!('IntersectionObserver' in window)) {
-    images.forEach(hydrateImage);
+    pending.push(...images);
+    window.setTimeout(loadImages, 16);
     return;
   }
-  const scrollRoot = observerName === 'history' && getComputedStyle(root).overflowY === 'auto' ? root : $('.content-stage');
-  const rootRect = scrollRoot.getBoundingClientRect();
-  const nearbyImages = [];
-  const deferredImages = [];
-  images.forEach((image) => {
-    const imageRect = image.getBoundingClientRect();
-    const nearby = imageRect.bottom >= rootRect.top - 300 && imageRect.top <= rootRect.bottom + 300;
-    (nearby ? nearbyImages : deferredImages).push(image);
-  });
-  // 同步恢复视口附近缩略图，避免列表重绘后浏览器短暂显示破图或空白占位。
-  nearbyImages.forEach(hydrateImage);
-  if (!deferredImages.length) return;
+  // 使用视口交集, 让浏览器处理内外层滚动区域的裁切, 手机端列表本身可能没有限高。
   const observer = new IntersectionObserver((entries, activeObserver) => {
     entries.forEach((entry) => {
       if (!entry.isIntersecting) return;
       const image = entry.target;
-      hydrateImage(image);
+      pending.push(image);
       activeObserver.unobserve(image);
     });
-  }, { root: scrollRoot, rootMargin: '300px' });
-  deferredImages.forEach((image) => observer.observe(image));
+    window.setTimeout(loadImages, 16);
+  }, { rootMargin: '300px' });
+  images.forEach((image) => observer.observe(image));
   if (observerName === 'history') historyImageObserver = observer;
   else messageImageObserver = observer;
 }
