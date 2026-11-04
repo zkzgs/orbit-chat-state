@@ -572,7 +572,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .lightbox-image-wrap { display: flex; align-items: center; justify-content: center; }
 .lightbox-image-wrap img { display: block; width: auto !important; min-width: 0; max-width: 100% !important; height: auto !important; min-height: 0; max-height: 100% !important; object-fit: contain; object-position: center; flex: 0 0 auto; }
 @media (max-width: 780px) {
-  .modal-backdrop { width: 100%; height: 100vh; height: 100dvh; padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom)); }
+  .modal-backdrop { top: var(--modal-viewport-top, 0px); bottom: auto; width: 100%; height: var(--modal-viewport-height, 100vh); padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom)); }
   .settings-modal { width: 100%; max-height: 100%; }
   #settingsBackdrop .settings-modal, .polish-modal { height: 100%; }
   .modal-header { padding-top: 18px; padding-bottom: 15px; }
@@ -1216,7 +1216,7 @@ const defaultState = {
   settings: {
     chatBaseUrl: 'https://aixor.cc/v1',
     chatApiKey: '',
-    chatModel: 'gpt-5.6-sol',
+    chatModel: 'gpt-6.1-sol',
     imageBaseUrl: 'https://aixor.cc/v1',
     imageApiKey: '',
     imageModel: 'gpt-image-2.5',
@@ -5971,6 +5971,7 @@ async function testProxyConnection() {
 }
 
 function openSettings() {
+  syncModalViewport();
   $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
   $('#chatBaseUrl').value = state.settings.chatBaseUrl;
   $('#chatApiKey').value = state.settings.chatApiKey;
@@ -6557,7 +6558,17 @@ function updateChatStream() {
   persist();
 }
 
+function syncModalViewport() {
+  const viewport = window.visualViewport;
+  // 缩放时保留原布局, 工具栏和键盘引起的可视区域变化才调整弹窗。
+  if (viewport && viewport.scale !== 1) return;
+  const height = Math.min(window.innerHeight, viewport?.height || window.innerHeight);
+  document.documentElement.style.setProperty('--modal-viewport-height', `${height}px`);
+  document.documentElement.style.setProperty('--modal-viewport-top', `${viewport?.offsetTop || 0}px`);
+}
+
 function bindEvents() {
+  syncModalViewport();
   enhanceModelInput($('#chatModel'), 'chat');
   enhanceModelInput($('#chatModelQuick'), 'chat');
   enhanceModelInput($('#imageModel'), 'image');
@@ -6753,6 +6764,9 @@ function bindEvents() {
   document.addEventListener('click', closeModelDropdowns);
   document.addEventListener('scroll', positionOpenModelDropdowns, true);
   window.addEventListener('resize', positionOpenModelDropdowns);
+  window.addEventListener('resize', syncModalViewport);
+  window.visualViewport?.addEventListener('resize', syncModalViewport);
+  window.visualViewport?.addEventListener('scroll', syncModalViewport, { passive: true });
   document.addEventListener('click', () => closeCustomSelects());
   document.addEventListener('click', closeConversationExportMenu);
   bindCustomTooltips();
