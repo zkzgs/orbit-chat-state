@@ -1890,7 +1890,7 @@ function createFavoriteFolder(name) {
   favoriteDialogSelectedFolderIds.add(folder.id);
   saveFavoriteFolders();
   renderFavoriteFolderChoices();
-  renderImageHistory();
+  if (imageHistoryLibrary === 'favorites' && !activeFavoriteFolderId) renderImageHistory();
   return true;
 }
 
@@ -3430,7 +3430,7 @@ function renderConnection(status = '') {
   const pill = $('#connectionPill');
   const text = $('#connectionText');
   pill.classList.remove('connected', 'loading');
-  if (status === 'loading') {
+  if (status === 'loading' || isChatGenerating) {
     pill.classList.add('loading');
     text.textContent = '请求中';
     return;
@@ -4516,7 +4516,7 @@ function renderModelDropdown(kind, activeInput = null, showAll = false) {
     const dropdown = $(`[data-model-dropdown="${kind}"][data-model-input="${inputId}"]`);
     if (!input || !dropdown) return;
     const query = showAll ? '' : input.value.trim().toLowerCase();
-    const models = modelCatalog[kind].filter((model) => !query || model.toLowerCase().includes(query));
+    const models = modelCatalog[kind].filter((model) => !query || model.toLowerCase().includes(query)).sort();
     dropdown.innerHTML = models.length ? models.slice(0, 80).map((model) => `<button type="button" class="model-option" data-model-value="${escapeHtml(model)}" title="${escapeHtml(model)}">${escapeHtml(model)}</button>`).join('') : '<div class="model-option">暂无匹配模型，可直接输入模型名</div>';
     dropdown.hidden = activeInput !== input;
     if (!dropdown.hidden) positionModelDropdown(input, dropdown);
