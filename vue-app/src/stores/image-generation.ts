@@ -1,0 +1,436 @@
+import { defineStore } from 'pinia'
+import { nextTick, ref, watch } from 'vue'
+import { useWorkspaceStore } from './workspace'
+import { useInterfaceStore } from './interface'
+import {
+  requestImages,
+  imageRequestBody,
+  ImageRequestError,
+  type GeneratedResponse,
+} from '../api/images'
+import type {
+  GenerationBatch,
+  GenerationTask,
+  ImageConfig,
+  ReferenceImage,
+  StoredImage,
+} from '../types/models'
+import { cloneData } from '../utils/clone'
+import { createId } from '../utils/id'
+import { errorMessage, formatDuration } from '../utils/format'
+import { prepareReferences, readReference } from '../utils/images'
+import { createDemoImage } from '../utils/demo-image'
+import {
+  remapMentions,
+  moveReference as reorderReference,
+} from '../utils/references'
+import { buildApiEndpoint, resourceFetch } from '../api/client'
+import { readDataUrl } from '../utils/files'
+
+export const useImageGenerationStore = defineStore('image-generation', () => {
+  const workspace = useWorkspaceStore()
+  const ui = useInterfaceStore()
+  const prompt = ref('')
+  const references = ref<ReferenceImage[]>([])
+  watch(
+    references,
+    (value) => {
+      workspace.imageDraftIds = value.flatMap((item) =>
+        item.imageId ? [item.imageId] : [],
+      )
+    },
+    { deep: true, flush: 'sync' },
+  )
+  const controllers = new Map<string, AbortController>()
+  const requestPhaseLabels: Record<string, string> = {
+    uploading: '上传资源中',
+    waiting: '等待上游中',
+    parsing: '解析结果中',
+    saving: '保存结果中',
+    done: '已完成',
+    error: '失败',
+  }
+
+  function updateRequestPhase(
+    task: GenerationTask,
+    requestIndex: number,
+    phase: string,
+  ) {
+    task.requestPhases[requestIndex] = phase
+    if (task.requestPhases.length === 1) {
+      task.detail = requestPhaseLabels[phase]
+      return
+    }
+    const details = [
+      'uploading',
+      'waiting',
+      'parsing',
+      'saving',
+      'done',
+      'error',
+    ]
+      .map((item) => {
+        const count = task.requestPhases.filter(
+          (value) => value === item,
+        ).length
+        return count ? `${requestPhaseLabels[item]} ${count}` : ''
+      })
+      .filter(Boolean)
+    task.detail = `${details.join(' · ')} / 共 ${task.requestPhases.length}`
+  }
+
+  async function addReferences(files: File[]) {
+    for (const file of files.filter((file) => file.type.startsWith('image/'))) {
+      if (references.value.length >= 16) break
+      const image = await readReference(file)
+      if (!references.value.some((item) => item.data === image.data))
+        references.value.push(image)
+      if (references.value.length >= 16) break
+    }
+  }
+  function removeReference(index: number) {
+    const before = [...references.value]
+    references.value.splice(index, 1)
+    prompt.value = remapMentions(prompt.value, before, references.value)
+  }
+  function moveReference(from: number, to: number) {
+    const before = references.value
+    references.value = reorderReference(before, from, to)
+    prompt.value = remapMentions(prompt.value, before, references.value)
+  }
+  async function replaceReference(index: number, file: File) {
+    const image = await readReference(file)
+    references.value.splice(index, 1, image)
+  }
+  function clearReferences() {
+    if (!references.value.length || !confirm('清空全部生成参考图?')) return
+    references.value = []
+    prompt.value = prompt.value.replace(/@图\d+/g, '@图?')
+  }
+  function applyConfig(
+    config: ImageConfig,
+    text: string,
+    ids: string[],
+    message = '已复制提示词, 参数和原参考图',
+  ) {
+    const {
+      model: _model,
+      size: _size,
+      countMode: _count,
+      backgroundMode: _background,
+      compressReferences: _compress,
+      referenceCompressionLimitMb: _limit,
+      submittedPrompt: _submitted,
+      ...options
+    } = config
+    Object.assign(workspace.state.settings.imageOptions, options)
+    prompt.value = text
+    references.value = workspace.messageImages(ids).map((image) => ({
+      id: createId(),
+      data: image.src,
+      name: image.name || '原参考图',
+      imageId: image.id,
+    }))
+    ui.activeView = 'image'
+    ui.details.open = false
+    void nextTick(() => document.getElementById('imagePrompt')?.focus())
+    ui.notify(message)
+  }
+  async function editOutput(images: StoredImage[]) {
+    const available = images.slice(0, Math.max(0, 16 - references.value.length))
+    if (!available.length) {
+      ui.notify('参考图已经达到 16 张上限', 'error')
+      return
+    }
+    for (const image of available) {
+      if (references.value.some((item) => item.data === image.src)) continue
+      references.value.push({
+        id: createId(),
+        data: image.src,
+        name: image.name || '生成图片',
+        imageId: image.id,
+      })
+    }
+    ui.activeView = 'image'
+    ui.details.open = false
+    await nextTick()
+    document.getElementById('imagePrompt')?.focus()
+    ui.notify(`已将 ${available.length} 张输出图追加到当前参考图列表`)
+  }
+  async function generate(override?: {
+    prompt: string
+    config: ImageConfig
+    references: ReferenceImage[]
+  }) {
+    if (!workspace.ready) return
+    const text = (override?.prompt || prompt.value).trim()
+    if (!text) {
+      ui.notify('先写下你想生成的画面', 'error')
+      return
+    }
+    const config = cloneData(override?.config || workspace.imageConfig)
+    config.count = Math.min(10, Math.max(1, Number(config.count) || 1))
+    config.compression = Math.min(
+      100,
+      Math.max(0, Number(config.compression) || 0),
+    )
+    if (config.background === 'transparent' && config.format === 'jpeg') {
+      ui.notify('透明背景只支持 PNG 或 WebP 格式', 'error')
+      return
+    }
+    if (
+      /@(?:生成参考图|润色参考图)(?:\d+|\?)/.test(text) ||
+      /@图\?/.test(text) ||
+      [...text.matchAll(/@图(\d+)/g)].some(
+        (match) =>
+          Number(match[1]) < 1 ||
+          Number(match[1]) > (override?.references || references.value).length,
+      )
+    ) {
+      ui.notify('关键词中有失效的参考图引用', 'error')
+      return
+    }
+    const generation = workspace.generation
+    const id = createId()
+    const startedAt = Date.now()
+    const originals = [...(override?.references || references.value)]
+    const submitted = text.replace(
+      /@图(\d+)/g,
+      (_, number: string) => `[image ${number}]`,
+    )
+    config.submittedPrompt =
+      config.backgroundMode === 'prompt' && config.background === 'transparent'
+        ? `${submitted}\n\nUse a transparent background.`
+        : submitted
+    const requestTotal = config.countMode === 'parallel' ? config.count : 1
+    workspace.tasks.unshift({
+      id,
+      type: 'generation-task',
+      title: text.slice(0, 48),
+      detail: '准备请求',
+      prompt: text,
+      config,
+      referenceImageIds: [],
+      requestPhases: Array<string>(requestTotal).fill('preparing'),
+      responses: [],
+      startedAt,
+      status: 'running',
+    })
+    const task = workspace.tasks.find((item) => item.id === id)!
+    const controller = new AbortController()
+    controllers.set(id, controller)
+    const timeout = setTimeout(() => controller.abort(), 300000)
+    const persist = () => workspace.persistRecords([task])
+    try {
+      for (const reference of originals) {
+        if (generation !== workspace.generation) return
+        task.referenceImageIds.push(
+          reference.imageId ||
+            (await workspace.saveImage(reference.data, reference.name)),
+        )
+      }
+      if (generation !== workspace.generation) return
+      const settings = cloneData(workspace.state.settings)
+      let images: GeneratedResponse['images']
+      let meta: Record<string, unknown> = {}
+      let failed = 0
+      if (
+        settings.demoMode ||
+        !settings.imageApiKey ||
+        !settings.imageBaseUrl
+      ) {
+        task.detail = '生成演示图片'
+        task.requestLog = { mode: 'demo', config, createdAt: Date.now() }
+        await persist()
+        await new Promise((resolve) => setTimeout(resolve, 1100))
+        images = Array.from({ length: config.count }, (_, index) => ({
+          src: createDemoImage(text, index, config.width, config.height),
+          responseMeta: { model: 'demo', output_format: 'svg' },
+        }))
+      } else {
+        task.detail = '准备提交副本'
+        await persist()
+        const prepared = await prepareReferences(originals, {
+          compressRequestImages: config.compressReferences,
+          requestImageCompressionLimitMb: config.referenceCompressionLimitMb,
+        })
+        if (generation !== workspace.generation) return
+        task.requestLog = {
+          config,
+          endpoint: buildApiEndpoint(
+            settings.imageBaseUrl,
+            prepared.length ? '/images/edits' : '/images/generations',
+          ),
+          method: 'POST',
+          contentType: prepared.length
+            ? 'multipart/form-data'
+            : 'application/json',
+          body: {
+            ...imageRequestBody(config, config.submittedPrompt!),
+            image: prepared.map((image) => image.submissionMeta),
+          },
+          parallelRequests: requestTotal,
+          createdAt: Date.now(),
+        }
+        await persist()
+        const results = await Promise.allSettled(
+          Array.from({ length: requestTotal }, async (_, index) => {
+            try {
+              const result = await requestImages(
+                settings,
+                config,
+                config.submittedPrompt!,
+                prepared,
+                controller.signal,
+                (phase) => updateRequestPhase(task, index, phase),
+              )
+              task.responses.push({
+                requestIndex: index + 1,
+                response: result.upstream,
+                receivedAt: Date.now(),
+              })
+              task.requestPhases[index] = 'done'
+              result.meta.requestLog = task.requestLog
+              return result
+            } catch (error) {
+              task.responses.push({
+                requestIndex: index + 1,
+                response:
+                  error instanceof ImageRequestError
+                    ? error.upstream
+                    : { error: errorMessage(error) },
+                receivedAt: Date.now(),
+              })
+              task.requestPhases[index] = 'error'
+              throw error
+            }
+          }),
+        )
+        const success = results.flatMap((result) =>
+          result.status === 'fulfilled' ? [result.value] : [],
+        )
+        images = success.flatMap((result) => result.images)
+        failed = results.length - success.length
+        meta = {
+          ...success[0]?.meta,
+          requestLog: task.requestLog,
+          responses: task.responses,
+        }
+        if (!images.length) {
+          const first = results.find((result) => result.status === 'rejected')
+          throw first?.status === 'rejected'
+            ? first.reason
+            : new Error('接口没有返回图片地址')
+        }
+      }
+      if (generation !== workspace.generation) return
+      task.detail = '保存结果中'
+      const batchId = createId()
+      const imageIds: string[] = []
+      for (const image of images) {
+        if (generation !== workspace.generation) return
+        if (controller.signal.aborted) throw new Error('请求超时或已中断')
+        let source = image.src
+        if (/^https?:\/\//i.test(source)) {
+          const response = await resourceFetch(source, {
+            signal: controller.signal,
+          })
+          if (!response.ok) throw new Error(`图片下载失败: ${response.status}`)
+          source = await readDataUrl(await response.blob())
+        }
+        if (generation !== workspace.generation) return
+        if (controller.signal.aborted) throw new Error('请求超时或已中断')
+        imageIds.push(
+          await workspace.saveImage(source, '生成图片', {
+            batchId,
+            taskId: task.id,
+            prompt: text,
+            config,
+            responseMeta: { ...meta, ...image.responseMeta },
+          }),
+        )
+      }
+      if (generation !== workspace.generation) return
+      const finishedAt = Date.now()
+      const batch: GenerationBatch = {
+        id: batchId,
+        type: 'generation-batch',
+        batchId,
+        taskId: id,
+        prompt: text,
+        config,
+        imageIds,
+        referenceImageIds: [...task.referenceImageIds],
+        responseMeta: meta,
+        imageCount: imageIds.length,
+        startedAt,
+        createdAt: finishedAt,
+        completedAt: finishedAt,
+        durationMs: finishedAt - startedAt,
+      }
+      workspace.batches.unshift(batch)
+      task.batchId = batchId
+      task.status = failed ? 'partial' : 'success'
+      task.finishedAt = finishedAt
+      task.detail = `${failed ? '部分完成' : '已完成'} · ${formatDuration(finishedAt - startedAt)}`
+      await workspace.persistRecords([batch, task])
+      if (failed)
+        ui.notify(
+          `并发请求完成 ${requestTotal - failed}/${requestTotal} 个`,
+          'warning',
+        )
+    } catch (error) {
+      if (generation !== workspace.generation) return
+      task.status = 'error'
+      task.finishedAt = Date.now()
+      task.detail = errorMessage(error)
+      task.error = { message: task.detail, occurredAt: Date.now() }
+      await persist()
+      ui.notify(task.detail, 'error')
+    } finally {
+      clearTimeout(timeout)
+      controllers.delete(id)
+    }
+  }
+  function reuseTask(task: GenerationTask) {
+    applyConfig(
+      task.config,
+      task.prompt,
+      task.referenceImageIds,
+      '已恢复原任务配置',
+    )
+  }
+  function retryTask(task: GenerationTask) {
+    return generate({
+      prompt: task.prompt,
+      config: task.config,
+      references: workspace
+        .messageImages(task.referenceImageIds)
+        .map((image) => ({
+          id: image.id,
+          imageId: image.id,
+          data: image.src,
+          name: image.name || '原参考图',
+        })),
+    })
+  }
+  function dispose() {
+    controllers.forEach((controller) => controller.abort())
+    controllers.clear()
+  }
+  return {
+    prompt,
+    references,
+    addReferences,
+    removeReference,
+    moveReference,
+    replaceReference,
+    clearReferences,
+    applyConfig,
+    editOutput,
+    generate,
+    reuseTask,
+    retryTask,
+    dispose,
+  }
+})

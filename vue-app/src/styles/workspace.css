@@ -1,0 +1,24 @@
+body {
+  min-height: 100dvh;
+}
+
+#app {
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 780px) {
+  .lightbox-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lightbox-actions button {
+    min-width: 0;
+    padding-inline: 6px;
+    white-space: nowrap;
+  }
+}
