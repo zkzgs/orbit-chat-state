@@ -13,6 +13,8 @@ const ui = useInterfaceStore()
 const chat = useChatStore()
 const settings = useSettingsStore()
 const input = ref<HTMLTextAreaElement | null>(null)
+const dropping = ref(false)
+let dragDepth = 0
 useTextarea(input, toRef(chat, 'draft'), () => ui.activeView === 'chat')
 function keydown(event: KeyboardEvent) {
   if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
@@ -27,12 +29,34 @@ function paste(event: ClipboardEvent) {
     void chat.addImages(files)
   }
 }
+function hasFiles(event: DragEvent) {
+  return event.dataTransfer?.types.includes('Files')
+}
+function dragEnter(event: DragEvent) {
+  if (!hasFiles(event)) return
+  event.preventDefault()
+  dragDepth += 1
+  dropping.value = true
+}
+function dragOver(event: DragEvent) {
+  if (!hasFiles(event)) return
+  event.preventDefault()
+  event.dataTransfer!.dropEffect = 'copy'
+}
+function dragLeave(event: DragEvent) {
+  if (!hasFiles(event)) return
+  dragDepth = Math.max(0, dragDepth - 1)
+  if (!dragDepth) dropping.value = false
+}
 function drop(event: DragEvent) {
-  const files = Array.from(event.dataTransfer?.files || [])
-  if (files.length) {
-    event.preventDefault()
-    void chat.addImages(files)
-  }
+  if (!hasFiles(event)) return
+  event.preventDefault()
+  dragDepth = 0
+  dropping.value = false
+  const files = Array.from(event.dataTransfer!.files).filter((file) =>
+    file.type.startsWith('image/'),
+  )
+  if (files.length) void chat.addImages(files)
 }
 </script>
 
@@ -111,7 +135,15 @@ function drop(event: DragEvent) {
         /></label>
       </div>
     </div>
-    <div @dragover.prevent @drop="drop" class="composer-box" id="composerBox">
+    <div
+      class="composer-box"
+      id="composerBox"
+      :class="{ 'image-drop-active': dropping }"
+      @dragenter="dragEnter"
+      @dragover="dragOver"
+      @dragleave="dragLeave"
+      @drop="drop"
+    >
       <div :hidden="!chat.editingId" class="editing-banner" id="editingBanner">
         <span>正在修改一条消息</span
         ><button type="button" id="cancelEdit" @click="chat.resetDraft()">

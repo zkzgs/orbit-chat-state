@@ -354,7 +354,7 @@ export const usePromptTemplatesStore = defineStore('prompt-templates', () => {
   async function generatePolish() {
     if (polish.busy) return
     polish.busy = true
-    polish.status = '正在生成'
+    polish.status = '请求中'
     const request = new AbortController()
     controller = request
     const timeout = setTimeout(() => request.abort(), 60000)

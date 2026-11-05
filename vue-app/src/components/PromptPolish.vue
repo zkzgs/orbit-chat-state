@@ -309,7 +309,7 @@ const mentionLabels = computed(() => [
             type="button"
             @click="templates.generatePolish()"
           >
-            生成建议</button
+            {{ templates.polish.busy ? '生成中' : '生成建议' }}</button
           ><button
             :disabled="!templates.polish.result || templates.polish.busy"
             class="primary-button"

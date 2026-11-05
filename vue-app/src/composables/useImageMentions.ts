@@ -27,6 +27,7 @@ export function useImageMentions(
   wrap: Readonly<Ref<HTMLDivElement | null>>,
   options: { strictMentions?: boolean; enabled?: () => boolean } = {},
 ) {
+  const displayText = ref(model.value)
   const caret = ref(0)
   const focused = ref(false)
   const composing = ref(false)
@@ -84,7 +85,7 @@ export function useImageMentions(
   })
   const showMenu = computed(() => suggestions.value.length > 0)
   const segments = computed<MentionSegment[]>(() => {
-    const value = model.value
+    const value = displayText.value
     const result: MentionSegment[] = []
     let start = 0
     let insertedCaret = false
@@ -170,6 +171,8 @@ export function useImageMentions(
   }
 
   function updateCaret() {
+    // 拼音组字时 v-model 尚未提交, 显示层仍要读取输入框中的实时字符。
+    displayText.value = input.value?.value ?? model.value
     caret.value = input.value?.selectionStart || 0
     menuIndex.value = 0
     dismissed.value = false
@@ -212,7 +215,7 @@ export function useImageMentions(
   }
 
   function keydown(event: KeyboardEvent) {
-    if (!showMenu.value) return
+    if (event.isComposing || !showMenu.value) return
     if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
       event.preventDefault()
       menuIndex.value =
@@ -264,6 +267,7 @@ export function useImageMentions(
     void positionMenu()
   }
 
+  watch(model, (value) => (displayText.value = value))
   watch([showMenu, suggestions], () => void positionMenu(), { flush: 'post' })
   onMounted(() => window.addEventListener('resize', onResize))
   onBeforeUnmount(() => window.removeEventListener('resize', onResize))

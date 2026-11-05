@@ -1,5 +1,78 @@
 import { test, expect, type Page } from '@playwright/test'
 
+for (const width of [1440, 390]) {
+  for (const [version, url] of [
+    ['HTML', '/index.html'],
+    ['Vue', '/vue-app/dist/index.html'],
+  ]) {
+    test(`${version} ${width}px 润色按钮的等待、完成及失败重试行为一致`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 })
+      await page.addInitScript(() => {
+        localStorage.setItem(
+          'orbit-chat-state-v1',
+          JSON.stringify({
+            settings: {
+              demoMode: false,
+              chatBaseUrl: 'https://polish.test/v1',
+              chatApiKey: 'test-key',
+            },
+          }),
+        )
+      })
+      let finish!: () => void
+      const pending = new Promise<void>((resolve) => (finish = resolve))
+      let fail = false
+      await page.route('https://polish.test/v1/**', async (route) => {
+        if (route.request().url().endsWith('/models'))
+          return route.fulfill({ json: { data: [] } })
+        await pending
+        return route.fulfill(
+          fail
+            ? { status: 429, json: { error: { message: '请求过于频繁' } } }
+            : {
+                json: { choices: [{ message: { content: '生成的润色建议' } }] },
+              },
+        )
+      })
+      await page.goto(url)
+      await page.locator('#imagePrompt').fill('山间湖泊')
+      await page.locator('#polishImagePrompt').click()
+      const button = page.locator('#generatePolishResult')
+      try {
+        const request = page.waitForRequest(
+          'https://polish.test/v1/chat/completions',
+        )
+        await button.click()
+        await request
+        await expect(button).toHaveText('生成中')
+        await expect(button).toBeDisabled()
+        await expect(page.locator('#polishStatus')).toHaveText('请求中')
+        finish()
+        await expect(page.locator('#polishResult')).toHaveValue(
+          '生成的润色建议',
+        )
+        await expect(button).toHaveText('生成建议')
+        await expect(button).toBeEnabled()
+        fail = true
+        await button.click()
+        await expect(page.locator('#toast')).toContainText('请求过于频繁')
+        await expect(page.locator('#polishStatus')).toHaveText('生成失败')
+        await expect(button).toHaveText('生成建议')
+        await expect(button).toBeEnabled()
+        await page.locator('#closeToast').click()
+        fail = false
+        await button.click()
+        await expect(page.locator('#polishStatus')).toHaveText('已生成建议')
+        await expect(button).toBeEnabled()
+      } finally {
+        finish()
+      }
+    })
+  }
+}
+
 async function seedWorkspace(page: Page, count = 4) {
   await page.goto('/index.html')
   await page.evaluate(async (count) => {
@@ -163,6 +236,101 @@ async function imageEvent(
     },
     { data: file.buffer.toString('base64'), kind },
   )
+}
+
+for (const [version, url] of [
+  ['HTML', '/index.html'],
+  ['Vue', '/vue-app/dist/index.html'],
+]) {
+  test(`${version} 图片引用输入框在拼音组字期间实时显示字符`, async ({
+    page,
+  }) => {
+    await seedWorkspace(page, 0)
+    await page.goto(url)
+    await page
+      .locator('#imageReferenceUpload')
+      .setInputFiles(await referenceFile(page, 'red'))
+    const session = await page.context().newCDPSession(page)
+    for (const id of [
+      'imagePrompt',
+      'polishSourcePrompt',
+      'polishInstruction',
+    ]) {
+      if (id === 'polishSourcePrompt') {
+        await page.locator('#polishImagePrompt').click()
+        await page.locator('#polishUseGenerationReferences').check()
+      }
+      const input = page.locator(`#${id}`)
+      const mirror = page.locator(`#${id}Mirror`)
+      const prefix = id === 'imagePrompt' ? '原文 @图1 ' : '原文 @生成参考图1 '
+      await input.fill(prefix)
+      for (const text of ['a', 'ab', 'abcd']) {
+        await session.send('Input.imeSetComposition', {
+          text,
+          selectionStart: text.length,
+          selectionEnd: text.length,
+        })
+        await expect(input).toHaveValue(prefix + text)
+        await expect(mirror).toContainText(prefix + text)
+        await expect(mirror.locator('.image-mention-token')).toHaveCount(1)
+      }
+      await session.send('Input.insertText', { text: '你好' })
+      await expect(input).toHaveValue(prefix + '你好')
+      await expect(mirror).toContainText(prefix + '你好')
+      await session.send('Input.imeSetComposition', {
+        text: 'qux',
+        selectionStart: 3,
+        selectionEnd: 3,
+      })
+      await expect(mirror).toContainText(prefix + '你好qux')
+      await session.send('Input.imeSetComposition', {
+        text: '',
+        selectionStart: 0,
+        selectionEnd: 0,
+      })
+      await expect(input).toHaveValue(prefix + '你好')
+      await expect(mirror).not.toContainText('qux')
+    }
+    await session.detach()
+  })
+
+  test(`${version} 对话框拖入图片时显示边框, 离开和放下后恢复`, async ({
+    page,
+  }) => {
+    await seedWorkspace(page, 0)
+    await page.goto(url)
+    await page.locator('[data-view="chat"]').click()
+    const box = page.locator('#composerBox')
+    const input = page.locator('#messageInput')
+    const file = await referenceFile(page, 'red')
+    const transfer = await page.evaluateHandle((data) => {
+      const transfer = new DataTransfer()
+      transfer.items.add(
+        new File(
+          [Uint8Array.from(atob(data), (char) => char.charCodeAt(0))],
+          'red.png',
+          { type: 'image/png' },
+        ),
+      )
+      return transfer
+    }, file.buffer.toString('base64'))
+    await box.dispatchEvent('dragenter', { dataTransfer: transfer })
+    await expect(box).toHaveClass(/image-drop-active/)
+    await expect(box).toHaveCSS('border-color', 'rgb(116, 212, 203)')
+    await input.dispatchEvent('dragenter', { dataTransfer: transfer })
+    await input.dispatchEvent('dragover', { dataTransfer: transfer })
+    await input.dispatchEvent('dragleave', { dataTransfer: transfer })
+    await expect(box).toHaveClass(/image-drop-active/)
+    await box.dispatchEvent('dragleave', { dataTransfer: transfer })
+    await expect(box).not.toHaveClass(/image-drop-active/)
+    await input.dispatchEvent('dragenter', { dataTransfer: transfer })
+    await input.dispatchEvent('drop', { dataTransfer: transfer })
+    await expect(box).not.toHaveClass(/image-drop-active/)
+    await expect(
+      page.locator('#attachmentPreview .attachment-item'),
+    ).toHaveCount(1)
+    await transfer.dispose()
+  })
 }
 
 test('共用同一份缓存时, 重构版历史、详情、参考图及设置与旧版一致', async ({
