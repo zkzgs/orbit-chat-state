@@ -94,7 +94,7 @@ export function useWorkspaceData() {
       payload.favoriteFolders = cloneData(workspace.favoriteFolders)
       payload.imageDraft = {
         prompt: image.prompt,
-        config: cloneData(workspace.imageConfig),
+        config: cloneData(image.draftConfig),
         referenceImageIds: draftIds,
       }
     }
@@ -236,6 +236,7 @@ export function useWorkspaceData() {
         else if (!merge) {
           image.prompt = ''
           image.references = []
+          image.requestType = 'generation'
         }
         useHistoryStore().setLibrary('history')
       }
@@ -336,6 +337,7 @@ export function useWorkspaceData() {
       workspace.favoriteFolders = normalizeFavoriteFolders([])
       image.prompt = ''
       image.references = []
+      image.requestType = 'generation'
       ui.details.open = false
       useHistoryStore().setLibrary('history')
     }

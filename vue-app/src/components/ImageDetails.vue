@@ -58,6 +58,10 @@ type MetadataRow = {
     ratio?: boolean
   }
 }
+const requestTypes: Record<string, string> = {
+  generation: '生图',
+  edit: '改图',
+}
 const response = computed(
   () =>
     ({
@@ -167,6 +171,12 @@ const metadata = computed<MetadataRow[]>(() => {
         result.source || workspace.state.settings.imageBaseUrl || '演示模式',
       full: true,
     },
+    {
+      label: '请求类型',
+      value:
+        requestTypes[result.requestType || options.requestType || ''] ||
+        '未记录',
+    },
   ]
   if (!current)
     rows.push({
@@ -197,7 +207,7 @@ const metadata = computed<MetadataRow[]>(() => {
       label: '压缩',
       value: ['jpeg', 'webp'].includes(options.format || '')
         ? `${options.compression ?? 'auto'}${options.compression === undefined ? '' : '%'}`
-        : 'PNG 不支持',
+        : `${(options.format || 'png').toUpperCase()} 不支持`,
     },
     compare(
       '选项 / 实际透明度',

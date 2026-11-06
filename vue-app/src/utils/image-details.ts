@@ -49,12 +49,13 @@ export function formatImageConfig(
     ['请求尺寸', config.size || imageSize(config as ImageConfig)],
     ['宽高', `${config.width || '-'} × ${config.height || '-'}`],
     ['质量', config.quality || 'auto'],
+    ['思考', config.reasoningEffort || 'auto'],
     ['格式（output_format）', config.format || 'png'],
     [
       '压缩（output_compression）',
       ['jpeg', 'webp'].includes(config.format || '')
         ? `${config.compression ?? 0}%`
-        : `${config.compression ?? 0}%（PNG 不发送）`,
+        : `${config.compression ?? 0}%（${(config.format || 'png').toUpperCase()} 不发送）`,
     ],
     ['透明度选项', config.background || 'auto'],
     ['背景发送方式', backgroundDelivery],

@@ -152,7 +152,7 @@ export async function downloadImage(source: string, name = 'orbit-image') {
   downloadFile(
     file,
     file.type,
-    `${name}.${file.type.split('/')[1]?.replace('+xml', '') || 'png'}`,
+    `${name}.${file.type.split(';')[0].split('/')[1]?.replace('+xml', '') || 'png'}`,
   )
 }
 

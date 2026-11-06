@@ -115,9 +115,12 @@ export function imageRequestBody(config: ImageConfig, prompt: string) {
   }
   if (config.size !== 'auto') body.size = config.size
   if (config.quality !== 'auto') body.quality = config.quality
+  if (config.reasoningEffort && config.reasoningEffort !== 'auto')
+    body.reasoning_effort = config.reasoningEffort
   if (config.background !== 'auto' && config.backgroundMode === 'parameter')
     body.background = config.background
   if (config.format !== 'png') body.output_format = config.format
+  if (['gif', 'svg'].includes(config.format)) body.response_format = 'url'
   if (['jpeg', 'webp'].includes(config.format))
     body.output_compression = config.compression
   return body
@@ -130,27 +133,50 @@ export async function requestImages(
   signal: AbortSignal,
   onPhase?: (phase: ImageRequestPhase) => void,
 ): Promise<GeneratedResponse> {
+  const isEdit = config.requestType
+    ? config.requestType === 'edit'
+    : references.length > 0
+  if (
+    isEdit &&
+    ['gif', 'svg'].includes(config.format) &&
+    references.some(
+      (reference) =>
+        !['image/png', 'image/jpeg', 'image/webp'].includes(
+          reference.file.type,
+        ),
+    )
+  )
+    throw new Error('GIF/SVG 改图仅支持 PNG、JPEG 或 WebP 参考图')
   const endpoint = buildApiEndpoint(
     settings.imageBaseUrl,
-    references.length ? '/images/edits' : '/images/generations',
+    isEdit ? '/images/edits' : '/images/generations',
   )
   const body = imageRequestBody(config, prompt)
   const headers: Record<string, string> = {
     Authorization: `Bearer ${settings.imageApiKey}`,
   }
   let data: string | FormData
-  if (references.length) {
+  if (isEdit && references.length) {
     const form = new FormData()
     Object.entries(body).forEach(([key, value]) =>
       form.append(key, String(value)),
     )
     references.forEach((reference) =>
-      form.append('image[]', reference.file, reference.file.name),
+      form.append(
+        references.length === 1 ? 'image' : 'image[]',
+        reference.file,
+        reference.file.name,
+      ),
     )
     data = form
   } else {
     headers['Content-Type'] = 'application/json'
-    data = JSON.stringify(body)
+    data = JSON.stringify({
+      ...body,
+      ...(references.length
+        ? { image: references.map((reference) => reference.data) }
+        : {}),
+    })
   }
   const options: RequestInit = {
     method: 'POST',
@@ -175,10 +201,10 @@ export async function requestImages(
     result = await runImageWorker('parseImageResponse', {
       raw,
       endpoint,
-      hasReference: references.length > 0,
+      isEdit,
     })
   } catch {
-    result = parseImageResponse(raw, endpoint, references.length > 0)
+    result = parseImageResponse(raw, endpoint, isEdit)
   }
   const upstream = {
     status: response.status,
@@ -217,7 +243,7 @@ export async function requestImages(
       moderationSent: true,
       apiResponse: result.apiResponse,
       upstreamResponse: upstream,
-      requestType: references.length ? 'edit' : 'generation',
+      requestType: isEdit ? 'edit' : 'generation',
       requestId: response.headers.get('x-request-id') || '',
     },
     upstream,

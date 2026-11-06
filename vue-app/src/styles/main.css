@@ -1203,6 +1203,50 @@ select:not(:disabled):hover {
   flex-wrap: wrap;
   gap: 8px;
 }
+.image-request-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #101a28;
+}
+.image-request-toggle label {
+  position: relative;
+}
+.image-request-toggle input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.image-request-toggle span {
+  display: block;
+  min-width: 40px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  white-space: nowrap;
+}
+.image-request-toggle input:hover + span {
+  color: var(--ink);
+}
+.image-request-toggle input:checked + span {
+  background: rgba(116, 212, 203, 0.16);
+  color: var(--cyan);
+  font-weight: 600;
+}
+.image-request-toggle input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .image-reference-preview {
   display: flex;
   flex-wrap: wrap;

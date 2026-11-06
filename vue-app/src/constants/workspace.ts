@@ -21,6 +21,7 @@ export const DEFAULT_IMAGE_OPTIONS: ImageOptions = {
   width: 1024,
   height: 1024,
   quality: 'auto',
+  reasoningEffort: 'auto',
   format: 'png',
   compression: 0,
   background: 'auto',

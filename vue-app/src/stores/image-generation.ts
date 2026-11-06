@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useWorkspaceStore } from './workspace'
 import { useInterfaceStore } from './interface'
 import {
@@ -32,6 +32,18 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
   const ui = useInterfaceStore()
   const prompt = ref('')
   const references = ref<ReferenceImage[]>([])
+  const requestType = ref('generation')
+  const draftConfig = computed<ImageConfig>(() => ({
+    ...workspace.imageConfig,
+    requestType: requestType.value,
+  }))
+  watch(
+    () => references.value.length > 0,
+    (hasReferences) => {
+      requestType.value = hasReferences ? 'edit' : 'generation'
+    },
+    { flush: 'sync' },
+  )
   watch(
     references,
     (value) => {
@@ -121,9 +133,12 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       compressReferences: _compress,
       referenceCompressionLimitMb: _limit,
       submittedPrompt: _submitted,
+      requestType: _requestType,
       ...options
     } = config
-    Object.assign(workspace.state.settings.imageOptions, options)
+    Object.assign(workspace.state.settings.imageOptions, options, {
+      reasoningEffort: config.reasoningEffort || 'auto',
+    })
     prompt.value = text
     references.value = workspace.messageImages(ids).map((image) => ({
       id: createId(),
@@ -131,6 +146,8 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       name: image.name || '原参考图',
       imageId: image.id,
     }))
+    requestType.value =
+      config.requestType || (references.value.length ? 'edit' : 'generation')
     ui.activeView = 'image'
     ui.details.open = false
     void nextTick(() => document.getElementById('imagePrompt')?.focus())
@@ -168,7 +185,10 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       ui.notify('先写下你想生成的画面', 'error')
       return
     }
-    const config = cloneData(override?.config || workspace.imageConfig)
+    const config = cloneData(override?.config || draftConfig.value)
+    config.requestType ||= (override?.references || references.value).length
+      ? 'edit'
+      : 'generation'
     config.count = Math.min(10, Math.max(1, Number(config.count) || 1))
     config.compression = Math.min(
       100,
@@ -250,21 +270,28 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       } else {
         task.detail = '准备提交副本'
         await persist()
-        const prepared = await prepareReferences(originals, {
-          compressRequestImages: config.compressReferences,
-          requestImageCompressionLimitMb: config.referenceCompressionLimitMb,
-        })
+        const prepared = await prepareReferences(
+          originals,
+          {
+            compressRequestImages: config.compressReferences,
+            requestImageCompressionLimitMb: config.referenceCompressionLimitMb,
+          },
+          config.requestType !== 'edit',
+        )
         if (generation !== workspace.generation) return
         task.requestLog = {
           config,
           endpoint: buildApiEndpoint(
             settings.imageBaseUrl,
-            prepared.length ? '/images/edits' : '/images/generations',
+            config.requestType === 'edit'
+              ? '/images/edits'
+              : '/images/generations',
           ),
           method: 'POST',
-          contentType: prepared.length
-            ? 'multipart/form-data'
-            : 'application/json',
+          contentType:
+            config.requestType === 'edit' && prepared.length
+              ? 'multipart/form-data'
+              : 'application/json',
           body: {
             ...imageRequestBody(config, config.submittedPrompt!),
             image: prepared.map((image) => image.submissionMeta),
@@ -421,6 +448,8 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
   return {
     prompt,
     references,
+    requestType,
+    draftConfig,
     addReferences,
     removeReference,
     moveReference,

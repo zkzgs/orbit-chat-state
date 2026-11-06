@@ -588,9 +588,14 @@ test('生图与润色的缩略图、右键引用、粘贴和拖入保持旧版�
       '1',
       '2',
     ])
-    await expect(current.locator('#imageRequestMode')).toHaveText(
-      '当前请求：图片编辑 · 2 张参考图',
+    await expect(current.locator('#imageReferenceCount')).toHaveText(
+      '2 张参考图',
     )
+    await expect(
+      current
+        .getByRole('radiogroup', { name: '请求接口' })
+        .getByRole('radio', { name: '改图', exact: true }),
+    ).toBeChecked()
     const input = current.locator('#imagePrompt')
     await input.fill('前 后')
     await input.evaluate((element: HTMLTextAreaElement) =>
@@ -731,7 +736,8 @@ for (const viewport of [
       '.history-filterbar .custom-select-trigger',
       '.history-item',
       '.history-item-batch',
-      '#imageRequestMode',
+      '#imageRequestType',
+      '#imageReferenceCount',
       '.reference-preview-item',
       '.reference-preview-index',
     ])

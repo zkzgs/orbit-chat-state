@@ -2,7 +2,7 @@ import type { ImageResponse, ParsedImageResponse } from '../types/image-worker'
 
 function detectBase64ImageFormat(encoded: string) {
   try {
-    const binary = atob(String(encoded || '').slice(0, 24))
+    const binary = atob(String(encoded || '').slice(0, 4096))
     const bytes = [...binary].map((character) => character.charCodeAt(0))
     if (
       bytes[0] === 0x89 &&
@@ -17,6 +17,12 @@ function detectBase64ImageFormat(encoded: string) {
       return 'gif'
     if (binary.slice(0, 4) === 'RIFF' && binary.slice(8, 12) === 'WEBP')
       return 'webp'
+    if (
+      /^(?:\s|<\?xml[\s\S]*?\?>|<!--[\s\S]*?-->|<!DOCTYPE[\s\S]*?>)*<svg(?:\s|>)/i.test(
+        binary.replace(/^\xEF\xBB\xBF/, ''),
+      )
+    )
+      return 'svg'
   } catch {}
   return 'png'
 }
@@ -30,7 +36,7 @@ function abbreviateResponseValue(value: unknown) {
 export function parseImageResponse(
   raw: string,
   endpoint: string,
-  hasReference: boolean,
+  isEdit: boolean,
 ): ParsedImageResponse {
   let payload: ImageResponse = {}
   let parsed = true
@@ -71,12 +77,10 @@ export function parseImageResponse(
       const value = typeof item === 'string' ? item : item?.b64_json
       const detectedFormat = value ? detectBase64ImageFormat(value) : ''
       const meta = typeof item === 'string' ? {} : item
-      const source =
-        typeof item === 'string'
-          ? `data:image/${detectedFormat};base64,${item}`
-          : value
-            ? `data:image/${detectedFormat};base64,${value}`
-            : item?.url || ''
+      const mimeFormat = detectedFormat === 'svg' ? 'svg+xml' : detectedFormat
+      const source = value
+        ? `data:image/${mimeFormat};base64,${value}`
+        : meta?.url || ''
       return {
         src: source,
         responseMeta: {
@@ -87,7 +91,7 @@ export function parseImageResponse(
           output_format: meta?.output_format || detectedFormat,
           size: meta?.size,
           source: endpoint,
-          requestType: hasReference ? 'edit' : 'generation',
+          requestType: isEdit ? 'edit' : 'generation',
           delivery:
             typeof item === 'string' || meta?.b64_json
               ? 'b64_json'

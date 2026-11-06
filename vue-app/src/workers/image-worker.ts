@@ -8,7 +8,10 @@ import type {
 } from '../types/image-worker'
 
 function normalizeImageFormat(format: string) {
-  const value = String(format || '').toLowerCase()
+  const value = String(format || '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase()
   if (value === 'jpg') return 'jpeg'
   if (value === 'svg+xml') return 'svg'
   return value
@@ -166,8 +169,8 @@ const handlers: {
   inspectImage: ({ blob }) => inspectImage(blob),
   compressImage: ({ file, targetBytes }) => compressImage(file, targetBytes),
   convertToPng: ({ blob }) => convertToPng(blob),
-  parseImageResponse: ({ raw, endpoint, hasReference }) =>
-    parseImageResponse(raw, endpoint, hasReference),
+  parseImageResponse: ({ raw, endpoint, isEdit }) =>
+    parseImageResponse(raw, endpoint, isEdit),
 }
 
 const worker = self as unknown as DedicatedWorkerGlobalScope

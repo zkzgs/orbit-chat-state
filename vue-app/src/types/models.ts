@@ -9,6 +9,7 @@ export interface ImageOptions {
   width: number
   height: number
   quality: string
+  reasoningEffort: string
   format: string
   compression: number
   background: string
@@ -16,6 +17,7 @@ export interface ImageOptions {
   count: number
 }
 export interface ImageConfig extends ImageOptions {
+  requestType?: string
   model: string
   size: string
   countMode: string

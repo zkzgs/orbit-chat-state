@@ -128,11 +128,36 @@ function drop(event: DragEvent) {
           </button>
         </div>
         <div class="reference-options">
-          <span class="panel-label-hint" id="imageRequestMode">{{
-            image.references.length
-              ? `当前请求：图片编辑 · ${image.references.length} 张参考图`
-              : '当前请求：图片生成'
-          }}</span>
+          <span
+            v-if="image.references.length"
+            id="imageReferenceCount"
+            class="panel-label-hint"
+          >
+            {{ image.references.length }} 张参考图
+          </span>
+          <div
+            id="imageRequestType"
+            class="image-request-toggle"
+            role="radiogroup"
+            aria-label="请求接口"
+          >
+            <label
+              ><input
+                v-model="image.requestType"
+                type="radio"
+                name="imageRequestType"
+                value="generation"
+              /><span>生图</span></label
+            >
+            <label
+              ><input
+                v-model="image.requestType"
+                type="radio"
+                name="imageRequestType"
+                value="edit"
+              /><span>改图</span></label
+            >
+          </div>
         </div>
       </div>
       <ReferenceImages
@@ -186,6 +211,18 @@ function drop(event: DragEvent) {
             ]"
         /></label>
         <label class="select-control"
+          ><span>思考</span
+          ><CustomSelect
+            v-model="workspace.state.settings.imageOptions.reasoningEffort"
+            id="imageReasoningEffort"
+            :options="[
+              { value: 'auto', label: '自动' },
+              { value: 'low', label: '低' },
+              { value: 'medium', label: '中' },
+              { value: 'high', label: '高' },
+            ]"
+        /></label>
+        <label class="select-control"
           ><span>格式</span
           ><CustomSelect
             v-model="workspace.state.settings.imageOptions.format"
@@ -194,6 +231,8 @@ function drop(event: DragEvent) {
               { value: 'png', label: 'PNG' },
               { value: 'jpeg', label: 'JPEG（JPG）' },
               { value: 'webp', label: 'WebP' },
+              { value: 'gif', label: 'GIF' },
+              { value: 'svg', label: 'SVG' },
             ]"
         /></label>
         <label class="select-control compression-control"

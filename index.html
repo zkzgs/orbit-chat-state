@@ -208,6 +208,13 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .image-mention-tooltip { position: fixed; z-index: 90; padding: 5px; border: 1px solid var(--line-strong); border-radius: 5px; background: #162235; box-shadow: var(--shadow); pointer-events: none; }
 .image-mention-tooltip img { display: block; width: 128px; height: 96px; object-fit: contain; }
 .reference-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }.reference-upload { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 10px; cursor: pointer; }.reference-upload:hover { border-color: rgba(116,212,203,.45); color: var(--ink); }.reference-upload span { color: var(--cyan); font-size: 15px; }.reference-options { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }.image-reference-preview { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }.image-reference-preview[hidden] { display: none; }.reference-preview-item { position: relative; }.image-reference-preview img { width: 70px; height: 56px; border: 1px solid var(--line-strong); border-radius: 5px; object-fit: cover; }.reference-preview-index { position: absolute; bottom: 4px; left: 4px; min-width: 16px; height: 16px; display: grid; place-items: center; padding: 0 4px; border: 1px solid rgba(255,255,255,.18); border-radius: 3px; background: rgba(5,10,17,.78); color: #fff; font-size: 9px; line-height: 1; pointer-events: none; }.remove-reference { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; border: 1px solid var(--panel-soft); border-radius: 50%; background: #314157; color: var(--ink); font-size: 13px; line-height: 14px; }
+.image-request-toggle { display: inline-flex; flex: 0 0 auto; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 6px; background: #101a28; }
+.image-request-toggle label { position: relative; }
+.image-request-toggle input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.image-request-toggle span { display: block; min-width: 40px; padding: 5px 8px; border-radius: 4px; color: var(--muted); font-size: 11px; line-height: 16px; text-align: center; white-space: nowrap; }
+.image-request-toggle input:hover + span { color: var(--ink); }
+.image-request-toggle input:checked + span { background: rgba(116,212,203,.16); color: var(--cyan); font-weight: 600; }
+.image-request-toggle input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 .reference-preview-item, .polish-reference-item { cursor: grab; }
 .reference-preview-item.is-dragging, .polish-reference-item.is-dragging { opacity: .45; }
 .reference-preview-item.drag-over, .polish-reference-item.drag-over { outline: 2px solid var(--cyan); outline-offset: 2px; }
@@ -871,12 +878,13 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
                 <div class="panel-label-row"><span>描述你想要的画面</span><div class="panel-label-actions"><span class="panel-label-hint">支持中文, 可粘贴参考图</span><button class="field-action" id="polishImagePrompt" type="button">润色关键词</button></div></div>
                 <div class="profile-manager image-prompt-template-manager"><label class="profile-select-label">关键词模板<select id="imagePromptTemplateSelect" aria-label="选择生图关键词模板"><option value="">临时关键词(未保存)</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveImagePromptTemplate" type="button">另存为</button><button class="secondary-button" id="updateImagePromptTemplate" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteImagePromptTemplate" type="button" title="删除当前关键词模板" aria-label="删除当前关键词模板" disabled>×</button></div><small class="profile-help">模板保存关键词和生成参考图, 不保存尺寸, 质量等生成参数</small></div>
                 <div class="image-prompt-wrap"><textarea id="imagePrompt" rows="4" placeholder="例如: 雨后的上海街头, 霓虹倒影, 35mm 胶片质感, 电影感构图"></textarea><div class="image-prompt-mirror" id="imagePromptMirror" aria-hidden="true"></div><div class="image-mention-menu" id="imageMentionMenu" hidden></div></div>
-                <div class="reference-row"><div class="reference-upload-actions"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><button class="reference-clear" id="clearImageReferences" type="button" disabled>清空</button></div><div class="reference-options"><span class="panel-label-hint" id="imageRequestMode">图片生成 · 无参考图</span></div></div>
+                <div class="reference-row"><div class="reference-upload-actions"><label class="reference-upload"><span>⊕</span> 添加参考图<input type="file" id="imageReferenceUpload" accept="image/png,image/jpeg,image/webp" multiple hidden></label><button class="reference-clear" id="clearImageReferences" type="button" disabled>清空</button></div><div class="reference-options"><span class="panel-label-hint" id="imageReferenceCount" hidden></span><div id="imageRequestType" class="image-request-toggle" role="radiogroup" aria-label="请求接口"><label><input type="radio" name="imageRequestType" value="generation" checked><span>生图</span></label><label><input type="radio" name="imageRequestType" value="edit"><span>改图</span></label></div></div></div>
                 <div class="image-reference-preview" id="imageReferencePreview" hidden></div><input type="file" id="imageReferenceReplaceUpload" accept="image/png,image/jpeg,image/webp" hidden>
                 <div class="image-controls">
                   <label class="select-control image-size-control"><span>尺寸</span><button class="size-button" id="imageSizeButton" type="button">自动 · 1K · 1:1</button><select id="imageRatio" hidden><option value="auto">自动</option><option value="1:1">1:1 方形</option><option value="3:2">3:2 横向</option><option value="2:3">2:3 竖向</option><option value="16:9">16:9 横向</option><option value="9:16">9:16 竖向</option><option value="4:3">4:3 横向</option><option value="3:4">3:4 竖向</option><option value="21:9">21:9 超宽</option></select></label>
                   <label class="select-control"><span>质量</span><select id="imageQuality"><option value="auto">自动</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option><option value="xhigh">极高</option><option value="max">最高</option><option value="standard">标准, DALL-E</option><option value="hd">HD, DALL-E</option></select></label>
-                  <label class="select-control"><span>格式</span><select id="imageFormat"><option value="png">PNG</option><option value="jpeg">JPEG（JPG）</option><option value="webp">WebP</option></select></label>
+                  <label class="select-control"><span>思考</span><select id="imageReasoningEffort"><option value="auto">自动</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></label>
+                  <label class="select-control"><span>格式</span><select id="imageFormat"><option value="png">PNG</option><option value="jpeg">JPEG（JPG）</option><option value="webp">WebP</option><option value="gif">GIF</option><option value="svg">SVG</option></select></label>
                   <label class="select-control compression-control"><span>输出压缩 (%)</span><input id="imageCompression" type="number" min="0" max="100" step="1" value="0" inputmode="numeric"></label>
                   <label class="select-control"><span>输出透明度</span><select id="imageBackground"><option value="auto">自动</option><option value="opaque">不透明</option><option value="transparent">透明</option></select></label>
                   <label class="select-control"><span>审核</span><select id="imageModeration"><option value="auto">自动</option><option value="low">宽松</option></select></label>
@@ -1057,7 +1065,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 'use strict';
 
 function normalizeImageFormat(format) {
-  const value = String(format || '').toLowerCase();
+  const value = String(format || '').split(';')[0].trim().toLowerCase();
   if (value === 'jpg') return 'jpeg';
   if (value === 'svg+xml') return 'svg';
   return value;
@@ -1065,12 +1073,13 @@ function normalizeImageFormat(format) {
 
 function detectBase64ImageFormat(encoded) {
   try {
-    const binary = atob(String(encoded || '').slice(0, 24));
+    const binary = atob(String(encoded || '').slice(0, 4096));
     const bytes = [...binary].map((character) => character.charCodeAt(0));
     if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
     if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpeg';
     if (binary.slice(0, 6) === 'GIF87a' || binary.slice(0, 6) === 'GIF89a') return 'gif';
     if (binary.slice(0, 4) === 'RIFF' && binary.slice(8, 12) === 'WEBP') return 'webp';
+    if (/^(?:\s|<\?xml[\s\S]*?\?>|<!--[\s\S]*?-->|<!DOCTYPE[\s\S]*?>)*<svg(?:\s|>)/i.test(binary.replace(/^\xEF\xBB\xBF/, ''))) return 'svg';
   } catch { }
   return 'png';
 }
@@ -1166,7 +1175,7 @@ function abbreviateResponseValue(value) {
   return `${text.slice(0, 42)}...${text.slice(-42)}（共 ${text.length} 个字符）`;
 }
 
-function parseImageResponse(raw, endpoint, hasReference) {
+function parseImageResponse(raw, endpoint, isEdit) {
   let payload = {};
   let parsed = true;
   try { payload = raw ? JSON.parse(raw) : {}; } catch { payload = {}; parsed = false; }
@@ -1181,8 +1190,9 @@ function parseImageResponse(raw, endpoint, hasReference) {
   const images = (payload?.data || []).map((item) => {
     const value = typeof item === 'string' ? item : item?.b64_json;
     const detectedFormat = value ? detectBase64ImageFormat(value) : '';
-    const source = typeof item === 'string' ? `data:image/${detectedFormat};base64,${item}` : (value ? `data:image/${detectedFormat};base64,${value}` : item?.url || '');
-    return { src: source, responseMeta: { id: item?.id, revised_prompt: item?.revised_prompt, model: responseModel || item?.model || '', created: payload.created || item?.created, output_format: item?.output_format || detectedFormat, size: item?.size, source: endpoint, requestType: hasReference ? 'edit' : 'generation', delivery: typeof item === 'string' || item?.b64_json ? 'b64_json' : item?.url ? 'url' : 'unknown', providedUrl: Boolean(item?.url) } };
+    const mimeFormat = detectedFormat === 'svg' ? 'svg+xml' : detectedFormat;
+    const source = value ? `data:image/${mimeFormat};base64,${value}` : item?.url || '';
+    return { src: source, responseMeta: { id: item?.id, revised_prompt: item?.revised_prompt, model: responseModel || item?.model || '', created: payload.created || item?.created, output_format: item?.output_format || detectedFormat, size: item?.size, source: endpoint, requestType: isEdit ? 'edit' : 'generation', delivery: typeof item === 'string' || item?.b64_json ? 'b64_json' : item?.url ? 'url' : 'unknown', providedUrl: Boolean(item?.url) } };
   }).filter((item) => item.src);
   return { images, apiResponse, responseModel, created: payload.created, id: payload.id, usage: payload.usage, parsed, errorMessage: payload?.error?.message || payload?.message || payload?.detail || String(raw || '').slice(0, 500) };
 }
@@ -1194,7 +1204,7 @@ const handlers = {
   inspectImage: ({ blob }) => inspectImage(blob),
   compressImage: ({ file, targetBytes }) => compressImage(file, targetBytes),
   convertToPng: ({ blob }) => convertToPng(blob),
-  parseImageResponse: ({ raw, endpoint, hasReference }) => parseImageResponse(raw, endpoint, hasReference)
+  parseImageResponse: ({ raw, endpoint, isEdit }) => parseImageResponse(raw, endpoint, isEdit)
 };
 
 self.onmessage = async (event) => {
@@ -1220,7 +1230,7 @@ const defaultState = {
     imageBaseUrl: 'https://aixor.cc/v1',
     imageApiKey: '',
     imageModel: 'gpt-image-2.5',
-    imageOptions: { sizeMode: 'auto', resolution: '1K', ratio: 'auto', width: 1024, height: 1024, quality: 'auto', format: 'png', compression: 0, background: 'auto', moderation: 'auto', count: 1 },
+    imageOptions: { sizeMode: 'auto', resolution: '1K', ratio: 'auto', width: 1024, height: 1024, quality: 'auto', reasoningEffort: 'auto', format: 'png', compression: 0, background: 'auto', moderation: 'auto', count: 1 },
     imageCountMode: 'parameter',
     imageBackgroundMode: 'parameter',
     compressRequestImages: true,
@@ -1259,6 +1269,7 @@ let imageHistory = [];
 let storedImages = new Map();
 let editingMessageId = null;
 let imageReferences = [];
+let imageRequestHasReferences = null;
 let polishGenerationReferences = [];
 let polishReferences = [];
 let activePolishMentionInput = null;
@@ -2008,8 +2019,8 @@ async function retryImageTask(taskId) {
   const task = imageTasks.find((entry) => entry.id === taskId);
   if (!task || task.status === 'running') return;
   setImagePromptText(task.prompt || '');
-  setImageConfig(task.config || {});
   await setImageReferencesFromSources((task.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean));
+  setImageConfig(task.config || {});
   setView('image');
   await generateImage();
 }
@@ -2099,8 +2110,8 @@ async function restoreImageTask(taskId) {
   const task = imageTasks.find((entry) => entry.id === taskId);
   if (!task) return;
   setImagePromptText(task.prompt || '');
-  setImageConfig(task.config || {});
   await setImageReferencesFromSources((task.referenceImageIds || []).map((id) => storedImages.get(id)?.src).filter(Boolean));
+  setImageConfig(task.config || {});
   $('#imagePrompt').focus();
   showToast(task.status === 'error' ? '已恢复失败任务, 可以修改关键词后重试' : '已同步这条生成配置');
 }
@@ -2794,6 +2805,7 @@ function renderAttachmentPreview() {
 
 function getImageConfig() {
     const config = {
+    requestType: $('#imageRequestType input:checked').value,
     model: state.settings.imageModel,
     sizeMode: imageSizeDraft?.sizeMode || state.settings.imageOptions.sizeMode || 'ratio',
     resolution: imageSizeDraft?.resolution || state.settings.imageOptions.resolution || '1K',
@@ -2801,6 +2813,7 @@ function getImageConfig() {
     width: Number(imageSizeDraft?.width || state.settings.imageOptions.width || 1024),
     height: Number(imageSizeDraft?.height || state.settings.imageOptions.height || 1024),
     quality: $('#imageQuality').value,
+    reasoningEffort: $('#imageReasoningEffort').value,
     format: $('#imageFormat').value,
     compression: Math.min(100, Math.max(0, Number($('#imageCompression').value) || 0)),
     background: $('#imageBackground').value,
@@ -2818,10 +2831,12 @@ function getImageConfig() {
 }
 
 function setImageConfig(config = {}) {
-  // 历史记录只恢复生图参数, 接口和请求方式沿用当前设置
+  // 历史记录恢复生成参数, 接口配置和数量策略沿用当前设置
+  setImageRequestType(config.requestType || (imageReferences.length ? 'edit' : 'generation'));
   imageSizeDraft = { sizeMode: config.sizeMode || (config.ratio === 'auto' ? 'auto' : 'ratio'), resolution: config.resolution || '1K', width: Number(config.width) || 1024, height: Number(config.height) || 1024 };
   if (config.ratio) $('#imageRatio').value = config.ratio;
   if (config.quality) $('#imageQuality').value = config.quality;
+  $('#imageReasoningEffort').value = config.reasoningEffort || 'auto';
   if (config.format) $('#imageFormat').value = config.format;
   if (config.compression !== undefined) $('#imageCompression').value = Math.min(100, Math.max(0, Number(config.compression) || 0));
   if (config.background) $('#imageBackground').value = config.background;
@@ -2946,8 +2961,8 @@ function saveImageSize() {
 
 async function applyImageConfig(item) {
   setImagePromptText(item.prompt || '');
-  setImageConfig(item.config);
   await setImageReferencesFromSources(getBatchReferenceSources(item.batch || item));
+  setImageConfig(item.config);
   setView('image');
   closeLightbox();
   $('#imagePrompt').focus();
@@ -3135,12 +3150,13 @@ async function getImageBlob(src) {
 
 function detectBase64ImageFormat(encoded) {
   try {
-    const binary = atob(encoded.slice(0, 24));
+    const binary = atob(encoded.slice(0, 4096));
     const bytes = [...binary].map((character) => character.charCodeAt(0));
     if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
     if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpeg';
     if (binary.slice(0, 6) === 'GIF87a' || binary.slice(0, 6) === 'GIF89a') return 'gif';
     if (binary.slice(0, 4) === 'RIFF' && binary.slice(8, 12) === 'WEBP') return 'webp';
+    if (/^(?:\s|<\?xml[\s\S]*?\?>|<!--[\s\S]*?-->|<!DOCTYPE[\s\S]*?>)*<svg(?:\s|>)/i.test(binary.replace(/^\xEF\xBB\xBF/, ''))) return 'svg';
   } catch { }
   return 'png';
 }
@@ -3164,12 +3180,14 @@ function renderImageMetadata(image) {
   const actualHeight = image.height || response.height || response.output_height || responseDimensions.height;
   const actualSize = actualWidth && actualHeight ? `${actualWidth} × ${actualHeight}` : '';
   const requestSize = config.size || ratioToSize(config.ratio, config.resolution, config.width, config.height, config.sizeMode);
-  const actualFormat = normalizeImageFormat(image.detectedFormat || image.format || response.format || response.output_format || imageSource.match(/\.(png|jpe?g|webp)(?:[?#]|$)/i)?.[1]?.toLowerCase() || '');
+  const actualFormat = normalizeImageFormat(image.detectedFormat || image.format || response.format || response.output_format || imageSource.match(/\.(png|jpe?g|webp|gif|svg)(?:[?#]|$)/i)?.[1]?.toLowerCase() || '');
   const requestRatio = config.ratio && config.ratio !== 'auto' ? config.ratio : sizeToRatio(requestSize);
   const actualRatio = actualWidth && actualHeight ? formatActualRatio(actualWidth, actualHeight) : '';
   const requestedCount = Number(config.count) || 1;
   const actualCount = getBatchImages(batch).length;
   const actualModel = response.model || response.apiResponse?.model || '';
+  const requestTypes = { generation: '生图', edit: '改图' };
+  const requestType = requestTypes[response.requestType || config.requestType] || '未记录';
   const source = response.source || state.settings.imageBaseUrl || '演示模式';
   const requestBackground = config.background || 'auto';
   const requestModeration = config.moderation || 'auto';
@@ -3183,7 +3201,7 @@ function renderImageMetadata(image) {
   const referenceSources = getBatchReferenceSources(batch);
   const durationMs = batch.durationMs || (task?.finishedAt && task.startedAt ? task.finishedAt - task.startedAt : 0);
   const errorMessage = image.isTaskError ? (image.error?.message || image.detail || '生成失败') : '';
-  return `<div class="metadata-card full"><dt>请求 / 实际模型</dt><dd>${renderComparison(config.model || state.settings.imageModel || '未知', actualModel, actualModel || '响应未提供')}</dd></div><div class="metadata-card full"><dt>来源</dt><dd>${escapeHtml(source)}</dd></div>${errorMessage ? `<div class="metadata-card full"><dt>错误信息</dt><dd>${escapeHtml(errorMessage)}</dd></div>` : ''}<div class="metadata-card"><dt>请求 / 实际尺寸</dt><dd>${renderComparison(requestSize, actualSize, actualSize || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际比例</dt><dd>${renderComparison(requestRatio || '自动', actualRatio, actualRatio || '响应未提供', true)}</dd></div><div class="metadata-card"><dt>请求 / 实际格式</dt><dd>${renderComparison(config.format || 'png', actualFormat, actualFormat || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际数量</dt><dd>${renderComparison(String(requestedCount), actualCount ? String(actualCount) : '', actualCount ? String(actualCount) : '未生成')}</dd></div><div class="metadata-card"><dt>质量</dt><dd>${escapeHtml(config.quality || 'auto')}</dd></div><div class="metadata-card"><dt>压缩</dt><dd>${escapeHtml(['jpeg', 'webp'].includes(config.format) ? (config.compression === undefined || config.compression === 'auto' ? 'auto' : `${config.compression}%`) : 'PNG 不支持')}</dd></div><div class="metadata-card"><dt>选项 / 实际透明度</dt><dd>${renderComparison(requestBackground, actualBackground, actualBackground || '未检测')}</dd></div><div class="metadata-card"><dt>审核</dt><dd>${escapeHtml(moderationDisplay)}</dd></div><div class="metadata-card"><dt>参考图</dt><dd>${escapeHtml(`${referenceSources.length} 张`)}</dd></div><div class="metadata-card"><dt>数据来源</dt><dd>${escapeHtml(responseDataKind)}</dd></div><div class="metadata-card"><dt>文件大小</dt><dd>${escapeHtml(image.isTaskError ? '未生成' : formatBytes(image.fileSize || 0))}</dd></div><div class="metadata-card"><dt>创建时间</dt><dd>${escapeHtml(formatTime(batch.startedAt || batch.createdAt || image.createdAt))}</dd></div><div class="metadata-card"><dt>耗时</dt><dd>${escapeHtml(formatDuration(durationMs))}</dd></div><div class="metadata-card full"><dt>完整请求配置</dt><dd>${escapeHtml(formatImageConfig(config, response.requestType, image.prompt || batch.prompt || ''))}</dd>${rawRequest ? `<details class="metadata-disclosure"><summary>查看实际请求</summary><pre>${escapeHtml(rawRequest)}</pre></details>` : ''}</div>${response.revised_prompt ? `<div class="metadata-card full"><dt>接口修订提示词</dt><dd>${escapeHtml(response.revised_prompt)}</dd></div>` : ''}<div class="metadata-card full"><dt>接口响应</dt><dd>${escapeHtml(JSON.stringify(responseSummary))}</dd>${rawResponse ? `<details class="metadata-disclosure"><summary>查看上游响应</summary><pre>${escapeHtml(rawResponse)}</pre></details>` : ''}</div>`;
+  return `<div class="metadata-card full"><dt>请求 / 实际模型</dt><dd>${renderComparison(config.model || state.settings.imageModel || '未知', actualModel, actualModel || '响应未提供')}</dd></div><div class="metadata-card full"><dt>来源</dt><dd>${escapeHtml(source)}</dd></div><div class="metadata-card"><dt>请求类型</dt><dd>${escapeHtml(requestType)}</dd></div>${errorMessage ? `<div class="metadata-card full"><dt>错误信息</dt><dd>${escapeHtml(errorMessage)}</dd></div>` : ''}<div class="metadata-card"><dt>请求 / 实际尺寸</dt><dd>${renderComparison(requestSize, actualSize, actualSize || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际比例</dt><dd>${renderComparison(requestRatio || '自动', actualRatio, actualRatio || '响应未提供', true)}</dd></div><div class="metadata-card"><dt>请求 / 实际格式</dt><dd>${renderComparison(config.format || 'png', actualFormat, actualFormat || '响应未提供')}</dd></div><div class="metadata-card"><dt>请求 / 实际数量</dt><dd>${renderComparison(String(requestedCount), actualCount ? String(actualCount) : '', actualCount ? String(actualCount) : '未生成')}</dd></div><div class="metadata-card"><dt>质量</dt><dd>${escapeHtml(config.quality || 'auto')}</dd></div><div class="metadata-card"><dt>压缩</dt><dd>${escapeHtml(['jpeg', 'webp'].includes(config.format) ? (config.compression === undefined || config.compression === 'auto' ? 'auto' : `${config.compression}%`) : `${(config.format || 'png').toUpperCase()} 不支持`)}</dd></div><div class="metadata-card"><dt>选项 / 实际透明度</dt><dd>${renderComparison(requestBackground, actualBackground, actualBackground || '未检测')}</dd></div><div class="metadata-card"><dt>审核</dt><dd>${escapeHtml(moderationDisplay)}</dd></div><div class="metadata-card"><dt>参考图</dt><dd>${escapeHtml(`${referenceSources.length} 张`)}</dd></div><div class="metadata-card"><dt>数据来源</dt><dd>${escapeHtml(responseDataKind)}</dd></div><div class="metadata-card"><dt>文件大小</dt><dd>${escapeHtml(image.isTaskError ? '未生成' : formatBytes(image.fileSize || 0))}</dd></div><div class="metadata-card"><dt>创建时间</dt><dd>${escapeHtml(formatTime(batch.startedAt || batch.createdAt || image.createdAt))}</dd></div><div class="metadata-card"><dt>耗时</dt><dd>${escapeHtml(formatDuration(durationMs))}</dd></div><div class="metadata-card full"><dt>完整请求配置</dt><dd>${escapeHtml(formatImageConfig(config, response.requestType, image.prompt || batch.prompt || ''))}</dd>${rawRequest ? `<details class="metadata-disclosure"><summary>查看实际请求</summary><pre>${escapeHtml(rawRequest)}</pre></details>` : ''}</div>${response.revised_prompt ? `<div class="metadata-card full"><dt>接口修订提示词</dt><dd>${escapeHtml(response.revised_prompt)}</dd></div>` : ''}<div class="metadata-card full"><dt>接口响应</dt><dd>${escapeHtml(JSON.stringify(responseSummary))}</dd>${rawResponse ? `<details class="metadata-disclosure"><summary>查看上游响应</summary><pre>${escapeHtml(rawResponse)}</pre></details>` : ''}</div>`;
 }
 
 function renderComparison(requested, actual, actualLabel, ratioMode = false) {
@@ -3207,8 +3225,9 @@ function formatImageConfig(config, requestType = '', prompt = '') {
     ['请求尺寸', config.size || ratioToSize(config.ratio, config.resolution, config.width, config.height, config.sizeMode)],
     ['宽高', `${config.width || '-'} × ${config.height || '-'}`],
     ['质量', config.quality || 'auto'],
+    ['思考', config.reasoningEffort || 'auto'],
     ['格式（output_format）', config.format || 'png'],
-    ['压缩（output_compression）', ['jpeg', 'webp'].includes(config.format) ? `${config.compression ?? 0}%` : `${config.compression ?? 0}%（PNG 不发送）`],
+    ['压缩（output_compression）', ['jpeg', 'webp'].includes(config.format) ? `${config.compression ?? 0}%` : `${config.compression ?? 0}%（${(config.format || 'png').toUpperCase()} 不发送）`],
     ['透明度选项', config.background || 'auto'],
     ['背景发送方式', backgroundDelivery],
     ['审核', config.moderation || 'auto'],
@@ -3955,10 +3974,10 @@ async function readChatStream(response) {
   return { content, reasoning };
 }
 
-async function parseImageResponse(response, endpoint, hasReference) {
+async function parseImageResponse(response, endpoint, isEdit) {
   const raw = await response.text();
   try {
-    const parsedResult = await runImageWorker('parseImageResponse', { raw, endpoint, hasReference });
+    const parsedResult = await runImageWorker('parseImageResponse', { raw, endpoint, isEdit });
     const responseModel = parsedResult.responseModel || response.headers.get('x-model') || response.headers.get('x-openai-model') || '';
     const images = parsedResult.images.map((image) => image.responseMeta?.model || !responseModel ? image : { ...image, responseMeta: { ...image.responseMeta, model: responseModel } });
     const upstreamResponse = { status: response.status, statusText: response.statusText || '', headers: Object.fromEntries(response.headers.entries()), body: parsedResult.apiResponse, receivedAt: Date.now() };
@@ -3968,14 +3987,14 @@ async function parseImageResponse(response, endpoint, hasReference) {
       throw error;
     }
     const requestId = response.headers.get('x-request-id') || response.headers.get('request-id') || '';
-    return { images, meta: { source: endpoint, model: responseModel, created: parsedResult.created, id: parsedResult.id, usage: parsedResult.usage, status: response.status, requestId, requestType: hasReference ? 'edit' : 'generation', moderationSent: true, apiResponse: parsedResult.apiResponse, upstreamResponse } };
+    return { images, meta: { source: endpoint, model: responseModel, created: parsedResult.created, id: parsedResult.id, usage: parsedResult.usage, status: response.status, requestId, requestType: isEdit ? 'edit' : 'generation', moderationSent: true, apiResponse: parsedResult.apiResponse, upstreamResponse } };
   } catch (error) {
     if (error?.upstreamResponse) throw error;
   }
-  return parseImageResponseOnMain(raw, response, endpoint, hasReference);
+  return parseImageResponseOnMain(raw, response, endpoint, isEdit);
 }
 
-function parseImageResponseOnMain(raw, response, endpoint, hasReference) {
+function parseImageResponseOnMain(raw, response, endpoint, isEdit) {
   let payload = {};
   let parsed = true;
   try { payload = raw ? JSON.parse(raw) : {}; } catch (error) { payload = {}; parsed = false; }
@@ -3994,10 +4013,11 @@ function parseImageResponseOnMain(raw, response, endpoint, hasReference) {
   const images = (payload?.data || []).map((item) => {
     const value = typeof item === 'string' ? item : item?.b64_json;
     const detectedFormat = value ? detectBase64ImageFormat(value) : '';
-    const source = typeof item === 'string' ? `data:image/${detectedFormat};base64,${item}` : (value ? `data:image/${detectedFormat};base64,${value}` : item?.url || '');
-    return { src: source, responseMeta: { id: item?.id, revised_prompt: item?.revised_prompt, model: responseModel || item?.model || '', created: payload.created || item?.created, output_format: item?.output_format || detectedFormat, size: item?.size, source: endpoint, requestType: hasReference ? 'edit' : 'generation', delivery: typeof item === 'string' || item?.b64_json ? 'b64_json' : item?.url ? 'url' : 'unknown', providedUrl: Boolean(item?.url) } };
+    const mimeFormat = detectedFormat === 'svg' ? 'svg+xml' : detectedFormat;
+    const source = value ? `data:image/${mimeFormat};base64,${value}` : item?.url || '';
+    return { src: source, responseMeta: { id: item?.id, revised_prompt: item?.revised_prompt, model: responseModel || item?.model || '', created: payload.created || item?.created, output_format: item?.output_format || detectedFormat, size: item?.size, source: endpoint, requestType: isEdit ? 'edit' : 'generation', delivery: typeof item === 'string' || item?.b64_json ? 'b64_json' : item?.url ? 'url' : 'unknown', providedUrl: Boolean(item?.url) } };
   }).filter((item) => item.src);
-  return { images, meta: { source: endpoint, model: responseModel, created: payload.created, id: payload.id, usage: payload.usage, status: response.status, requestId: response.headers.get('x-request-id') || response.headers.get('request-id') || '', requestType: hasReference ? 'edit' : 'generation', moderationSent: true, apiResponse, upstreamResponse } };
+  return { images, meta: { source: endpoint, model: responseModel, created: payload.created, id: payload.id, usage: payload.usage, status: response.status, requestId: response.headers.get('x-request-id') || response.headers.get('request-id') || '', requestType: isEdit ? 'edit' : 'generation', moderationSent: true, apiResponse, upstreamResponse } };
 }
 
 function abbreviateResponseValue(value) {
@@ -4030,12 +4050,12 @@ function sendImageEditRequest(endpoint, fetchOptions, onUploaded) {
   });
 }
 
-async function fetchImageRequest(endpoint, fetchOptions, hasReference, onPhase) {
+async function fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, onPhase) {
   onPhase?.(hasReference ? 'uploading' : 'waiting');
   const response = hasReference ? await sendImageEditRequest(endpoint, fetchOptions, () => onPhase?.('waiting')) : await apiFetch(endpoint, fetchOptions);
   onPhase?.('parsing');
   await new Promise((resolve) => window.setTimeout(resolve, 0));
-  return parseImageResponse(response, endpoint, hasReference);
+  return parseImageResponse(response, endpoint, isEdit);
 }
 
 async function generateImage() {
@@ -4082,40 +4102,46 @@ async function generateImage() {
       await showDemoImage(prompt, config, references.map((reference) => reference.data), taskId);
     } else {
       const hasReference = references.length > 0;
-      const endpoint = buildApiEndpoint(state.settings.imageBaseUrl, hasReference ? '/images/edits' : '/images/generations');
-      const requestReferences = hasReference ? await prepareRequestImages(references, config.compressReferences, config.referenceCompressionLimitMb, (completed, total) => updateImageTask(taskId, { detail: `${config.compressReferences ? '压缩' : '准备'}提交副本 ${completed}/${total}` })) : [];
+      const isEdit = config.requestType === 'edit';
+      const endpoint = buildApiEndpoint(state.settings.imageBaseUrl, isEdit ? '/images/edits' : '/images/generations');
+      const requestReferences = hasReference ? await prepareRequestImages(references, config.compressReferences, config.referenceCompressionLimitMb, (completed, total) => updateImageTask(taskId, { detail: `${config.compressReferences ? '压缩' : '准备'}提交副本 ${completed}/${total}` }), !isEdit) : [];
       if (generation !== localDataGeneration) return;
+      if (isEdit && ['gif', 'svg'].includes(config.format) && requestReferences.some((reference) => !['image/png', 'image/jpeg', 'image/webp'].includes(reference.file.type))) throw new Error('GIF/SVG 改图仅支持 PNG、JPEG 或 WebP 参考图');
       const request = { model: config.model, prompt: config.submittedPrompt, n: requestCount };
       if (config.size !== 'auto') request.size = config.size;
       if (config.quality !== 'auto') request.quality = config.quality;
+      if (config.reasoningEffort !== 'auto') request.reasoning_effort = config.reasoningEffort;
       if (config.background !== 'auto' && config.backgroundMode === 'parameter') request.background = config.background;
       if (config.format !== 'png') request.output_format = config.format;
+      if (['gif', 'svg'].includes(config.format)) request.response_format = 'url';
       if (config.compression !== 'auto' && ['jpeg', 'webp'].includes(config.format)) request.output_compression = Number(config.compression);
       request.moderation = config.moderation || 'auto';
       let fetchOptions;
-      if (hasReference) {
+      if (isEdit && hasReference) {
         const form = new FormData();
         form.append('model', request.model);
         form.append('prompt', request.prompt);
         if (request.size) form.append('size', request.size);
         form.append('n', String(request.n));
         if (request.quality) form.append('quality', request.quality);
+        if (request.reasoning_effort) form.append('reasoning_effort', request.reasoning_effort);
         if (request.background) form.append('background', request.background);
         if (request.output_format) form.append('output_format', request.output_format);
+        if (request.response_format) form.append('response_format', request.response_format);
         if (request.output_compression !== undefined) form.append('output_compression', String(request.output_compression));
         if (request.moderation) form.append('moderation', request.moderation);
-        requestReferences.forEach((reference) => form.append('image[]', reference.file, reference.file.name));
+        requestReferences.forEach((reference) => form.append(requestReferences.length === 1 ? 'image' : 'image[]', reference.file, reference.file.name));
         fetchOptions = { method: 'POST', headers: { Authorization: `Bearer ${state.settings.imageApiKey}` }, body: form };
       } else {
-        fetchOptions = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.imageApiKey}` }, body: JSON.stringify(request) };
+        fetchOptions = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.imageApiKey}` }, body: JSON.stringify({ ...request, ...(hasReference ? { image: requestReferences.map((reference) => reference.data) } : {}) }) };
       }
-      const requestLog = { endpoint, method: 'POST', contentType: hasReference ? 'multipart/form-data' : 'application/json', body: { ...request, ...(hasReference ? { image: requestReferences.map((reference) => reference.submissionMeta) } : {}) }, parallelRequests: requestTotal, createdAt: Date.now() };
+      const requestLog = { endpoint, method: 'POST', contentType: isEdit && hasReference ? 'multipart/form-data' : 'application/json', body: { ...request, ...(hasReference ? { image: requestReferences.map((reference) => reference.submissionMeta) } : {}) }, parallelRequests: requestTotal, createdAt: Date.now() };
       updateImageTask(taskId, { requestLog });
       const referenceSources = references.map((reference) => reference.data);
       if (countMode === 'parallel') {
         const results = await Promise.allSettled(Array.from({ length: config.count }, (_, requestIndex) => (async () => {
           try {
-            const result = await fetchImageRequest(endpoint, fetchOptions, hasReference, (phase) => updateImageRequestPhase(taskId, requestIndex, phase));
+            const result = await fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, (phase) => updateImageRequestPhase(taskId, requestIndex, phase));
             result.meta.requestIndex = requestIndex + 1;
             result.meta.requestLog = requestLog;
             recordImageTaskResponse(taskId, requestIndex, result.meta.upstreamResponse);
@@ -4138,12 +4164,12 @@ async function generateImage() {
         if (generation !== localDataGeneration) return;
         const task = imageTasks.find((entry) => entry.id === taskId);
         updateImageTask(taskId, { detail: '保存结果中' });
-        await presentGeneratedImages(imageDataList, prompt, config, referenceSources, { ...(successful[0]?.meta || {}), taskId, source: endpoint, requestType: hasReference ? 'edit' : 'generation', parallel: true, requestedCount: config.count, failedCount: failed, requestLog, responses: task?.responses || [] }, startedAt, generation);
+        await presentGeneratedImages(imageDataList, prompt, config, referenceSources, { ...(successful[0]?.meta || {}), taskId, source: endpoint, requestType: config.requestType, parallel: true, requestedCount: config.count, failedCount: failed, requestLog, responses: task?.responses || [] }, startedAt, generation);
         if (failed) { taskFinalStatus = 'partial'; taskResultDetail = `部分完成 ${successful.length}/${config.count} 个 · ${formatDuration(Date.now() - startedAt)}`; showErrorToast(`并发请求完成 ${successful.length}/${config.count} 个，${failed} 个失败`); }
       } else {
         let result;
         try {
-          result = await fetchImageRequest(endpoint, fetchOptions, hasReference, (phase) => updateImageRequestPhase(taskId, 0, phase));
+          result = await fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, (phase) => updateImageRequestPhase(taskId, 0, phase));
           result.meta.requestIndex = 1;
           result.meta.requestLog = requestLog;
           recordImageTaskResponse(taskId, 0, result.meta.upstreamResponse);
@@ -4330,7 +4356,7 @@ async function detectImageFormat(blob) {
 }
 
 function normalizeImageFormat(format) {
-  const value = String(format || '').toLowerCase();
+  const value = String(format || '').split(';')[0].trim().toLowerCase();
   if (value === 'jpg') return 'jpeg';
   if (value === 'svg+xml') return 'svg';
   return value;
@@ -4408,10 +4434,10 @@ async function downloadImageOriginal(image, batch = null) {
   if (!image?.src) return;
   try {
     const blob = await getImageBlob(image.src);
-    const configuredFormat = ['png', 'jpeg', 'webp'].includes(batch?.config?.format) ? batch.config.format : '';
+    const configuredFormat = ['png', 'jpeg', 'webp', 'gif', 'svg'].includes(batch?.config?.format) ? batch.config.format : '';
     const mimeFormat = normalizeImageFormat(blob.type?.split('/')[1] || '');
     const detectedFormat = await detectImageFormat(blob);
-    const format = ['png', 'jpeg', 'webp', 'gif'].includes(mimeFormat) ? mimeFormat : ['png', 'jpeg', 'webp', 'gif'].includes(detectedFormat) ? detectedFormat : configuredFormat || 'png';
+    const format = ['png', 'jpeg', 'webp', 'gif', 'svg'].includes(mimeFormat) ? mimeFormat : ['png', 'jpeg', 'webp', 'gif', 'svg'].includes(detectedFormat) ? detectedFormat : configuredFormat || 'png';
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = objectUrl;
@@ -5185,7 +5211,7 @@ async function showDemoImage(prompt, config = getImageConfig(), referenceSources
   const images = Array.from({ length: config.count }, (_, index) => {
     const accent = ['#e6f36b', '#74d4cb', '#f4b96b', '#aeb9ff'][index % 4];
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760"><rect width="1200" height="760" fill="#152536"/><circle cx="${925 - index * 35}" cy="${160 + index * 22}" r="125" fill="${accent}" opacity=".85"/><path d="M0 590 285 360l176 125 170-203 369 308H0Z" fill="#2d5960"/><path d="M0 670 260 488l185 115 155-124 367 191H0Z" fill="#173a4a"/><rect x="45" y="55" width="510" height="72" rx="10" fill="#0d1725" opacity=".83"/><text x="78" y="101" fill="#ecf2f9" font-family="sans-serif" font-size="24">${escapeHtml(prompt.slice(0, 27))} · ${index + 1}</text><text x="78" y="711" fill="#94a8b8" font-family="sans-serif" font-size="16">Orbit Image Studio · Demo preview</text></svg>`;
-    return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, responseMeta: { source: '演示模式', model: '', size: config.size, format: 'svg+xml', requestType: referenceSources.length ? 'edit' : 'generation' } };
+    return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, responseMeta: { source: '演示模式', model: '', size: config.size, format: 'svg+xml', requestType: config.requestType || (referenceSources.length ? 'edit' : 'generation') } };
   });
   await presentGeneratedImages(images, prompt, config, referenceSources, { taskId }, Date.now() - 1100);
   showToast('已生成演示预览, 配置生图接口后可获得真实图片');
@@ -5642,6 +5668,13 @@ function getSubmittedPolishText(text, input) {
 }
 
 function renderImageReferences() {
+  const hasReferences = imageReferences.length > 0;
+  if (imageRequestHasReferences !== hasReferences) {
+    imageRequestHasReferences = hasReferences;
+    setImageRequestType(hasReferences ? 'edit' : 'generation');
+    state.settings.imageOptions.requestType = $('#imageRequestType input:checked').value;
+    persist();
+  }
   const preview = $('#imageReferencePreview');
   preview.hidden = imageReferences.length === 0;
   $('#clearImageReferences').disabled = imageReferences.length === 0;
@@ -5670,8 +5703,13 @@ function renderImageReferences() {
     setImagePromptText(remapImageMentions($('#imagePrompt').value, positions));
     renderImageReferences();
   });
-  $('#imageRequestMode').textContent = imageReferences.length ? `当前请求：图片编辑 · ${imageReferences.length} 张参考图` : '当前请求：图片生成';
+  $('#imageReferenceCount').hidden = !hasReferences;
+  $('#imageReferenceCount').textContent = hasReferences ? `${imageReferences.length} 张参考图` : '';
   renderImagePromptMirror();
+}
+
+function setImageRequestType(value) {
+  $$('#imageRequestType input').forEach((input) => { input.checked = input.value === value; });
 }
 
 async function replaceReferenceFile(event, references, renderPreview) {
@@ -6384,8 +6422,8 @@ async function importWorkspace(file) {
       }
       if (payload.imageDraft && typeof payload.imageDraft === 'object') {
         setImagePromptText(payload.imageDraft.prompt || '');
-        setImageConfig(payload.imageDraft.config || state.settings.imageOptions);
         await setImageReferencesFromSources(remapImageIds(payload.imageDraft.referenceImageIds, mergedImages.idMap).map((id) => mergedImages.records.get(id)?.src).filter(Boolean));
+        setImageConfig(payload.imageDraft.config || state.settings.imageOptions);
       }
       stopImageTaskTimerIfIdle();
     }
@@ -6617,6 +6655,8 @@ function bindEvents() {
     else downloadCurrentConversationAsMarkdown();
   });
   $('#generateImage').addEventListener('click', generateImage);
+  $('#imageRequestType').addEventListener('change', getImageConfig);
+  $('#imageReasoningEffort').addEventListener('change', getImageConfig);
   $('#imageUpload').addEventListener('change', handleAttachment);
   $('#fileUpload').addEventListener('change', handleFileAttachment);
   $('#imageReferenceUpload').addEventListener('change', handleImageReference);
