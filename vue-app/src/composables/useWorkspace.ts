@@ -15,6 +15,16 @@ export function useWorkspace() {
   const image = useImageGenerationStore()
   const templates = usePromptTemplatesStore()
   const settings = useSettingsStore()
+  watch(
+    () =>
+      workspace.state.settings.imagePrivacyEnabled
+        ? workspace.state.settings.imagePrivacyMode
+        : '',
+    (mode) => {
+      document.documentElement.dataset.imagePrivacy = mode
+    },
+    { immediate: true },
+  )
   const modalOpen = computed(
     () =>
       ui.settingsOpen ||

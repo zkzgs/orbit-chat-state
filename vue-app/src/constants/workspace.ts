@@ -55,6 +55,8 @@ export function createDefaultSettings(): Settings {
     activeImagePolishTemplateId: '',
     proxyUrl: 'http://127.0.0.1:8787',
     proxyEnabled: false,
+    imagePrivacyEnabled: false,
+    imagePrivacyMode: 'single',
     demoMode: false,
   }
 }

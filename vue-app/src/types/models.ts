@@ -66,6 +66,8 @@ export interface Settings {
   activeImagePolishTemplateId: string
   proxyUrl: string
   proxyEnabled: boolean
+  imagePrivacyEnabled: boolean
+  imagePrivacyMode: 'single' | 'list'
   demoMode: boolean
 }
 export interface ConnectionProfile {

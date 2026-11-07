@@ -800,6 +800,14 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
   .history-action-button { width: 27px !important; min-width: 27px; flex-basis: 27px !important; }
   .favorite-dialog-body { padding: 16px 18px; }
 }
+@media (min-width: 781px) and (hover: hover) and (pointer: fine) {
+  [data-image-privacy="single"] img:not(:hover),
+  [data-image-privacy="list"] #imageHistory:not(:hover) { filter: blur(18px); opacity: .25; }
+}
+@media (min-width: 781px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  [data-image-privacy="single"] img,
+  [data-image-privacy="list"] #imageHistory { transition: filter 100ms ease-out, opacity 100ms ease-out; }
+}
 @media (prefers-reduced-motion: reduce) {
   .modal-backdrop:not([hidden]), .image-lightbox:not([hidden]), .modal-backdrop:not([hidden]) .settings-modal, .image-lightbox:not([hidden]) .lightbox-panel { animation-duration: .01ms; }
 }
@@ -1038,10 +1046,15 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
           <div class="section-title"><span class="section-number">05</span><div><strong>提示词偏好</strong><small>系统提示词会随对应请求发送</small></div></div>
           <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手"></textarea><small class="field-help">作为对话请求中的 system 消息发送, 不会拼接到生图关键词</small></label>
           <label class="field-label">润色系统提示词<textarea id="imagePolishSystemPrompt" rows="4" placeholder="定义润色模型的角色和输出规则"></textarea><small class="field-help">作为润色请求中的 system 消息发送, 用于定义润色模型的角色和输出规则</small></label>
+        </div>
+        <div class="settings-section compact-section">
+          <div class="section-title"><span class="section-number">06</span><div><strong>显示偏好</strong></div></div>
+          <label class="toggle-row"><span><strong>图片隐私遮罩</strong></span><input type="checkbox" id="imagePrivacyEnabled"><span class="toggle-ui"></span></label>
+          <label class="field-label">遮罩范围<select id="imagePrivacyMode"><option value="single">单张图片</option><option value="list">生图列表</option></select></label>
           <label class="toggle-row"><span><strong>演示模式</strong><small>不填写 Key 时也能体验完整交互</small></span><input type="checkbox" id="demoMode"><span class="toggle-ui"></span></label>
         </div>
         <div class="settings-section compact-section data-management-section">
-          <div class="section-title"><span class="section-number">06</span><div><strong>数据管理</strong><small>操作时选择需要导出或清除的范围</small></div></div>
+          <div class="section-title"><span class="section-number">07</span><div><strong>数据管理</strong><small>操作时选择需要导出或清除的范围</small></div></div>
           <div class="data-management-actions"><button class="secondary-button" id="exportWorkspace" type="button">导出</button><button class="secondary-button" id="importWorkspace" type="button">导入</button><button class="secondary-button danger" id="resetLocalData" type="button">清除数据</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
         </div>
         <div class="security-callout"><span>⌁</span><p>Key、接口模板和润色模板默认只保存在当前浏览器；选择“配置”或“全部数据”导出时才会写入文件。</p></div>
@@ -1247,6 +1260,8 @@ const defaultState = {
     activeImagePolishTemplateId: '',
     proxyUrl: 'http://127.0.0.1:8787',
     proxyEnabled: false,
+    imagePrivacyEnabled: false,
+    imagePrivacyMode: 'single',
     demoMode: false
   },
   connectionProfiles: { chat: [], image: [] },
@@ -2597,6 +2612,7 @@ function renderMarkdown(value) {
 }
 
 function render() {
+  document.documentElement.dataset.imagePrivacy = state.settings.imagePrivacyEnabled ? state.settings.imagePrivacyMode : '';
   ensureActiveConversation();
   renderConversations();
   renderMessages();
@@ -6024,10 +6040,12 @@ function openSettings() {
   $('#systemPrompt').value = state.settings.systemPrompt;
   $('#imagePolishSystemPrompt').value = state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt;
   $('#reasoningEffort').value = state.settings.reasoningEffort || 'auto';
+  $('#imagePrivacyMode').value = state.settings.imagePrivacyMode;
   syncCustomSelects();
   $('#chatWebSearch').checked = Boolean(state.settings.chatWebSearch);
   $('#chatStream').checked = Boolean(state.settings.chatStream);
   $('#demoMode').checked = state.settings.demoMode;
+  $('#imagePrivacyEnabled').checked = state.settings.imagePrivacyEnabled;
   $('#proxyUrl').value = state.settings.proxyUrl || defaultState.settings.proxyUrl;
   $('#proxyEnabled').checked = Boolean(state.settings.proxyEnabled);
   if (state.settings.proxyEnabled) verifiedProxyUrl = normalizeProxyUrl(state.settings.proxyUrl);
@@ -6059,7 +6077,7 @@ function saveSettings() {
     showErrorToast('代理地址尚未通过连接测试');
     return;
   }
-  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), chatStream: Boolean(state.settings.chatStream), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, demoMode: $('#demoMode').checked };
+  state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), chatStream: Boolean(state.settings.chatStream), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, imagePrivacyEnabled: $('#imagePrivacyEnabled').checked, imagePrivacyMode: $('#imagePrivacyMode').value, demoMode: $('#demoMode').checked };
   persist();
   closeSettings();
   render();

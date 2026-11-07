@@ -406,6 +406,28 @@ const importInput = ref<HTMLInputElement | null>(null)
               用于定义润色模型的角色和输出规则</small
             ></label
           >
+        </div>
+        <div class="settings-section compact-section">
+          <div class="section-title">
+            <span class="section-number">06</span>
+            <div><strong>显示偏好</strong></div>
+          </div>
+          <label class="toggle-row"
+            ><span><strong>图片隐私遮罩</strong></span
+            ><input
+              v-model="settings.draft.imagePrivacyEnabled"
+              type="checkbox"
+              id="imagePrivacyEnabled" /><span class="toggle-ui"></span
+          ></label>
+          <label class="field-label"
+            >遮罩范围<CustomSelect
+              v-model="settings.draft.imagePrivacyMode"
+              id="imagePrivacyMode"
+              :options="[
+                { value: 'single', label: '单张图片' },
+                { value: 'list', label: '生图列表' },
+              ]"
+          /></label>
           <label class="toggle-row"
             ><span
               ><strong>演示模式</strong
@@ -418,7 +440,7 @@ const importInput = ref<HTMLInputElement | null>(null)
         </div>
         <div class="settings-section compact-section data-management-section">
           <div class="section-title">
-            <span class="section-number">06</span>
+            <span class="section-number">07</span>
             <div>
               <strong>数据管理</strong
               ><small>操作时选择需要导出或清除的范围</small>
