@@ -1,6 +1,9 @@
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, watch, type Ref } from 'vue'
 
-export function useProgressiveList<T extends { id: string }>(items: () => T[]) {
+export function useProgressiveList<T extends { id: string }>(
+  items: () => T[],
+  preserveCountOnChange?: Ref<boolean>,
+) {
   const count = ref(4)
   let previousIds = new Set<string>()
   let timer = 0
@@ -11,7 +14,8 @@ export function useProgressiveList<T extends { id: string }>(items: () => T[]) {
       const keepsCurrentItems = [...previousIds].every((id) => nextIds.has(id))
       previousIds = nextIds
       window.clearTimeout(timer)
-      if (!keepsCurrentItems) count.value = 4
+      if (!keepsCurrentItems && !preserveCountOnChange?.value) count.value = 4
+      if (preserveCountOnChange) preserveCountOnChange.value = false
       function append() {
         count.value = Math.min(count.value + 4, value.length)
         if (count.value < value.length) timer = window.setTimeout(append, 16)

@@ -9,13 +9,35 @@ import FavoriteFolderCard from './FavoriteFolderCard.vue'
 import CustomSelect from '../components/CustomSelect.vue'
 const history = useHistoryStore()
 const workspace = useWorkspaceStore()
-const cards = useProgressiveList(() => history.cards)
+const preserveListCount = ref(false)
+const cards = useProgressiveList(() => history.cards, preserveListCount)
 const list = ref<HTMLElement | null>(null)
 useHistorySelection(list)
 let imageObserver: IntersectionObserver | null = null
 let mutationObserver: MutationObserver | null = null
 let pendingImages: HTMLImageElement[] = []
 let loadingImages = false
+
+async function deleteCards(items: Parameters<typeof history.deleteCards>[0]) {
+  preserveListCount.value = true
+  try {
+    return await history.deleteCards(items)
+  } finally {
+    preserveListCount.value = false
+  }
+}
+
+async function handleCardAction(
+  action: string,
+  card: (typeof history.cards)[number],
+) {
+  if (action === 'delete' || action === 'delete-task') {
+    await deleteCards([card])
+    return
+  }
+  await history.action(action, card)
+}
+
 function observeImages(root: HTMLElement) {
   const images = root.querySelectorAll<HTMLImageElement>('img[data-image-id]')
   if (!imageObserver) {
@@ -191,7 +213,7 @@ onScopeDispose(() => {
           :selected="history.selected.has(card.key)"
           @open="history.openCard(card)"
           @selection="history.toggleSelection(card.key, $event)"
-          @action="history.action($event, card)"
+          @action="handleCardAction($event, card)"
       /></template>
       <div
         class="history-empty"
@@ -224,7 +246,7 @@ onScopeDispose(() => {
           id="historyDeleteSelected"
           class="danger-action"
           @click="
-            history.deleteCards(
+            deleteCards(
               history.cards.filter((card) => history.selected.has(card.key)),
             )
           "

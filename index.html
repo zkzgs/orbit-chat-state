@@ -1674,7 +1674,7 @@ async function deleteGenerationRecord(batchId = '', taskId = '') {
   }
   recordIds.forEach((id) => storedImages.delete(id));
   await removeUnreferencedImages();
-  renderImageHistory();
+  updateImageHistoryAfterDelete(new Set(batch ? [batch.id] : []), new Set(task ? [task.id] : []));
   stopImageTaskTimerIfIdle();
 }
 
@@ -1746,6 +1746,31 @@ async function renderImageHistoryNow() {
   $$('.history-view-toggle button').forEach((button) => button.classList.toggle('active', button.dataset.historyView === imageHistoryView));
   bindHistorySelecto();
   updateHistorySelectionBar();
+}
+
+function updateImageHistoryAfterDelete(batchIds, taskIds) {
+  const list = $('#imageHistory');
+  const entries = imageHistoryLibrary === 'favorites'
+    ? activeFavoriteFolderId ? getFavoriteFolderEntries(activeFavoriteFolderId) : []
+    : getGenerationTimelineEntries();
+  batchIds.forEach((batchId) => {
+    const previousCards = [...list.children].filter((card) => card.dataset.historyId === batchId);
+    if (!previousCards.length) return;
+    const markup = entries.filter((entry) => entry.batch?.id === batchId).map(renderGenerationRecord).join('');
+    const template = document.createElement('template');
+    template.innerHTML = markup;
+    bindImageHistoryActions(template.content);
+    if (template.content.childNodes.length) previousCards[0].replaceWith(template.content);
+    else previousCards[0].remove();
+    previousCards.slice(1).forEach((card) => card.remove());
+  });
+  taskIds.forEach((taskId) => {
+    list.querySelectorAll(`[data-task-id="${CSS.escape(taskId)}"]`).forEach((card) => card.remove());
+  });
+  $('#historyViewToggle').hidden = imageHistoryLibrary === 'favorites' || !imageHistory.some((batch) => getBatchImages(batch).length > 1);
+  filterRenderedHistory();
+  hydrateDeferredImages(list, 'history');
+  bindHistorySelecto();
 }
 
 function bindImageHistoryActions(list) {
@@ -2218,7 +2243,7 @@ async function deleteSelectedHistory() {
   deletedTaskIds.forEach((id) => storedImages.delete(id));
   await removeUnreferencedImages();
   selectedHistoryKeys.clear();
-  renderImageHistory();
+  updateImageHistoryAfterDelete(new Set(touchedBatches.keys()), deletedTaskIds);
 }
 
 function activeConversation() {

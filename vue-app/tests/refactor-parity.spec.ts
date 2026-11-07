@@ -858,3 +858,74 @@ test('有大图和原始响应的共享缓存中反复收藏, 不整库序列化
   expect(stats.jsonBytes).toBeLessThan(payloadSize)
   expect(errors).toEqual([])
 })
+
+for (const width of [1440, 390]) {
+  for (const [version, url] of [
+    ['HTML', '/index.html'],
+    ['Vue', '/vue-app/dist/index.html'],
+  ]) {
+    test(`${version} ${width}px 删除生图记录后保留列表滚动位置`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 })
+      await seedWorkspace(page, 32)
+      await page.goto(url)
+      await expect(page.locator('.history-item')).toHaveCount(32)
+
+      const mobile = width <= 780
+      const scroller = page.locator(mobile ? '.content-stage' : '#imageHistory')
+      await scroller.evaluate((element) => {
+        element.scrollTop = (element.scrollHeight - element.clientHeight) / 2
+      })
+      const before = await scroller.evaluate((element) => element.scrollTop)
+      const targetIndex = await page.evaluate((mobile) => {
+        const list = document.querySelector('#imageHistory')!
+        const scroller = document.querySelector(
+          mobile ? '.content-stage' : '#imageHistory',
+        )!
+        const bounds = scroller.getBoundingClientRect()
+        return Array.from(
+          list.querySelectorAll<HTMLButtonElement>(
+            '[data-history-action="delete"]',
+          ),
+        ).findIndex((button) => {
+          const card = button.closest('.history-item')!.getBoundingClientRect()
+          return card.top >= bounds.top && card.bottom <= bounds.bottom
+        })
+      }, mobile)
+      expect(targetIndex).toBeGreaterThanOrEqual(0)
+      await page.evaluate((targetIndex) => {
+        const cards = Array.from(
+          document.querySelectorAll<HTMLElement>('#imageHistory .history-item'),
+        )
+        const target = document
+          .querySelectorAll('#imageHistory [data-history-action="delete"]')
+          [targetIndex].closest<HTMLElement>('.history-item')
+        const retained = cards.find((card) => card !== target)!
+        ;(window as any).retainedHistoryImage = {
+          batchId: retained.dataset.historyId,
+          image: retained.querySelector('img'),
+        }
+      }, targetIndex)
+
+      page.once('dialog', (dialog) => dialog.accept())
+      await page
+        .locator('#imageHistory [data-history-action="delete"]')
+        .nth(targetIndex)
+        .evaluate((button) => (button as HTMLButtonElement).click())
+      await expect(page.locator('.history-item')).toHaveCount(31)
+      await expect
+        .poll(() => scroller.evaluate((element) => element.scrollTop))
+        .toBe(before)
+      expect(
+        await page.evaluate(() => {
+          const retained = (window as any).retainedHistoryImage
+          const current = document.querySelector(
+            `.history-item[data-history-id="${CSS.escape(retained.batchId)}"] img`,
+          )
+          return current === retained.image
+        }),
+      ).toBe(true)
+    })
+  }
+}
