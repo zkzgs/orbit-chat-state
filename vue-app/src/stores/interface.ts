@@ -13,6 +13,7 @@ export const useInterfaceStore = defineStore('interface', () => {
   const sizeOpen = ref(false)
   const polishOpen = ref(false)
   const exportMenuOpen = ref(false)
+  const exporting = ref(false)
   const toast = reactive({
     open: false,
     message: '',
@@ -98,6 +99,7 @@ export const useInterfaceStore = defineStore('interface', () => {
     sizeOpen,
     polishOpen,
     exportMenuOpen,
+    exporting,
     toast,
     viewer,
     details,

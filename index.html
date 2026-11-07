@@ -1315,6 +1315,7 @@ let selectedHistoryKeys = new Set();
 let customTooltipNode = null;
 let historySelecto = null;
 let dataScopeResolver = null;
+let exportingWorkspace = false;
 let verifiedProxyUrl = '';
 const modelCatalog = {
   chat: [...(state.connectionProfiles.chat.find((profile) => profile.id === state.activeConnectionProfiles.chat)?.models || [])],
@@ -2318,6 +2319,60 @@ function downloadFile(content, type, fileName) {
   link.download = fileName;
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// 只复制 JSON 数据的结构, 大图片字符串保持共享, 不经序列化复制整库。
+function snapshotExport(value) {
+  if (Array.isArray(value)) return value.map(snapshotExport);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, snapshotExport(item)]));
+  return value;
+}
+
+function* jsonExportChunks(value) {
+  if (typeof value === 'string') {
+    yield '"';
+    for (let start = 0; start < value.length; start += 256 * 1024) yield JSON.stringify(value.slice(start, start + 256 * 1024)).slice(1, -1);
+    yield '"';
+  } else if (Array.isArray(value)) {
+    yield '[';
+    for (let i = 0; i < value.length; i++) {
+      if (i) yield ',';
+      yield* jsonExportChunks(value[i]);
+    }
+    yield ']';
+  } else if (value && typeof value === 'object') {
+    yield '{';
+    let first = true;
+    for (const [key, item] of Object.entries(value)) {
+      if (item === undefined) continue;
+      if (!first) yield ',';
+      first = false;
+      yield JSON.stringify(key) + ':';
+      yield* jsonExportChunks(item);
+    }
+    yield '}';
+  } else yield JSON.stringify(value) ?? 'null';
+}
+
+async function createJsonBlob(value) {
+  const data = snapshotExport(value);
+  const parts = [];
+  let chunks = [];
+  let length = 0;
+  let lastYield = performance.now();
+  for (const chunk of jsonExportChunks(data)) {
+    chunks.push(chunk);
+    length += chunk.length;
+    if (length >= 1024 * 1024 || performance.now() - lastYield >= 8) {
+      parts.push(new Blob(chunks));
+      chunks = [];
+      length = 0;
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      lastYield = performance.now();
+    }
+  }
+  if (chunks.length) parts.push(new Blob(chunks));
+  return new Blob(parts, { type: 'application/json' });
 }
 
 function getConversationFileName(conversation) {
@@ -6233,36 +6288,49 @@ async function clearLocalData() {
 }
 
 async function exportWorkspace() {
+  if (exportingWorkspace) return;
   const scope = await chooseDataScope('export');
   if (!scope) return;
   if (scope === 'config' || scope === 'all') {
     if (!window.confirm(`${scope === 'all' ? '导出全部数据' : '导出配置'}会包含 API Key、接口地址和模板, 请确认文件保存位置安全`)) return;
+  }
+  exportingWorkspace = true;
+  const button = $('#exportWorkspace');
+  button.disabled = true;
+  button.textContent = '导出中';
+  try {
     if (scope === 'config') {
       const imageIds = getTemplateImageIds();
-      const workspace = { version: 11, scope, exportedAt: Date.now(), images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), apiConfig: { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
-      downloadFile(JSON.stringify(workspace, null, 2), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
+      const workspace = { version: 11, scope, exportedAt: Date.now(), images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), apiConfig: { settings: state.settings, connectionProfiles: state.connectionProfiles, activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
+      downloadFile(await createJsonBlob(workspace), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
       showToast('配置已导出');
       return;
     }
-  }
-  const conversations = scope === 'image' ? [] : state.conversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
-  const batches = scope === 'chat' ? [] : imageHistory.map(createStoredBatch);
-  const tasks = scope === 'chat' ? [] : imageTasks.map(createStoredImageTask);
-  const imageIds = scope === 'chat' ? getConversationImageIds(conversations) : scope === 'image' ? getImageWorkspaceImageIds(batches, tasks) : new Set([...getConversationImageIds(conversations), ...getImageWorkspaceImageIds(batches, tasks)]);
-  if (scope === 'all') getTemplateImageIds().forEach((id) => imageIds.add(id));
-  const draftReferenceIds = [];
-  if (scope !== 'chat') {
-    for (const reference of imageReferences) {
-      const id = await saveImageResource(reference.data, 'draft-reference');
-      if (id) { reference.imageId = id; draftReferenceIds.push(id); imageIds.add(id); }
+    const conversations = scope === 'image' ? [] : state.conversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
+    const batches = scope === 'chat' ? [] : imageHistory.map(createStoredBatch);
+    const tasks = scope === 'chat' ? [] : imageTasks.map(createStoredImageTask);
+    const imageIds = scope === 'chat' ? getConversationImageIds(conversations) : scope === 'image' ? getImageWorkspaceImageIds(batches, tasks) : new Set([...getConversationImageIds(conversations), ...getImageWorkspaceImageIds(batches, tasks)]);
+    if (scope === 'all') getTemplateImageIds().forEach((id) => imageIds.add(id));
+    const draftReferenceIds = [];
+    if (scope !== 'chat') {
+      for (const reference of imageReferences) {
+        const id = await saveImageResource(reference.data, 'draft-reference');
+        if (id) { reference.imageId = id; draftReferenceIds.push(id); imageIds.add(id); }
+      }
     }
+    const workspace = { version: 12, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches, imageTasks: tasks, ...(scope === 'chat' ? {} : { favoriteFolders }) };
+    if (scope === 'all') workspace.apiConfig = { settings: state.settings, connectionProfiles: state.connectionProfiles, activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
+    if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
+    const label = getExportScopeLabel(scope);
+    downloadFile(await createJsonBlob(workspace), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
+    showToast(`${label}已导出`);
+  } catch (error) {
+    showErrorToast(`导出失败: ${error.message}`);
+  } finally {
+    exportingWorkspace = false;
+    button.disabled = false;
+    button.textContent = '导出';
   }
-  const workspace = { version: 12, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), imageHistory: batches, imageTasks: tasks, ...(scope === 'chat' ? {} : { favoriteFolders: cloneValue(favoriteFolders) }) };
-  if (scope === 'all') workspace.apiConfig = { settings: cloneValue(state.settings), connectionProfiles: cloneValue(state.connectionProfiles), activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
-  if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
-  const label = getExportScopeLabel(scope);
-  downloadFile(JSON.stringify(workspace, null, 2), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
-  showToast(`${label}已导出`);
 }
 
 async function replaceStoredImages(records) {

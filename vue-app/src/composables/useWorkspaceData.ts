@@ -5,8 +5,8 @@ import { useChatStore } from '../stores/chat'
 import { useSettingsStore } from '../stores/settings'
 import { usePromptTemplatesStore } from '../stores/prompt-templates'
 import { useHistoryStore } from '../stores/history'
-import { cloneData } from '../utils/clone'
 import { downloadFile } from '../utils/files'
+import { createJsonBlob } from '../utils/json-export'
 import { errorMessage } from '../utils/format'
 import { createDefaultSettings } from '../constants/workspace'
 import { createInitialState, normalizeFavoriteFolders } from '../storage/state'
@@ -44,6 +44,7 @@ export function useWorkspaceData() {
     ui.dataScope.open = true
   }
   async function exportScope(scope: DataScope) {
+    if (ui.exporting) return
     if (scope === 'config' || scope === 'all') {
       const label = scope === 'all' ? '全部数据' : '配置'
       if (
@@ -56,61 +57,66 @@ export function useWorkspaceData() {
     const includeChat = ['chat', 'workspace', 'all'].includes(scope)
     const includeImages = ['image', 'workspace', 'all'].includes(scope)
     const includeConfig = scope === 'all' || scope === 'config'
-    const conversations = includeChat
-      ? cloneData(workspace.state.conversations)
-      : []
-    const imageHistory = includeImages ? cloneData(workspace.batches) : []
-    const imageTasks = includeImages ? cloneData(workspace.tasks) : []
-    const draftIds: string[] = []
-    if (includeImages)
-      for (const reference of image.references)
-        draftIds.push(
-          reference.imageId ||
-            (await workspace.saveImage(reference.data, reference.name)),
-        )
-    const ids = collectImageIds(
-      conversations,
-      imageHistory,
-      imageTasks,
-      includeConfig ? workspace.state.settings : undefined,
-    )
-    draftIds.forEach((id) => ids.add(id))
-    if (includeImages)
-      workspace.images
-        .filter((item) => item.favoriteFolderIds?.length)
-        .forEach((item) => ids.add(item.id))
-    const payload: WorkspaceExport = {
-      version: 12,
-      scope,
-      exportedAt: Date.now(),
-      contextMode: workspace.state.contextMode,
-      activeConversationId: workspace.state.activeConversationId,
-      conversations,
-      images: cloneData(workspace.images.filter((item) => ids.has(item.id))),
-      imageHistory,
-      imageTasks,
-    }
-    if (includeImages) {
-      payload.favoriteFolders = cloneData(workspace.favoriteFolders)
-      payload.imageDraft = {
-        prompt: image.prompt,
-        config: cloneData(image.draftConfig),
-        referenceImageIds: draftIds,
+    ui.exporting = true
+    try {
+      const conversations = includeChat ? workspace.state.conversations : []
+      const imageHistory = includeImages ? workspace.batches : []
+      const imageTasks = includeImages ? workspace.tasks : []
+      const draftIds: string[] = []
+      if (includeImages)
+        for (const reference of image.references)
+          draftIds.push(
+            reference.imageId ||
+              (await workspace.saveImage(reference.data, reference.name)),
+          )
+      const ids = collectImageIds(
+        conversations,
+        imageHistory,
+        imageTasks,
+        includeConfig ? workspace.state.settings : undefined,
+      )
+      draftIds.forEach((id) => ids.add(id))
+      if (includeImages)
+        workspace.images
+          .filter((item) => item.favoriteFolderIds?.length)
+          .forEach((item) => ids.add(item.id))
+      const payload: WorkspaceExport = {
+        version: 12,
+        scope,
+        exportedAt: Date.now(),
+        contextMode: workspace.state.contextMode,
+        activeConversationId: workspace.state.activeConversationId,
+        conversations,
+        images: workspace.images.filter((item) => ids.has(item.id)),
+        imageHistory,
+        imageTasks,
       }
+      if (includeImages) {
+        payload.favoriteFolders = workspace.favoriteFolders
+        payload.imageDraft = {
+          prompt: image.prompt,
+          config: image.draftConfig,
+          referenceImageIds: draftIds,
+        }
+      }
+      if (includeConfig)
+        payload.apiConfig = {
+          settings: workspace.state.settings,
+          connectionProfiles: workspace.state.connectionProfiles,
+          activeConnectionProfiles: workspace.state.activeConnectionProfiles,
+          modelCatalog: workspace.modelCatalog,
+        }
+      downloadFile(
+        await createJsonBlob(payload),
+        'application/json',
+        `${exportFilePrefixes[scope]}-${new Date().toISOString().slice(0, 10)}.json`,
+      )
+      ui.notify(`${scopeLabels[scope]}已导出`)
+    } catch (error) {
+      ui.notify(`导出失败: ${errorMessage(error)}`, 'error')
+    } finally {
+      ui.exporting = false
     }
-    if (includeConfig)
-      payload.apiConfig = cloneData({
-        settings: workspace.state.settings,
-        connectionProfiles: workspace.state.connectionProfiles,
-        activeConnectionProfiles: workspace.state.activeConnectionProfiles,
-        modelCatalog: workspace.modelCatalog,
-      })
-    downloadFile(
-      JSON.stringify(payload, null, 2),
-      'application/json',
-      `${exportFilePrefixes[scope]}-${new Date().toISOString().slice(0, 10)}.json`,
-    )
-    ui.notify(`${scopeLabels[scope]}已导出`)
   }
   async function importFile(file?: File) {
     if (!file) return

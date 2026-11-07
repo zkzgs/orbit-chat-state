@@ -451,9 +451,10 @@ const importInput = ref<HTMLInputElement | null>(null)
               class="secondary-button"
               id="exportWorkspace"
               type="button"
+              :disabled="ui.exporting"
               @click="data.open('export')"
             >
-              导出</button
+              {{ ui.exporting ? '导出中' : '导出' }}</button
             ><button
               class="secondary-button"
               id="importWorkspace"
