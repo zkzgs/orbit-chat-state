@@ -27,3 +27,9 @@ export function formatBytes(bytes: number) {
 export function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
+
+/** 导出文件名用本地时间戳，例如 2026-11-08_05-13 */
+export function formatExportTimestamp(date = new Date()) {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}_${pad(date.getHours())}-${pad(date.getMinutes())}`
+}

@@ -7,7 +7,7 @@ import { usePromptTemplatesStore } from '../stores/prompt-templates'
 import { useHistoryStore } from '../stores/history'
 import { downloadFile } from '../utils/files'
 import { createJsonBlob } from '../utils/json-export'
-import { errorMessage } from '../utils/format'
+import { errorMessage, formatExportTimestamp } from '../utils/format'
 import { createDefaultSettings } from '../constants/workspace'
 import { createInitialState, normalizeFavoriteFolders } from '../storage/state'
 import {
@@ -109,7 +109,7 @@ export function useWorkspaceData() {
       downloadFile(
         await createJsonBlob(payload),
         'application/json',
-        `${exportFilePrefixes[scope]}-${new Date().toISOString().slice(0, 10)}.json`,
+        `${exportFilePrefixes[scope]}-${formatExportTimestamp()}.json`,
       )
       ui.notify(`${scopeLabels[scope]}已导出`)
     } catch (error) {

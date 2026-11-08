@@ -265,6 +265,25 @@ select:not(:disabled):hover {
   white-space: nowrap;
   font-size: 13px;
 }
+.conversation-row.editing {
+  padding: 4px 6px;
+}
+.conversation-title-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 7px 8px;
+  border: 1px solid rgba(116, 212, 203, 0.55);
+  border-radius: 5px;
+  outline: 0;
+  background: #0d1725;
+  color: var(--ink);
+  font-size: 13px;
+}
+.conversation-title-input:focus {
+  border-color: rgba(116, 212, 203, 0.85);
+  box-shadow: 0 0 0 2px rgba(116, 212, 203, 0.12);
+}
 .sidebar-footer {
   border-top: 1px solid var(--line);
   padding: 15px 8px 0;

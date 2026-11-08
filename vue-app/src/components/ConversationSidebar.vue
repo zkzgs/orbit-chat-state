@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useChatStore } from '../stores/chat'
 import { useSettingsStore } from '../stores/settings'
 import { useWorkspaceStore } from '../stores/workspace'
@@ -11,6 +11,53 @@ const settings = useSettingsStore()
 const conversations = computed(() =>
   [...workspace.state.conversations].sort((a, b) => b.createdAt - a.createdAt),
 )
+const editingId = ref('')
+const editingTitle = ref('')
+const titleInput = ref<HTMLInputElement | null>(null)
+let ignoreBlur = false
+
+function setTitleInput(el: unknown) {
+  titleInput.value = el instanceof HTMLInputElement ? el : null
+}
+
+async function startRename(id: string, currentTitle: string) {
+  editingId.value = id
+  editingTitle.value = currentTitle
+  await nextTick()
+  const input = titleInput.value
+  if (!input) return
+  input.focus()
+  input.select()
+}
+
+function cancelRename() {
+  ignoreBlur = true
+  editingId.value = ''
+  editingTitle.value = ''
+  void nextTick(() => {
+    ignoreBlur = false
+  })
+}
+
+function commitRename() {
+  if (!editingId.value) return
+  if (ignoreBlur) return
+  const id = editingId.value
+  const title = editingTitle.value
+  editingId.value = ''
+  editingTitle.value = ''
+  chat.renameConversation(id, title)
+}
+
+function onRenameKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    commitRename()
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    cancelRename()
+  }
+}
 </script>
 
 <template>
@@ -49,52 +96,72 @@ const conversations = computed(() =>
         v-for="conversation in conversations"
         :key="conversation.id"
         class="conversation-row"
+        :class="{ editing: editingId === conversation.id }"
       >
-        <button
-          class="conversation-item"
-          :class="{
-            active: conversation.id === workspace.state.activeConversationId,
-          }"
-          :aria-busy="
-            chat.generating && conversation.id === chat.generatingConversationId
-          "
-          @click="chat.selectConversation(conversation.id)"
-        >
-          <span
-            class="conversation-icon"
+        <template v-if="editingId === conversation.id">
+          <input
+            :ref="setTitleInput"
+            class="conversation-title-input"
+            :value="editingTitle"
+            aria-label="编辑对话标题"
+            @input="
+              editingTitle = ($event.target as HTMLInputElement).value
+            "
+            @keydown="onRenameKeydown"
+            @blur="commitRename"
+          />
+        </template>
+        <template v-else>
+          <button
+            class="conversation-item"
             :class="{
-              'is-generating':
-                chat.generating &&
-                conversation.id === chat.generatingConversationId,
+              active: conversation.id === workspace.state.activeConversationId,
             }"
-            >{{
+            :aria-busy="
               chat.generating &&
               conversation.id === chat.generatingConversationId
-                ? ''
-                : conversation.id === workspace.state.activeConversationId
-                  ? '●'
-                  : '○'
-            }}</span
+            "
+            @click="chat.selectConversation(conversation.id)"
+            @dblclick.stop="
+              startRename(conversation.id, conversation.title)
+            "
           >
-          <span class="conversation-title">{{ conversation.title }}</span>
-        </button>
-        <div class="conversation-actions">
-          <button
-            class="conversation-action"
-            title="重命名对话"
-            aria-label="重命名对话"
-            @click="chat.renameConversation(conversation.id)"
-          >
-            ✎</button
-          ><button
-            class="conversation-action"
-            title="删除对话"
-            aria-label="删除对话"
-            @click="chat.deleteConversation(conversation.id)"
-          >
-            ×
+            <span
+              class="conversation-icon"
+              :class="{
+                'is-generating':
+                  chat.generating &&
+                  conversation.id === chat.generatingConversationId,
+              }"
+              >{{
+                chat.generating &&
+                conversation.id === chat.generatingConversationId
+                  ? ''
+                  : conversation.id === workspace.state.activeConversationId
+                    ? '●'
+                    : '○'
+              }}</span
+            >
+            <span class="conversation-title">{{ conversation.title }}</span>
           </button>
-        </div>
+          <div class="conversation-actions">
+            <button
+              class="conversation-action"
+              title="重命名对话"
+              aria-label="重命名对话"
+              @click.stop="startRename(conversation.id, conversation.title)"
+            >
+              ✎</button
+            ><button
+              class="conversation-action"
+              title="删除对话"
+              aria-label="删除对话"
+              @click="chat.deleteConversation(conversation.id)"
+            >
+              ×
+            </button>
+          </div>
+        </template>
       </div>
     </div>
 

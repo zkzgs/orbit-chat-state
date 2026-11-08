@@ -23,6 +23,7 @@ export const useChatStore = defineStore('chat', () => {
   const generating = ref(false)
   const generatingConversationId = ref('')
   const streamingId = ref('')
+  const stickToBottomTick = ref(0)
   let controller: AbortController | null = null
   let streamTimer: ReturnType<typeof setTimeout> | undefined
   function resetDraft() {
@@ -57,12 +58,18 @@ export const useChatStore = defineStore('chat', () => {
     resetDraft()
     ui.sidebarOpen = false
   }
-  function renameConversation(id: string) {
+  function defaultConversationTitle(conversation: {
+    messages: Message[]
+  }) {
+    const firstUser = conversation.messages.find((item) => item.role === 'user')
+    const text = (firstUser?.content || '').trim()
+    return text.slice(0, 24) || '新对话'
+  }
+  function renameConversation(id: string, title: string) {
     const item = workspace.state.conversations.find((item) => item.id === id)
     if (!item) return
-    const title = window.prompt('请输入对话名称', item.title)
-    if (title === null) return
-    item.title = title.trim() || '新对话'
+    const trimmed = title.trim()
+    item.title = trimmed || defaultConversationTitle(item)
   }
   async function deleteConversation(id: string) {
     const conversation = workspace.state.conversations.find(
@@ -172,6 +179,8 @@ export const useChatStore = defineStore('chat', () => {
     const conversation = workspace.activeConversation
     const references = [...attachments.value]
     const edit = editingId.value
+    // 发送新消息时强制恢复贴底跟随
+    stickToBottomTick.value += 1
     resetDraft()
     generating.value = true
     generatingConversationId.value = conversation.id
@@ -372,6 +381,7 @@ export const useChatStore = defineStore('chat', () => {
     generating,
     generatingConversationId,
     streamingId,
+    stickToBottomTick,
     resetDraft,
     newConversation,
     selectConversation,

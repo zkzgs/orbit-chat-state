@@ -65,6 +65,9 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .conversation-icon.is-generating { box-sizing: border-box; border: 2px solid rgba(116,212,203,.25); border-top-color: var(--cyan); border-radius: 50%; color: transparent; animation: conversation-spin .8s linear infinite; }
 @keyframes conversation-spin { to { transform: rotate(360deg); } }
 .conversation-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.conversation-row.editing { padding: 4px 6px; }
+.conversation-title-input { width: 100%; min-width: 0; box-sizing: border-box; padding: 7px 8px; border: 1px solid rgba(116,212,203,.55); border-radius: 5px; outline: 0; background: #0d1725; color: var(--ink); font-size: 13px; }
+.conversation-title-input:focus { border-color: rgba(116,212,203,.85); box-shadow: 0 0 0 2px rgba(116,212,203,.12); }
 .sidebar-footer { border-top: 1px solid var(--line); padding: 15px 8px 0; }
 .privacy-note { display: flex; gap: 7px; align-items: center; color: var(--muted-2); font-size: 11px; padding: 0 3px 13px; }
 .status-dot, .connection-dot { width: 6px; height: 6px; display: inline-block; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 3px rgba(116,212,203,.1); }
@@ -1280,6 +1283,12 @@ let chatStopRequested = false;
 let streamingMessageId = null;
 let generatingConversationId = null;
 let streamingRenderTimer = 0;
+let chatFollowBottom = true;
+let chatScrollProgrammatic = false;
+let chatScrollFrame = 0;
+let editingConversationId = null;
+let editingTitleDraft = '';
+let ignoreConversationTitleBlur = false;
 let imageHistory = [];
 let storedImages = new Map();
 let editingMessageId = null;
@@ -2337,6 +2346,11 @@ function buildConversationExportHtml(conversation) {
   return `<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(conversation.title)}</title><style>body{max-width:860px;margin:0 auto;padding:32px 20px;color:#243447;background:#f6f8fb;font:15px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}h1{font-size:24px}h1,article{background:#fff;border:1px solid #dfe6ee;border-radius:10px;padding:18px 20px}article{margin-top:14px}header{display:flex;gap:12px;align-items:baseline;border-bottom:1px solid #edf1f5;padding-bottom:8px}time{color:#718096;font-size:12px}.message-content p{margin:0 0 10px}.message-content p:last-child{margin-bottom:0}.message-content pre{overflow:auto;padding:12px;background:#f1f4f7;border-radius:6px}.message-content code{padding:2px 4px;background:#eef2f5;border-radius:3px}.message-content a{color:#147d92}.message-images{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}figure{margin:0;max-width:360px}figure img{display:block;max-width:100%;max-height:420px;border-radius:7px}figcaption{margin-top:4px;color:#718096;font-size:12px}</style></head><body><h1>${escapeHtml(conversation.title)}</h1>${messageHtml}${documentClose}`;
 }
 
+function formatExportTimestamp(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}_${pad(date.getHours())}-${pad(date.getMinutes())}`;
+}
+
 function downloadFile(content, type, fileName) {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const link = document.createElement('a');
@@ -2691,6 +2705,47 @@ function renderMarkdown(value) {
   return output.join('') || '<p></p>';
 }
 
+function isChatStageNearBottom(stage) {
+  return stage.scrollHeight - stage.scrollTop - stage.clientHeight <= 80;
+}
+
+let chatScrollForcePending = false;
+function scrollChatStage(force = false) {
+  const stage = $('.content-stage');
+  if (!stage || $('#chatView').hidden) return;
+  if (force) {
+    chatFollowBottom = true;
+    chatScrollForcePending = true;
+  }
+  if (!force && !chatFollowBottom && !chatScrollForcePending) return;
+  window.cancelAnimationFrame(chatScrollFrame);
+  chatScrollFrame = window.requestAnimationFrame(() => {
+    const forceScroll = chatScrollForcePending;
+    chatScrollForcePending = false;
+    if ($('#chatView').hidden) return;
+    if (!forceScroll && !chatFollowBottom) return;
+    chatScrollProgrammatic = true;
+    stage.scrollTop = stage.scrollHeight;
+    window.requestAnimationFrame(() => {
+      chatScrollProgrammatic = false;
+      if (forceScroll || chatFollowBottom) chatFollowBottom = isChatStageNearBottom(stage);
+    });
+  });
+}
+
+function bindChatStageScroll() {
+  const stage = $('.content-stage');
+  if (!stage || stage.dataset.chatScrollBound === '1') return;
+  stage.dataset.chatScrollBound = '1';
+  stage.addEventListener('scroll', () => {
+    if (chatScrollProgrammatic) return;
+    chatFollowBottom = isChatStageNearBottom(stage);
+  }, { passive: true });
+  stage.addEventListener('wheel', (event) => {
+    if (event.deltaY < 0) chatFollowBottom = false;
+  }, { passive: true });
+}
+
 function render() {
   document.documentElement.dataset.imagePrivacy = state.settings.imagePrivacyEnabled ? state.settings.imagePrivacyMode : '';
   ensureActiveConversation();
@@ -2712,6 +2767,60 @@ function render() {
   syncCustomSelects();
 }
 
+function defaultConversationTitle(conversation) {
+  const firstUser = conversation.messages.find((message) => message.role === 'user');
+  const text = (firstUser?.content || '').trim();
+  return text.slice(0, 24) || '新对话';
+}
+
+function startConversationRename(id) {
+  const conversation = state.conversations.find((entry) => entry.id === id);
+  if (!conversation) return;
+  editingConversationId = id;
+  editingTitleDraft = conversation.title;
+  renderConversations();
+}
+
+function cancelConversationRename() {
+  ignoreConversationTitleBlur = true;
+  editingConversationId = null;
+  editingTitleDraft = '';
+  renderConversations();
+  window.setTimeout(() => { ignoreConversationTitleBlur = false; }, 0);
+}
+
+function commitConversationRename() {
+  if (!editingConversationId || ignoreConversationTitleBlur) return;
+  const conversation = state.conversations.find((entry) => entry.id === editingConversationId);
+  const draft = editingTitleDraft;
+  editingConversationId = null;
+  editingTitleDraft = '';
+  if (!conversation) {
+    renderConversations();
+    return;
+  }
+  const trimmed = draft.trim();
+  conversation.title = trimmed || defaultConversationTitle(conversation);
+  persist();
+  render();
+}
+
+function bindConversationTitleInput(input) {
+  input.focus();
+  input.select();
+  input.addEventListener('input', () => { editingTitleDraft = input.value; });
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitConversationRename();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelConversationRename();
+    }
+  });
+  input.addEventListener('blur', () => commitConversationRename());
+}
+
 function renderConversations() {
   const list = $('#conversationList');
   $('#conversationCount').textContent = state.conversations.length;
@@ -2719,28 +2828,48 @@ function renderConversations() {
     .slice()
     .sort((a, b) => b.createdAt - a.createdAt)
     .map((conversation) => {
+      if (conversation.id === editingConversationId) {
+        return `<div class="conversation-row editing"><input class="conversation-title-input" data-conversation-id="${conversation.id}" aria-label="编辑对话标题" value="${escapeHtml(editingTitleDraft)}"></div>`;
+      }
       const generating = isChatGenerating && conversation.id === generatingConversationId;
       return `<div class="conversation-row"><button class="conversation-item ${conversation.id === state.activeConversationId ? 'active' : ''}" data-conversation-id="${conversation.id}" aria-busy="${generating}"><span class="conversation-icon${generating ? ' is-generating' : ''}" title="${generating ? '正在生成' : ''}" aria-label="${generating ? '正在生成' : ''}">${generating ? '' : conversation.id === state.activeConversationId ? '●' : '○'}</span><span class="conversation-title">${escapeHtml(conversation.title)}</span></button><div class="conversation-actions"><button class="conversation-action rename-conversation" data-conversation-id="${conversation.id}" title="重命名对话" aria-label="重命名对话">✎</button><button class="conversation-action delete-conversation" data-conversation-id="${conversation.id}" title="删除对话" aria-label="删除对话">×</button></div></div>`;
     })
     .join('');
-  $$('.conversation-item').forEach((button) => button.addEventListener('click', () => {
-    if (button.dataset.conversationId === state.activeConversationId) return;
-    resetComposerDraft();
-    state.activeConversationId = button.dataset.conversationId;
-    persist();
-    render();
-    $('#sidebar').classList.remove('open');
+  const titleInput = list.querySelector('.conversation-title-input');
+  if (titleInput) bindConversationTitleInput(titleInput);
+  $$('.conversation-item').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (button.dataset.conversationId === state.activeConversationId) return;
+      resetComposerDraft();
+      state.activeConversationId = button.dataset.conversationId;
+      chatFollowBottom = true;
+      persist();
+      render();
+      $('#sidebar').classList.remove('open');
+    });
+    button.addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      startConversationRename(button.dataset.conversationId);
+    });
+  });
+  $$('.rename-conversation').forEach((button) => button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    startConversationRename(button.dataset.conversationId);
   }));
-  $$('.rename-conversation').forEach((button) => button.addEventListener('click', () => renameConversation(button.dataset.conversationId)));
   $$('.delete-conversation').forEach((button) => button.addEventListener('click', () => deleteConversation(button.dataset.conversationId)));
 }
 
-function renameConversation(id) {
+function renameConversation(id, title) {
   const conversation = state.conversations.find((entry) => entry.id === id);
   if (!conversation) return;
-  const title = window.prompt('请输入对话名称', conversation.title);
-  if (title === null) return;
-  conversation.title = title.trim() || '新对话';
+  if (typeof title !== 'string') {
+    startConversationRename(id);
+    return;
+  }
+  const trimmed = title.trim();
+  conversation.title = trimmed || defaultConversationTitle(conversation);
   persist();
   render();
 }
@@ -2831,8 +2960,7 @@ function renderMessages() {
     const images = [...image.closest('.message-content').querySelectorAll('.markdown-inline-image')];
     openChatImageViewer(image.src, images.map((item) => item.src), images.indexOf(image));
   }));
-  const stage = $('.content-stage');
-  if (hasMessages) requestAnimationFrame(() => { stage.scrollTop = stage.scrollHeight; });
+  scrollChatStage(false);
 }
 
 async function deleteMessage(messageId) {
@@ -3559,6 +3687,11 @@ function renderConnection(status = '') {
 }
 
 function setView(view) {
+  if (view === 'chat') {
+    chatFollowBottom = true;
+    // 等视图切出后再滚底
+    queueMicrotask(() => scrollChatStage(true));
+  }
   $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
   $$('.mode-tab').forEach((tab) => {
     const active = tab.dataset.view === view;
@@ -3787,8 +3920,7 @@ function updateStreamingMessage(content, immediate = false, reasoning = null) {
         article.querySelector('.message-reasoning summary').textContent = message.content ? '思考过程' : '正在思考';
       }
     } else renderMessages();
-    const stage = $('.content-stage');
-    if (stage) stage.scrollTop = stage.scrollHeight;
+    scrollChatStage(false);
   };
   if (immediate) {
     window.clearTimeout(streamingRenderTimer);
@@ -3834,6 +3966,8 @@ async function sendMessage() {
   const attachments = pendingAttachments.slice();
   chatStopRequested = false;
   streamingMessageId = null;
+  // 发送新消息时强制恢复贴底跟随（即使当前不在底部）
+  scrollChatStage(true);
   setChatGenerating(true, conversationId);
   input.value = '';
   autoResizeTextarea(input);
@@ -6172,6 +6306,7 @@ function closeSidebarOnOutside(event) {
 }
 
 function newConversation() {
+  chatFollowBottom = true;
   resetComposerDraft();
   const current = activeConversation();
   if (current && current.messages.length === 0) {
@@ -6327,7 +6462,7 @@ async function exportWorkspace() {
     if (scope === 'config') {
       const imageIds = getTemplateImageIds();
       const workspace = { version: 11, scope, exportedAt: Date.now(), images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), apiConfig: { settings: state.settings, connectionProfiles: state.connectionProfiles, activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
-      downloadFile(await createJsonBlob(workspace), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
+      downloadFile(await createJsonBlob(workspace), 'application/json', `${getExportFilePrefix(scope)}-${formatExportTimestamp()}.json`);
       showToast('配置已导出');
       return;
     }
@@ -6347,7 +6482,7 @@ async function exportWorkspace() {
     if (scope === 'all') workspace.apiConfig = { settings: state.settings, connectionProfiles: state.connectionProfiles, activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
     if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
     const label = getExportScopeLabel(scope);
-    downloadFile(await createJsonBlob(workspace), 'application/json', `${getExportFilePrefix(scope)}-${new Date().toISOString().slice(0, 10)}.json`);
+    downloadFile(await createJsonBlob(workspace), 'application/json', `${getExportFilePrefix(scope)}-${formatExportTimestamp()}.json`);
     showToast(`${label}已导出`);
   } catch (error) {
     showErrorToast(`导出失败: ${error.message}`);
@@ -6931,6 +7066,7 @@ function bindEvents() {
       sendMessage();
     }
   });
+  bindChatStageScroll();
   $$('.mode-tab').forEach((tab) => tab.addEventListener('click', () => setView(tab.dataset.view)));
   $$('.context-option').forEach((button) => button.addEventListener('click', () => { state.contextMode = button.dataset.context; persist(); render(); }));
   $$('.quick-action').forEach((button) => button.addEventListener('click', () => { $('#messageInput').value = button.dataset.prompt; $('#messageInput').focus(); autoResizeTextarea($('#messageInput')); }));
@@ -6943,6 +7079,7 @@ function bindEvents() {
       return;
     }
     if (event.key !== 'Escape') return;
+    if (editingConversationId) { event.preventDefault(); cancelConversationRename(); return; }
     if ($('.custom-select-menu:not([hidden])')) { event.preventDefault(); closeCustomSelects(); return; }
     if (!$('#chatImageViewer').hidden) { event.preventDefault(); event.stopPropagation(); closeChatImageViewer(); return; }
     if (!$('#conversationExportMenu').hidden) { event.preventDefault(); event.stopPropagation(); closeConversationExportMenu(); return; }
