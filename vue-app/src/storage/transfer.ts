@@ -92,6 +92,7 @@ export function mergeFolders(
       same?.id ||
       (folders.some((item) => item.id === folder.id) ? createId() : folder.id)
     idMap.set(folder.id, id)
+    if (same) same.hidden = Boolean(same.hidden || folder.hidden)
     if (!same) folders.push({ ...folder, id, isDefault: false })
   }
   return {

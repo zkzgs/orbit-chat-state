@@ -283,6 +283,7 @@ for (const [version, url] of [
             page.locator('[aria-controls="imageFormat-custom-menu"]'),
           ).toContainText(format.toUpperCase())
           await page.locator('#topbarSettings').click()
+          await page.locator('#settings-tab-data').click()
           await page.locator('#exportWorkspace').click()
           const [exportDownload] = await Promise.all([
             page.waitForEvent('download'),
@@ -297,6 +298,7 @@ for (const [version, url] of [
           page.on('dialog', (dialog) =>
             dialog.accept(dialog.type() === 'prompt' ? '覆盖' : undefined),
           )
+          await page.locator('#settings-tab-data').click()
           await page.locator('#workspaceImportFile').setInputFiles({
             name: 'workspace.json',
             mimeType: 'application/json',

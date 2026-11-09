@@ -74,9 +74,9 @@ export const useInterfaceStore = defineStore('interface', () => {
     })
   }
   function closeTopDialog() {
-    if (viewer.open) viewer.open = false
-    else if (favoriteDelete.open) favoriteDelete.open = false
+    if (favoriteDelete.open) favoriteDelete.open = false
     else if (favorite.open) favorite.open = false
+    else if (viewer.open) viewer.open = false
     else if (audit.open) audit.open = false
     else if (details.open) details.open = false
     else if (polishOpen.value) polishOpen.value = false

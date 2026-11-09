@@ -172,6 +172,8 @@ for (const [version, url] of [
       await expect(
         page.locator('#imageReferencePreview .reference-preview-item'),
       ).toHaveCount(1)
+      // Normal submission now clears the prompt by default; explicitly enter this new request.
+      await page.locator('#imagePrompt').fill('验证 SVG 改图格式校验')
       await page.locator('#generateImage').click()
       await expect(page.locator('#toast')).toContainText(
         'GIF/SVG 改图仅支持 PNG、JPEG 或 WebP 参考图',

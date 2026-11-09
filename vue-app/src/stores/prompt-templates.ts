@@ -390,8 +390,17 @@ export const usePromptTemplatesStore = defineStore('prompt-templates', () => {
           ? `\n\n后续图片依次标记为: ${labels.join(', ')}. 用户可能使用这些名称指代具体图片. 生成参考图会继续用于最终生图, 润色参考图只用于辅助生成关键词.`
           : ''
         const text = `原始关键词:\n${source || '未提供, 请根据参考图生成完整的生图关键词'}\n\n润色要求:\n${instruction}${referenceNote}`
+        const polishReferenceNote = polish.references.length
+          ? '注：润色参考图不会出现在最终生成参数内，请勿在提示词中提及润色参考图，或使用“参考图中的…”、“as in the reference”等依赖润色参考图的表述；应将其中需要的视觉信息（主体、风格、构图、色彩等）直接用文字描述出来。此限制不影响会传入最终生图的生成参考图。'
+          : ''
+        const systemPrompt = [
+          settings.imagePolishSystemPrompt,
+          polishReferenceNote,
+        ]
+          .filter(Boolean)
+          .join('\n\n')
         const messages: ChatRequestMessage[] = [
-          { role: 'system', content: settings.imagePolishSystemPrompt },
+          { role: 'system', content: systemPrompt },
           {
             role: 'user',
             content: prepared.length

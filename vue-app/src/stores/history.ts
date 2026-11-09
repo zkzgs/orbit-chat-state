@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useWorkspaceStore } from './workspace'
 import { useInterfaceStore } from './interface'
 import { useImageGenerationStore } from './image-generation'
@@ -50,25 +50,116 @@ export const useHistoryStore = defineStore('history', () => {
       : workspace.favoriteFolders.find((folder) => folder.id === folderId.value)
           ?.name || '收藏夹',
   )
+  const orderedFolderImages = computed(() => {
+    const linked = new Set(workspace.batches.flatMap((batch) => batch.imageIds))
+    const tasksById = new Map(workspace.tasks.map((task) => [task.id, task]))
+    const tasksByBatch = new Map(
+      workspace.tasks.map((task) => [task.batchId, task]),
+    )
+    const entries = workspace.batches.flatMap((batch) => {
+      const task = tasksById.get(batch.taskId) || tasksByBatch.get(batch.id)
+      return workspace.batchImages(batch).map((image) => ({
+        image,
+        time: task?.startedAt || batch.startedAt || batch.createdAt,
+      }))
+    })
+    entries.push(
+      ...workspace.images
+        .filter((image) => !linked.has(image.id))
+        .map((image) => ({ image, time: image.createdAt })),
+    )
+    return [
+      ...new Map(
+        entries
+          .sort((a, b) => b.time - a.time)
+          .map(({ image }) => [image.id, image]),
+      ).values(),
+    ]
+  })
+  function folderImages(id: string) {
+    return orderedFolderImages.value.filter((image) =>
+      workspace.imageFavoriteFolders.get(image.id)?.includes(id),
+    )
+  }
+  function effectiveCoverId(id: string) {
+    const folder = workspace.favoriteFolders.find((item) => item.id === id)
+    if (!folder) return ''
+    const images = folderImages(id)
+    return (
+      images.find((image) => image.id === folder.coverImageId)?.id ||
+      (folder.coverImageId !== null && !folder.hidden
+        ? images[0]?.id || ''
+        : '')
+    )
+  }
   const folders = computed(() =>
     workspace.favoriteFolders
-      .map((folder) => ({
-        ...folder,
-        imageCount: workspace.images.filter((image) =>
-          workspace.imageFavoriteFolders.get(image.id)?.includes(folder.id),
-        ).length,
-        taskCount: workspace.tasks.filter((task) =>
-          task.favoriteFolderIds?.includes(folder.id),
-        ).length,
-      }))
+      .map((folder) => {
+        const images = folderImages(folder.id)
+        const explicit = images.find(
+          (image) => image.id === folder.coverImageId,
+        )
+        const cover =
+          explicit ||
+          (folder.coverImageId !== null && !folder.hidden
+            ? images[0]
+            : undefined)
+        return {
+          ...folder,
+          coverId: cover?.id || '',
+          imageCount: images.length,
+          taskCount: workspace.tasks.filter((task) =>
+            task.favoriteFolderIds?.includes(folder.id),
+          ).length,
+        }
+      })
       .filter((folder) =>
         folder.name
           .toLocaleLowerCase()
           .includes(query.value.toLocaleLowerCase()),
       ),
   )
+  // Drop invalid explicit choices, so adding that image back later does not resurrect the old cover.
+  watch(
+    () =>
+      workspace.ready
+        ? workspace.favoriteFolders.filter(
+            (folder) =>
+              typeof folder.coverImageId === 'string' &&
+              !folderImages(folder.id).some(
+                (image) => image.id === folder.coverImageId,
+              ),
+          )
+        : [],
+    (invalid) =>
+      invalid.forEach((folder) => {
+        delete folder.coverImageId
+      }),
+    { immediate: true },
+  )
+  const hiddenFolderIds = computed(
+    () =>
+      new Set(
+        workspace.favoriteFolders
+          .filter((folder) => folder.hidden)
+          .map((folder) => folder.id),
+      ),
+  )
+  function isImageHidden(image: StoredImage) {
+    return (
+      workspace.imageFavoriteFolders
+        .get(image.id)
+        ?.some((id) => hiddenFolderIds.value.has(id)) || false
+    )
+  }
+  function viewImages(batch: GenerationBatch) {
+    const images = workspace.batchImages(batch)
+    return library.value === 'history'
+      ? images.filter((image) => !isImageHidden(image))
+      : images
+  }
   const hasGroups = computed(() =>
-    workspace.batches.some((batch) => batch.imageIds.length > 1),
+    workspace.batches.some((batch) => viewImages(batch).length > 1),
   )
   const cards = computed<HistoryCard[]>(() => {
     const result: HistoryCard[] = []
@@ -125,7 +216,7 @@ export const useHistoryStore = defineStore('history', () => {
     workspace.batches.forEach((batch) => {
       const task = taskById.get(batch.taskId) || taskByBatchId.get(batch.id)
       if (task) linkedTaskIds.add(task.id)
-      const images = workspace.batchImages(batch)
+      const images = viewImages(batch)
       if (
         library.value === 'history' &&
         mode.value === 'group' &&
@@ -176,6 +267,13 @@ export const useHistoryStore = defineStore('history', () => {
           (status.value === 'all' || card.status === status.value),
       )
   })
+  watch(cards, (items) => {
+    const keys = new Set(items.map((card) => card.key))
+    if ([...selected.value].some((key) => !keys.has(key)))
+      selected.value = new Set(
+        [...selected.value].filter((key) => keys.has(key)),
+      )
+  })
   function setLibrary(value: 'history' | 'favorites') {
     library.value = value
     folderId.value = ''
@@ -209,6 +307,7 @@ export const useHistoryStore = defineStore('history', () => {
   async function deleteCards(items: HistoryCard[]) {
     if (!items.length || !confirm(`删除选中的 ${items.length} 条记录?`)) return
     const removed: string[] = []
+    const changedImages: StoredImage[] = []
     for (const card of items) {
       if (card.kind === 'task') {
         workspace.tasks = workspace.tasks.filter(
@@ -217,16 +316,15 @@ export const useHistoryStore = defineStore('history', () => {
         removed.push(card.taskId)
         continue
       }
+      card.favoriteImageIds.forEach((id) => {
+        const image = workspace.imageMap.get(id)
+        if (!image) return
+        workspace.setImageFavoriteFolders(id, [])
+        changedImages.push(image)
+      })
       const batch = workspace.batches.find((batch) => batch.id === card.batchId)
-      if (!batch) {
-        workspace.images = workspace.images.map((image) =>
-          card.favoriteImageIds.includes(image.id)
-            ? { ...image, favoriteFolderIds: [] }
-            : image,
-        )
-        continue
-      }
-      const ids = new Set(card.isGroup ? batch.imageIds : card.favoriteImageIds)
+      if (!batch) continue
+      const ids = new Set(card.favoriteImageIds)
       batch.imageIds = batch.imageIds.filter((id) => !ids.has(id))
       batch.imageCount = batch.imageIds.length
       if (!batch.imageIds.length) {
@@ -241,7 +339,7 @@ export const useHistoryStore = defineStore('history', () => {
     }
     selected.value = new Set()
     await workspace.persistRecords(
-      [...workspace.batches, ...workspace.tasks],
+      [...changedImages, ...workspace.batches, ...workspace.tasks],
       removed,
     )
     await workspace.collectUnusedImages()
@@ -259,6 +357,18 @@ export const useHistoryStore = defineStore('history', () => {
     )
   }
   function openFavorite(imageIds: string[] = [], taskIds: string[] = []) {
+    imageIds = imageIds.flatMap((id) => {
+      const image =
+        workspace.imageMap.get(id) ||
+        workspace.images.find((item) => String(item.id) === String(id))
+      return image ? [image.id] : []
+    })
+    taskIds = taskIds.flatMap((id) => {
+      const task = workspace.tasks.find(
+        (item) => String(item.id) === String(id),
+      )
+      return task ? [task.id] : []
+    })
     const targets = imageIds.length
       ? imageIds.map(
           (id) => workspace.imageMap.get(id)?.favoriteFolderIds || [],
@@ -307,8 +417,14 @@ export const useHistoryStore = defineStore('history', () => {
     })
     // 收藏只写目标记录, 避免复制整库图片和覆盖另一个页面新增的数据。
     await workspace.persistRecords(changed)
+    selected.value = new Set()
     ui.favorite.open = false
     ui.notify('收藏夹已更新')
+  }
+  async function removeFavorite() {
+    ui.favorite.selected = []
+    await saveFavorite()
+    ui.notify('已取消收藏')
   }
   function createFolder() {
     const name = ui.favorite.name.trim()
@@ -325,6 +441,12 @@ export const useHistoryStore = defineStore('history', () => {
   function folderAction(action: string, id: string) {
     const folder = workspace.favoriteFolders.find((folder) => folder.id === id)
     if (!folder) return
+    if (action === 'hidden') {
+      folder.hidden = !folder.hidden
+      selected.value = new Set()
+      ui.details.open = false
+      ui.viewer.open = false
+    }
     if (action === 'default')
       workspace.favoriteFolders.forEach((item) => {
         item.isDefault = item.id === id
@@ -412,14 +534,21 @@ export const useHistoryStore = defineStore('history', () => {
   async function action(action: string, card: HistoryCard) {
     const batch = workspace.batches.find((item) => item.id === card.batchId)
     const task = workspace.tasks.find((item) => item.id === card.taskId)
-    if (action === 'favorite') openFavorite(card.favoriteImageIds)
+    if (action === 'cover' && card.image && library.value === 'favorites') {
+      const folder = workspace.favoriteFolders.find(
+        (item) => item.id === folderId.value,
+      )
+      if (folder)
+        folder.coverImageId =
+          effectiveCoverId(folder.id) === card.image.id ? null : card.image.id
+    } else if (action === 'favorite') openFavorite(card.favoriteImageIds)
     else if (action === 'favorite-task') openFavorite([], [card.taskId])
     else if (action === 'reuse-task' && task) generator.reuseTask(task)
     else if (action === 'retry-task' && task) await generator.retryTask(task)
     else if (action === 'config' && batch)
       generator.applyConfig(batch.config, batch.prompt, batch.referenceImageIds)
     else if (action === 'edit' && batch) {
-      await generator.editOutput(workspace.batchImages(batch))
+      await generator.editOutput(card.images)
     } else if (action === 'download' || action === 'download-all') {
       for (const image of action === 'download-all'
         ? card.images
@@ -448,6 +577,8 @@ export const useHistoryStore = defineStore('history', () => {
     folders,
     hasGroups,
     cards,
+    viewImages,
+    effectiveCoverId,
     setLibrary,
     setMode,
     openFolder,
@@ -458,6 +589,7 @@ export const useHistoryStore = defineStore('history', () => {
     invertSelection,
     openFavorite,
     saveFavorite,
+    removeFavorite,
     createFolder,
     folderAction,
     confirmDeleteFolder,

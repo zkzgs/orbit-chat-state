@@ -104,6 +104,7 @@ async function chooseMode(page: Page, label: string) {
 
 async function enable(page: Page, mode: string) {
   await page.locator('#topbarSettings').click()
+  await page.locator('#settings-tab-display').click()
   if (!(await page.locator('#imagePrivacyEnabled').isChecked()))
     await page
       .locator('.toggle-row')
@@ -125,6 +126,7 @@ for (const [version, url] of [
     const images = page.locator('.history-image-button img')
     await expect(images.first()).toHaveCSS('filter', 'none')
     await page.locator('#topbarSettings').click()
+    await page.locator('#settings-tab-display').click()
     await expect(page.locator('#imagePrivacyEnabled')).not.toBeChecked()
     await page
       .locator('.toggle-row')
@@ -134,6 +136,7 @@ for (const [version, url] of [
     await expect(page.locator('#imageHistory')).toHaveCSS('filter', 'none')
     await page.locator('#cancelSettings').click()
     await page.locator('#topbarSettings').click()
+    await page.locator('#settings-tab-display').click()
     await expect(page.locator('#imagePrivacyEnabled')).not.toBeChecked()
     await expect(
       page.locator('[aria-controls="imagePrivacyMode-custom-menu"]'),
@@ -150,6 +153,7 @@ for (const [version, url] of [
       'blur(18px)',
     )
     await page.locator('#topbarSettings').click()
+    await page.locator('#settings-tab-display').click()
     await expect(page.locator('#imagePrivacyEnabled')).toBeChecked()
     await expect(
       page.locator('[aria-controls="imagePrivacyMode-custom-menu"]'),
@@ -252,6 +256,7 @@ for (const [version, url] of [
         await page.locator('[data-view="image"]').click()
       }
       await page.locator('#topbarSettings').click()
+      await page.locator('#settings-tab-display').click()
       await page.locator('#saveSettings').screenshot({
         path: test.info().outputPath('mobile-save-button.png'),
       })

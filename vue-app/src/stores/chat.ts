@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useWorkspaceStore } from './workspace'
 import { useInterfaceStore } from './interface'
 import {
@@ -8,24 +8,152 @@ import {
   type ImagePart,
 } from '../api/chat'
 import { createId } from '../utils/id'
+import { cloneData } from '../utils/clone'
 import { readReference, prepareReferences } from '../utils/images'
 import { errorMessage, formatTime } from '../utils/format'
 import { downloadFile } from '../utils/files'
 import { escapeHtml, renderMarkdown } from '../utils/markdown'
-import type { Message, ReferenceImage } from '../types/models'
+import type {
+  Message,
+  ReferenceImage,
+  ConversationChatContext,
+} from '../types/models'
 
 export const useChatStore = defineStore('chat', () => {
   const workspace = useWorkspaceStore()
   const ui = useInterfaceStore()
+  const generating = ref(false)
+  const generatingConversationId = ref('')
+  const conversationSelectionMode = ref(false)
+  const selectedConversations = ref(new Set<string>())
+  const selectableConversations = computed(() =>
+    workspace.state.conversations.filter(
+      (item) =>
+        !(generating.value && item.id === generatingConversationId.value),
+    ),
+  )
+  const allConversationsSelected = computed(
+    () =>
+      selectableConversations.value.length > 0 &&
+      selectableConversations.value.every((item) =>
+        selectedConversations.value.has(item.id),
+      ),
+  )
+  watch(selectableConversations, (items) => {
+    const eligible = new Set(items.map((item) => item.id))
+    for (const id of selectedConversations.value)
+      if (!eligible.has(id)) selectedConversations.value.delete(id)
+  })
+  function exitConversationSelection() {
+    conversationSelectionMode.value = false
+    selectedConversations.value.clear()
+  }
+  function toggleConversationSelection() {
+    if (conversationSelectionMode.value) exitConversationSelection()
+    else conversationSelectionMode.value = true
+  }
+  function toggleSelectedConversation(id: string) {
+    if (!selectableConversations.value.some((item) => item.id === id)) return
+    if (selectedConversations.value.has(id))
+      selectedConversations.value.delete(id)
+    else selectedConversations.value.add(id)
+  }
+  function toggleAllConversations() {
+    selectedConversations.value = allConversationsSelected.value
+      ? new Set()
+      : new Set(selectableConversations.value.map((item) => item.id))
+  }
+  // Batch actions share selection state; future actions can reuse this scope.
+  async function deleteSelectedConversations() {
+    const ids = new Set(
+      selectableConversations.value
+        .filter((item) => selectedConversations.value.has(item.id))
+        .map((item) => item.id),
+    )
+    if (
+      !ids.size ||
+      !window.confirm(`删除选中的 ${ids.size} 个对话？此操作不可撤销。`)
+    )
+      return
+    const activeDeleted = ids.has(workspace.state.activeConversationId || '')
+    workspace.state.conversations = workspace.state.conversations.filter(
+      (item) => !ids.has(item.id),
+    )
+    if (activeDeleted) resetDraft()
+    if (!workspace.state.conversations.length) newConversation()
+    else if (activeDeleted) {
+      workspace.state.activeConversationId = workspace.state.conversations[0].id
+      applyChatContext(workspace.activeConversation.chatContext)
+    }
+    exitConversationSelection()
+    await workspace.collectUnusedImages()
+    ui.notify(`已删除 ${ids.size} 个对话`)
+  }
   const draft = ref('')
   const attachments = ref<ReferenceImage[]>([])
   const editingId = ref('')
-  const generating = ref(false)
-  const generatingConversationId = ref('')
   const streamingId = ref('')
   const stickToBottomTick = ref(0)
   let controller: AbortController | null = null
   let streamTimer: ReturnType<typeof setTimeout> | undefined
+  function snapshotChatContext(
+    previous = workspace.activeConversation?.chatContext,
+  ): ConversationChatContext {
+    const {
+      chatModel,
+      systemPrompt,
+      reasoningEffort,
+      chatStream,
+      chatWebSearch,
+    } = workspace.state.settings
+    return {
+      ...cloneData(previous || {}),
+      settings: {
+        ...cloneData(previous?.settings || {}),
+        chatModel,
+        systemPrompt,
+        reasoningEffort,
+        chatStream,
+        chatWebSearch,
+      },
+      contextMode: workspace.state.contextMode,
+    }
+  }
+  function applyChatContext(context?: ConversationChatContext) {
+    if (!context) return
+    for (const key of [
+      'chatModel',
+      'systemPrompt',
+      'reasoningEffort',
+      'chatStream',
+      'chatWebSearch',
+    ] as const) {
+      if (context.settings[key] !== undefined)
+        Object.assign(workspace.state.settings, {
+          [key]: context.settings[key],
+        })
+    }
+    workspace.state.contextMode = context.contextMode
+  }
+  function duplicateConversation(id: string) {
+    const source = workspace.state.conversations.find((item) => item.id === id)
+    if (!source || (generating.value && generatingConversationId.value === id))
+      return
+    if (id === workspace.state.activeConversationId || !source.chatContext)
+      source.chatContext = snapshotChatContext()
+    const copy = cloneData(source)
+    copy.id = createId()
+    copy.title = `${source.title}（副本）`
+    copy.createdAt = Date.now()
+    copy.messages.forEach((message) => {
+      message.id = createId()
+    })
+    workspace.state.conversations.unshift(copy)
+    selectConversation(copy.id)
+    ui.activeView = 'chat'
+    stickToBottomTick.value += 1
+    ui.notify('对话已复制')
+  }
   function resetDraft() {
     draft.value = ''
     attachments.value = []
@@ -34,6 +162,7 @@ export const useChatStore = defineStore('chat', () => {
   function newConversation() {
     resetDraft()
     const current = workspace.activeConversation
+    if (current?.chatContext) current.chatContext = snapshotChatContext()
     if (current && current.messages.length === 0) {
       ui.activeView = 'chat'
       ui.sidebarOpen = false
@@ -54,13 +183,14 @@ export const useChatStore = defineStore('chat', () => {
   }
   function selectConversation(id: string) {
     if (id === workspace.state.activeConversationId) return
+    const current = workspace.activeConversation
+    if (current?.chatContext) current.chatContext = snapshotChatContext()
     workspace.state.activeConversationId = id
+    applyChatContext(workspace.activeConversation.chatContext)
     resetDraft()
     ui.sidebarOpen = false
   }
-  function defaultConversationTitle(conversation: {
-    messages: Message[]
-  }) {
+  function defaultConversationTitle(conversation: { messages: Message[] }) {
     const firstUser = conversation.messages.find((item) => item.role === 'user')
     const text = (firstUser?.content || '').trim()
     return text.slice(0, 24) || '新对话'
@@ -84,8 +214,10 @@ export const useChatStore = defineStore('chat', () => {
       (item) => item.id !== id,
     )
     if (!workspace.state.conversations.length) newConversation()
-    else if (wasActive)
+    else if (wasActive) {
       workspace.state.activeConversationId = workspace.state.conversations[0].id
+      applyChatContext(workspace.activeConversation.chatContext)
+    }
     await workspace.collectUnusedImages()
     ui.notify('对话已删除')
   }
@@ -177,6 +309,7 @@ export const useChatStore = defineStore('chat', () => {
     const content = draft.value.trim()
     if (!content && !attachments.value.length) return
     const conversation = workspace.activeConversation
+    conversation.chatContext = snapshotChatContext()
     const references = [...attachments.value]
     const edit = editingId.value
     // 发送新消息时强制恢复贴底跟随
@@ -375,6 +508,14 @@ export const useChatStore = defineStore('chat', () => {
     clearTimeout(streamTimer)
   }
   return {
+    conversationSelectionMode,
+    selectedConversations,
+    allConversationsSelected,
+    toggleConversationSelection,
+    exitConversationSelection,
+    toggleSelectedConversation,
+    toggleAllConversations,
+    deleteSelectedConversations,
     draft,
     attachments,
     editingId,
@@ -386,6 +527,7 @@ export const useChatStore = defineStore('chat', () => {
     newConversation,
     selectConversation,
     renameConversation,
+    duplicateConversation,
     deleteConversation,
     editMessage,
     deleteMessage,

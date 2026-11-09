@@ -6,6 +6,7 @@ import { useImageGenerationStore } from '../stores/image-generation'
 import { usePromptTemplatesStore } from '../stores/prompt-templates'
 import { useSettingsStore } from '../stores/settings'
 import { useEventListener } from './useEventListener'
+import { useHashRoute } from './useHashRoute'
 import { disposeImageWorker } from '../workers/client'
 
 export function useWorkspace() {
@@ -15,6 +16,7 @@ export function useWorkspace() {
   const image = useImageGenerationStore()
   const templates = usePromptTemplatesStore()
   const settings = useSettingsStore()
+  useHashRoute()
   watch(
     () =>
       workspace.state.settings.imagePrivacyEnabled
@@ -58,7 +60,10 @@ export function useWorkspace() {
     () => ui.activeView,
     (view) => {
       ui.sidebarOpen = false
-      if (view === 'image') chat.resetDraft()
+      if (view === 'image') {
+        chat.resetDraft()
+        chat.exitConversationSelection()
+      }
     },
   )
   useEventListener(window, 'keydown', (event) => {
@@ -67,9 +72,16 @@ export function useWorkspace() {
       event.preventDefault()
       chat.newConversation()
     }
-    if (event.key === 'Escape') ui.closeTopDialog()
+    if (event.key === 'Escape') {
+      if (chat.conversationSelectionMode && !modalOpen.value) {
+        event.preventDefault()
+        chat.exitConversationSelection()
+      } else ui.closeTopDialog()
+    }
     if (
       ui.viewer.open &&
+      !ui.favorite.open &&
+      !ui.favoriteDelete.open &&
       !(
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement

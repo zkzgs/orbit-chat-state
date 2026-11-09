@@ -68,6 +68,9 @@ export interface Settings {
   proxyEnabled: boolean
   imagePrivacyEnabled: boolean
   imagePrivacyMode: 'single' | 'list'
+  deleteRetriedRecordOnSuccess: boolean
+  clearInputAfterSubmit: boolean
+  alwaysShowRetryButton: boolean
   demoMode: boolean
 }
 export interface ConnectionProfile {
@@ -91,7 +94,19 @@ export interface Message {
   imageIds: string[]
   createdAt: number
 }
+export interface ConversationChatContext {
+  settings: Pick<
+    Settings,
+    | 'chatModel'
+    | 'systemPrompt'
+    | 'reasoningEffort'
+    | 'chatStream'
+    | 'chatWebSearch'
+  >
+  contextMode: 'client' | 'single'
+}
 export interface Conversation {
+  chatContext?: ConversationChatContext
   id: string
   title: string
   createdAt: number
@@ -106,6 +121,9 @@ export interface WorkspaceState {
   activeConversationId: string | null
 }
 export interface FavoriteFolder {
+  hidden?: boolean
+  // undefined: automatic, null: no cover, string: explicit image ID
+  coverImageId?: string | null
   id: string
   name: string
   isDefault: boolean

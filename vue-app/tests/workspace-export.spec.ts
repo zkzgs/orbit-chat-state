@@ -129,6 +129,7 @@ async function seed(page: Page, url: string, count = 3, large = false) {
 }
 
 async function exportScope(page: Page, scope: string) {
+  await page.locator('#settings-tab-data').click()
   await page.locator('#exportWorkspace').click()
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -191,6 +192,7 @@ for (const [version, url] of [
       expect(Boolean(payload.apiConfig)).toBe(['config', 'all'].includes(scope))
       if (scope === 'workspace') workspaceFile = contents
     }
+    await page.locator('#settings-tab-data').click()
     await page.locator('#workspaceImportFile').setInputFiles({
       name: 'workspace.json',
       mimeType: 'application/json',
@@ -228,6 +230,7 @@ for (const [version, url] of [
     })
     let downloads = 0
     page.on('download', () => downloads++)
+    await page.locator('#settings-tab-data').click()
     await page.locator('#exportWorkspace').click()
     const downloaded = page.waitForEvent('download')
     await page
@@ -323,6 +326,7 @@ for (const [version, url] of [
   }) => {
     await seed(page, url)
     await page.locator('#topbarSettings').click()
+    await page.locator('#settings-tab-data').click()
     await page.locator('#exportWorkspace').click()
     page.once('dialog', (dialog) => dialog.dismiss())
     await page.locator('[data-data-scope="all"]').click()
@@ -338,6 +342,7 @@ for (const [version, url] of [
         return create.call(URL, blob)
       }
     })
+    await page.locator('#settings-tab-data').click()
     await page.locator('#exportWorkspace').click()
     await page.locator('[data-data-scope="workspace"]').click()
     await expect(page.locator('#toast')).toContainText('导出失败: 模拟下载失败')

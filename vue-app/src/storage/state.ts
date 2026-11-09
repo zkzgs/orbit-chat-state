@@ -80,6 +80,7 @@ export function normalizeFavoriteFolders(
   return result.map((folder) => ({
     ...folder,
     isDefault: folder.id === active.id,
+    hidden: folder.hidden === true,
   }))
 }
 export function loadFavoriteFolders() {

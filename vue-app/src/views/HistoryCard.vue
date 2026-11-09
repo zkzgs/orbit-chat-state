@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { HistoryCard } from '../stores/history'
+import { useHistoryStore, type HistoryCard } from '../stores/history'
 import { formatDuration, formatTime } from '../utils/format'
 import HistoryAction from '../components/HistoryAction.vue'
 import { useElapsed } from '../composables/useElapsed'
@@ -8,6 +8,19 @@ import { useWorkspaceStore } from '../stores/workspace'
 const placeholder = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='
 const props = defineProps<{ card: HistoryCard; selected: boolean }>()
 const workspace = useWorkspaceStore()
+const history = useHistoryStore()
+const isCover = computed(() =>
+  Boolean(
+    props.card.image &&
+    history.effectiveCoverId(history.folderId) === props.card.image.id,
+  ),
+)
+const isAutoCover = computed(
+  () =>
+    isCover.value &&
+    workspace.favoriteFolders.find((folder) => folder.id === history.folderId)
+      ?.coverImageId === undefined,
+)
 const favorite = computed(() =>
   props.card.kind === 'image'
     ? props.card.favoriteImageIds.some(
@@ -17,6 +30,18 @@ const favorite = computed(() =>
         workspace.tasks.find((task) => task.id === props.card.taskId)
           ?.favoriteFolderIds?.length,
       ),
+)
+const canRetry = computed(
+  () =>
+    Boolean(
+      props.card.taskId &&
+      workspace.tasks.some(
+        (task) => task.id === props.card.taskId && task.status !== 'running',
+      ),
+    ) &&
+    (['error', 'partial'].includes(props.card.status) ||
+      (props.card.status === 'success' &&
+        workspace.state.settings.alwaysShowRetryButton)),
 )
 const elapsed = useElapsed(
   () => props.card.startedAt,
@@ -130,6 +155,29 @@ const elapsedText = computed(() => {
       >
     </div>
     <div class="history-actions" @click.stop>
+      <button
+        v-if="card.image && history.library === 'favorites' && history.folderId"
+        type="button"
+        class="history-action-button favorite-cover-button"
+        :class="{ 'is-cover': isCover, 'is-auto-cover': isAutoCover }"
+        :aria-label="isCover ? '取消封面' : '设为封面'"
+        :data-tooltip="
+          isCover
+            ? isAutoCover
+              ? '自动封面 · 取消封面'
+              : '取消封面'
+            : '设为封面'
+        "
+        data-history-action="cover"
+        @click="emit('action', 'cover')"
+      >
+        <span class="cover-label-idle">{{
+          isCover ? '封面' : '设为封面'
+        }}</span>
+        <span class="cover-label-hover">{{
+          isCover ? '取消封面' : '设为封面'
+        }}</span>
+      </button>
       <template v-if="card.kind === 'image'"
         ><HistoryAction
           data-history-action="favorite"
@@ -147,6 +195,11 @@ const elapsedText = computed(() => {
           @click="
             emit('action', card.isGroup ? 'download-all' : 'download')
           " /><HistoryAction
+          v-if="canRetry"
+          data-generation-action="retry-task"
+          action="retry-task"
+          label="重试任务"
+          @click="emit('action', 'retry-task')" /><HistoryAction
           data-history-action="edit"
           action="edit"
           label="编辑输出"
@@ -168,7 +221,7 @@ const elapsedText = computed(() => {
           action="config"
           label="恢复配置"
           @click="emit('action', 'reuse-task')" /><HistoryAction
-          v-if="card.status === 'error' || card.status === 'partial'"
+          v-if="canRetry"
           data-generation-action="retry-task"
           action="retry-task"
           label="重试任务"

@@ -217,13 +217,28 @@ onScopeDispose(() => {
       /></template>
       <div
         class="history-empty"
+        :class="{ 'is-studio-empty': history.library === 'history' }"
         :hidden="
           history.isFolderIndex
             ? history.folders.length > 0
             : history.cards.length > 0
         "
       >
-        {{ history.isFolderIndex ? '没有匹配的收藏夹' : '没有匹配的生成记录' }}
+        <div v-if="history.library === 'history'" class="image-copy">
+          <div class="welcome-kicker">
+            <span class="sparkle">✦</span> Image studio
+          </div>
+          <h2>把描述, 变成<br /><em>一张画面</em></h2>
+        </div>
+        <p>
+          {{
+            history.isFolderIndex
+              ? '没有匹配的收藏夹'
+              : history.library === 'favorites'
+                ? '这个收藏夹里还没有内容'
+                : '没有匹配的生成记录'
+          }}
+        </p>
       </div>
     </div>
     <div

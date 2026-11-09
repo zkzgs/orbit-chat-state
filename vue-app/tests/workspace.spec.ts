@@ -654,6 +654,7 @@ test('工作区导出和导入保留对话及图片历史', async ({ page }) => 
   await page.locator('#generateImage').click()
   await expect(page.locator('.history-item')).toHaveCount(1)
   await page.locator('#topbarSettings').click()
+  await page.locator('#settings-tab-data').click()
   await page.locator('#exportWorkspace').click()
   const downloadPromise = page.waitForEvent('download')
   await page.locator('[data-data-scope="workspace"]').click()
@@ -666,6 +667,7 @@ test('工作区导出和导入保留对话及图片历史', async ({ page }) => 
   page.on('dialog', (dialog) =>
     dialog.accept(dialog.type() === 'prompt' ? '覆盖' : undefined),
   )
+  await page.locator('#settings-tab-data').click()
   await page.locator('#workspaceImportFile').setInputFiles(file)
   await expect(page.locator('#toast')).toContainText('覆盖导入')
   await page.locator('#cancelSettings').click()
@@ -964,6 +966,7 @@ test('覆盖导入空对话保留生图历史和模板引用, 页面仍可发消
   const dialog = (dialog: import('@playwright/test').Dialog) =>
     dialog.accept(dialog.type() === 'prompt' ? '覆盖' : undefined)
   page.on('dialog', dialog)
+  await page.locator('#settings-tab-data').click()
   await page.locator('#workspaceImportFile').setInputFiles({
     name: 'empty-chat.json',
     mimeType: 'application/json',
@@ -1002,6 +1005,7 @@ test('清除生图工作区后运行中的任务不会重新写回', async ({ pa
     /^已用时 \d+s · 进行中$/,
   )
   await page.locator('#topbarSettings').click()
+  await page.locator('#settings-tab-data').click()
   await page.locator('#resetLocalData').click()
   page.once('dialog', (dialog) => dialog.accept())
   await page.locator('[data-data-scope="image"]').click()
@@ -1033,6 +1037,7 @@ test('配置合并处理同名模板和图片 ID 冲突, 保留对话原图', as
     createdAt: 1,
     updatedAt: 1,
   })
+  await page.locator('#settings-tab-data').click()
   await page.locator('#workspaceImportFile').setInputFiles({
     name: 'all.json',
     mimeType: 'application/json',
@@ -1068,6 +1073,7 @@ test('配置合并处理同名模板和图片 ID 冲突, 保留对话原图', as
     ),
   })
   await expect(page.locator('#toast')).toContainText('合并导入')
+  await page.locator('#settings-tab-data').click()
   await page.locator('#workspaceImportFile').setInputFiles({
     name: 'config.json',
     mimeType: 'application/json',
@@ -1278,7 +1284,9 @@ test('收藏夹管理弹窗保持原版标题、尺寸、布局和行操作', as
     page.locator('#favoriteFolderChoices .favorite-folder-row-actions button'),
   ).toHaveCount(3)
   await expect(
-    page.locator('#favoriteFolderChoices input[type="checkbox"]'),
+    page.locator(
+      '#favoriteFolderChoices .favorite-folder-row > input[type="checkbox"]',
+    ),
   ).toHaveCount(0)
   const body = page.locator('.favorite-dialog-body')
   await expect(body.locator('#favoriteFolderChoices')).toBeVisible()
@@ -1372,6 +1380,7 @@ test('数据范围导出使用原版文案、敏感确认、文件名和结果�
 }) => {
   await openWorkspace(page)
   await page.locator('#topbarSettings').click()
+  await page.locator('#settings-tab-data').click()
   await page.locator('#exportWorkspace').click()
   await expect(page.locator('#dataScopeTitle')).toHaveText('选择导出范围')
   await expect(page.locator('#dataScopeDescription')).toHaveText(
@@ -1390,6 +1399,7 @@ test('数据范围导出使用原版文案、敏感确认、文件名和结果�
   expect(chatExport.scope).toBe('chat')
   await expect(page.locator('#toast')).toContainText('对话工作区已导出')
 
+  await page.locator('#settings-tab-data').click()
   await page.locator('#exportWorkspace').click()
   let confirmation = ''
   page.once('dialog', (dialog) => {
@@ -1417,6 +1427,7 @@ test('清除范围的说明、取消和对话清除行为保持原版规则', as
     chatApiKey: 'test-key',
   })
   await page.locator('#topbarSettings').click()
+  await page.locator('#settings-tab-data').click()
   await page.locator('#resetLocalData').click()
   await expect(page.locator('#dataScopeTitle')).toHaveText('选择清除范围')
   await expect(page.locator('#dataScopeDescription')).toHaveText(
@@ -1432,6 +1443,7 @@ test('清除范围的说明、取消和对话清除行为保持原版规则', as
   expect(confirmation).toContain('未被生图工作区引用的图片')
   await expect(page.locator('.conversation-item')).toHaveCount(1)
 
+  await page.locator('#settings-tab-data').click()
   await page.locator('#resetLocalData').click()
   page.once('dialog', (dialog) => void dialog.accept())
   await page.locator('[data-data-scope="chat"]').click()
@@ -1531,6 +1543,7 @@ test('顶部连接状态沿用对话接口配置和聊天请求状态', async ({
   await page.locator('#topbarSettings').click()
   await page.locator('#chatBaseUrl').fill('https://chat.test/v1')
   await page.locator('#chatApiKey').fill('chat-key')
+  await page.locator('#settings-tab-display').click()
   await page.locator('#demoMode').uncheck()
   await page.locator('#saveSettings').click()
   await expect(page.locator('#connectionText')).toHaveText('已连接')

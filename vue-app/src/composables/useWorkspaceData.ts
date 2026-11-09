@@ -183,6 +183,21 @@ export function useWorkspaceData() {
         sourceImages,
       )
       const remap = combined.remap
+      if (includeImages && incoming.favoriteFolders) {
+        for (const source of incoming.favoriteFolders) {
+          if (!Object.hasOwn(source, 'coverImageId')) continue
+          const target = workspace.favoriteFolders.find(
+            (folder) =>
+              folder.name.toLocaleLowerCase() ===
+              source.name.toLocaleLowerCase(),
+          )
+          if (target)
+            target.coverImageId =
+              typeof source.coverImageId === 'string'
+                ? remap([source.coverImageId])[0]
+                : null
+        }
+      }
       incoming.conversations?.forEach((item) =>
         item.messages.forEach((message) => {
           message.imageIds = remap(message.imageIds)
@@ -263,6 +278,13 @@ export function useWorkspaceData() {
             ? combineNamedRecords(old.imagePolishTemplates, polish)
             : polish
           Object.assign(old, {
+            ...(!merge
+              ? {
+                  deleteRetriedRecordOnSuccess: true,
+                  clearInputAfterSubmit: true,
+                  alwaysShowRetryButton: false,
+                }
+              : {}),
             ...settings,
             imageOptions: { ...old.imageOptions, ...settings.imageOptions },
             imagePromptTemplates,

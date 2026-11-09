@@ -10,6 +10,19 @@ const workspace = useWorkspaceStore()
 const isManaging = computed(
   () => !ui.favorite.imageIds.length && !ui.favorite.taskIds.length,
 )
+const canRemoveFavorite = computed(
+  () =>
+    ui.favorite.imageIds.some(
+      (id) =>
+        workspace.imageFavoriteFolders.get(id)?.length ||
+        workspace.imageMap.get(id)?.favoriteFolderIds?.length,
+    ) ||
+    ui.favorite.taskIds.some(
+      (id) =>
+        workspace.tasks.find((task) => String(task.id) === String(id))
+          ?.favoriteFolderIds?.length,
+    ),
+)
 const dialogTitle = computed(() =>
   ui.favorite.imageIds.length
     ? `收藏 ${ui.favorite.imageIds.length} 张图片`
@@ -74,6 +87,18 @@ function handleFolderRowClick(event: MouseEvent, folderId: string) {
             <span class="favorite-folder-row-name">{{ folder.name }}</span>
             <small>{{ folder.isDefault ? '默认' : '' }}</small>
             <span class="favorite-folder-row-actions">
+              <label
+                class="favorite-folder-hidden"
+                @click.stop
+                data-tooltip="开启后，文件夹内图片不显示在生成记录中"
+              >
+                <input
+                  type="checkbox"
+                  :checked="folder.hidden"
+                  aria-label="隐藏图片"
+                  @change="history.folderAction('hidden', folder.id)"
+                />隐藏
+              </label>
               <HistoryAction
                 action="default"
                 label="设为默认收藏夹"
@@ -109,8 +134,18 @@ function handleFolderRowClick(event: MouseEvent, folderId: string) {
         </form>
       </div>
       <footer class="modal-footer">
-        <span></span>
-        <div>
+        <span class="favorite-footer-secondary"
+          ><button
+            id="removeFavoriteFolderChoices"
+            class="secondary-button"
+            type="button"
+            :hidden="!canRemoveFavorite"
+            @click="history.removeFavorite"
+          >
+            取消收藏
+          </button></span
+        >
+        <div class="favorite-footer-actions">
           <button
             id="cancelFavoriteFolderDialog"
             class="secondary-button"

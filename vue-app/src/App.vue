@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useTooltips } from './composables/useTooltips'
 import { useChatScroll } from './composables/useChatScroll'
 import { useWorkspace } from './composables/useWorkspace'
 import WorkspaceHeader from './components/WorkspaceHeader.vue'
@@ -20,6 +21,7 @@ import WorkspaceToast from './components/WorkspaceToast.vue'
 import { useEventListener } from './composables/useEventListener'
 
 const { ui, workspace } = useWorkspace()
+useTooltips()
 const stage = ref<HTMLElement | null>(null)
 useEventListener(document, 'click', (event) => {
   const target = event.target

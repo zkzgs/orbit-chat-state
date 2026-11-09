@@ -93,8 +93,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   ) {
     try {
       await updateImages(records, deleted, replace)
+      return true
     } catch {
-      /* IndexedDB 禁用时继续使用页面内数据 */
+      /* IndexedDB 禁用时继续使用页面内数据；清理重试旧记录须确认新结果已落盘。 */
+      return false
     }
   }
   async function initialize() {

@@ -57,6 +57,9 @@ export function createDefaultSettings(): Settings {
     proxyEnabled: false,
     imagePrivacyEnabled: false,
     imagePrivacyMode: 'single',
+    deleteRetriedRecordOnSuccess: true,
+    clearInputAfterSubmit: true,
+    alwaysShowRetryButton: false,
     demoMode: false,
   }
 }

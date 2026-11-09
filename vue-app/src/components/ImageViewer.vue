@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useWorkspaceStore } from '../stores/workspace'
+import { useHistoryStore } from '../stores/history'
 import { useInterfaceStore } from '../stores/interface'
 import { useViewerStore } from '../stores/viewer'
 import { usePanzoom } from '../composables/usePanzoom'
@@ -8,9 +10,14 @@ import { formatBytes } from '../utils/format'
 
 const ui = useInterfaceStore()
 const viewer = useViewerStore()
+const workspace = useWorkspaceStore()
+const history = useHistoryStore()
 const image = ref<HTMLImageElement | null>(null)
 const wrap = ref<HTMLElement | null>(null)
 const source = computed(() => ui.viewer.sources[ui.viewer.index] || '')
+const storedImage = computed(() =>
+  workspace.images.find((image) => image.src === source.value),
+)
 const info = useImageInfo(() => (ui.viewer.open ? source.value : ''))
 const details = computed(() =>
   info.value
@@ -79,6 +86,17 @@ const centered = computed(
         ›
       </button>
       <div class="viewer-actions panzoom-exclude">
+        <button
+          v-if="storedImage"
+          id="viewerFavorite"
+          class="viewer-action"
+          type="button"
+          aria-label="收藏图片"
+          data-tooltip="收藏图片"
+          @click="history.openFavorite([storedImage.id])"
+        >
+          ☆
+        </button>
         <button
           id="viewerCopy"
           class="viewer-action"

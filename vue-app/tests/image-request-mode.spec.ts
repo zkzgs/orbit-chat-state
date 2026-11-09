@@ -243,6 +243,7 @@ for (const [version, url] of [
       )
       await chooseMode(page, '生图')
       await page.locator('#topbarSettings').click()
+      await page.locator('#settings-tab-data').click()
       await page.locator('#exportWorkspace').click()
       const [download] = await Promise.all([
         page.waitForEvent('download'),
@@ -267,6 +268,7 @@ for (const [version, url] of [
       page.on('dialog', (dialog) =>
         dialog.accept(dialog.type() === 'prompt' ? '覆盖' : undefined),
       )
+      await page.locator('#settings-tab-data').click()
       await page.locator('#workspaceImportFile').setInputFiles({
         name: 'workspace.json',
         mimeType: 'application/json',

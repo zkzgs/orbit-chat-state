@@ -178,6 +178,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     prompt: string
     config: ImageConfig
     references: ReferenceImage[]
+    retryOf?: string
   }) {
     if (!workspace.ready) return
     const text = (override?.prompt || prompt.value).trim()
@@ -211,6 +212,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       return
     }
     const generation = workspace.generation
+    const removeOldRetry = workspace.state.settings.deleteRetriedRecordOnSuccess
     const id = createId()
     const startedAt = Date.now()
     const originals = [...(override?.references || references.value)]
@@ -236,6 +238,9 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       startedAt,
       status: 'running',
     })
+    // Only normal submission clears the form; retries preserve the current draft.
+    if (!override && workspace.state.settings.clearInputAfterSubmit)
+      prompt.value = ''
     const task = workspace.tasks.find((item) => item.id === id)!
     const controller = new AbortController()
     controllers.set(id, controller)
@@ -400,7 +405,20 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       task.status = failed ? 'partial' : 'success'
       task.finishedAt = finishedAt
       task.detail = `${failed ? '部分完成' : '已完成'} · ${formatDuration(finishedAt - startedAt)}`
-      await workspace.persistRecords([batch, task])
+      const persisted = await workspace.persistRecords(
+        override?.retryOf && removeOldRetry
+          ? [...workspace.batchImages(batch), batch, task]
+          : [batch, task],
+      )
+      if (
+        !failed &&
+        override?.retryOf &&
+        removeOldRetry &&
+        persisted &&
+        generation === workspace.generation
+      ) {
+        await removeRetriedRecord(override.retryOf, generation)
+      }
       if (failed)
         ui.notify(
           `并发请求完成 ${requestTotal - failed}/${requestTotal} 个`,
@@ -427,8 +445,45 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       '已恢复原任务配置',
     )
   }
+  async function removeRetriedRecord(taskId: string, generation: number) {
+    const oldTask = workspace.tasks.find((task) => task.id === taskId)
+    if (
+      !oldTask ||
+      oldTask.status === 'running' ||
+      generation !== workspace.generation
+    )
+      return
+    const batches = workspace.batches.filter(
+      (batch) => batch.taskId === taskId || batch.id === oldTask.batchId,
+    )
+    if (
+      oldTask.favoriteFolderIds?.length ||
+      batches.some((batch) =>
+        workspace
+          .batchImages(batch)
+          .some((image) => image.favoriteFolderIds?.length),
+      )
+    ) {
+      ui.notify('重试成功，原记录含收藏内容，已保留')
+      return
+    }
+    const removed = new Set([taskId, ...batches.map((batch) => batch.id)])
+    if (!(await workspace.persistRecords([], [...removed]))) {
+      ui.notify('旧记录无法从本地存储移除，已保留', 'warning')
+      return
+    }
+    if (generation !== workspace.generation) return
+    workspace.tasks = workspace.tasks.filter((task) => !removed.has(task.id))
+    workspace.batches = workspace.batches.filter(
+      (batch) => !removed.has(batch.id),
+    )
+    // GC retains images used by chat, templates, drafts, favorites or the new result.
+    await workspace.collectUnusedImages()
+  }
   function retryTask(task: GenerationTask) {
+    if (task.status === 'running') return
     return generate({
+      retryOf: task.id,
       prompt: task.prompt,
       config: task.config,
       references: workspace

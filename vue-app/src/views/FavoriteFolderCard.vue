@@ -6,6 +6,8 @@ defineProps<{
     id: string
     name: string
     isDefault: boolean
+    hidden?: boolean
+    coverId: string
     imageCount: number
     taskCount: number
   }
@@ -25,7 +27,18 @@ defineEmits<{ open: []; action: [action: string] }>()
       @click="$emit('open')"
     >
       <span class="favorite-folder-visual"
-        ><svg viewBox="0 0 24 24" aria-hidden="true">
+        ><img
+          v-if="folder.coverId"
+          :key="folder.coverId"
+          class="favorite-folder-cover"
+          src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+          :data-image-id="folder.coverId"
+          :data-cover-image-id="folder.coverId"
+          alt="收藏夹封面"
+          decoding="async"
+          loading="lazy"
+          draggable="false" />
+        <svg v-else viewBox="0 0 24 24" aria-hidden="true">
           <path d="M3.5 6.5h6l2 2h9v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" />
           <path d="M3.5 8.5h17" /></svg
       ></span>
@@ -39,6 +52,18 @@ defineEmits<{ open: []; action: [action: string] }>()
       >
     </button>
     <div class="favorite-folder-actions">
+      <label
+        class="favorite-folder-hidden"
+        @click.stop
+        data-tooltip="开启后，文件夹内图片不显示在生成记录中"
+      >
+        <input
+          type="checkbox"
+          :checked="folder.hidden"
+          aria-label="隐藏图片"
+          @change="$emit('action', 'hidden')"
+        />隐藏
+      </label>
       <HistoryAction
         action="default"
         label="设为默认收藏夹"

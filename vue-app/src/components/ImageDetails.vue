@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useHistoryStore } from '../stores/history'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useInterfaceStore } from '../stores/interface'
 import { useImageGenerationStore } from '../stores/image-generation'
@@ -23,6 +24,7 @@ import { imageSize } from '../utils/image-options'
 import type { ImageConfig } from '../types/models'
 
 const workspace = useWorkspaceStore()
+const history = useHistoryStore()
 const ui = useInterfaceStore()
 const generator = useImageGenerationStore()
 const chat = useChatStore()
@@ -34,7 +36,7 @@ const task = computed(() =>
 )
 const images = computed(() =>
   batch.value
-    ? workspace.batchImages(batch.value)
+    ? history.viewImages(batch.value)
     : workspace.messageImages(ui.details.imageId ? [ui.details.imageId] : []),
 )
 const image = computed(() => images.value[ui.details.index])
@@ -480,6 +482,15 @@ async function action(kind: 'copy' | 'download' | 'all' | 'chat' | 'edit') {
       <div class="lightbox-footer">
         <span id="lightboxPrompt">{{ batch?.prompt || task?.prompt }}</span>
         <div class="lightbox-actions">
+          <button
+            id="lightboxFavorite"
+            v-if="image"
+            class="secondary-button"
+            data-tooltip="收藏当前图片"
+            @click="history.openFavorite([image.id])"
+          >
+            收藏
+          </button>
           <button
             id="lightboxReuse"
             class="secondary-button"

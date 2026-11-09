@@ -553,6 +553,7 @@ test('合并导入替换同一条记录的图片后, 缩略图同步更新', asy
   page.on('dialog', (dialog) =>
     dialog.accept(dialog.type() === 'prompt' ? '合并' : undefined),
   )
+  await page.locator('#settings-tab-data').click()
   await page.locator('#workspaceImportFile').setInputFiles({
     name: 'image.json',
     mimeType: 'application/json',

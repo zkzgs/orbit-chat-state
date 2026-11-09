@@ -5,43 +5,100 @@ import { useHistoryStore } from '../stores/history'
 export function useHistorySelection(container: Ref<HTMLElement | null>) {
   const history = useHistoryStore()
   let selecto: Selecto | null = null
-  function elementKeys(elements: Element[]) {
-    return elements.flatMap((element) => {
+  let selectionBeforeDrag = new Set<string>()
+  let dragging = false
+  const mobile = window.matchMedia(
+    '(max-width: 780px), (hover: none) and (pointer: coarse)',
+  )
+  function toggled(elements: Element[]) {
+    const next = new Set(selectionBeforeDrag)
+    elements.forEach((element) => {
       const key = (element as HTMLElement).dataset.historyKey
-      return key ? [key] : []
+      if (!key) return
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
     })
+    return next
   }
   async function syncSelection() {
     await nextTick()
-    if (!selecto || !container.value) return
+    if (!selecto || !container.value || dragging) return
     selecto.setSelectedTargets(
       Array.from(container.value.children).filter((element) =>
         history.selected.has((element as HTMLElement).dataset.historyKey || ''),
       ) as HTMLElement[],
     )
   }
-  onMounted(() => {
-    if (!container.value) return
+  function bind() {
+    selecto?.destroy()
+    selecto = null
+    dragging = false
+    container.value?.classList.remove('is-selecting')
+    if (!container.value || mobile.matches) return
+    const list = container.value
     selecto = new Selecto({
-      container: container.value,
-      dragContainer: container.value,
-      selectableTargets: ['.history-item', '.generation-task-card'],
+      // Vue owns the list children; keep Selecto's overlay in the stable parent.
+      container: list.parentElement!,
+      dragContainer: list,
+      selectableTargets: [
+        () =>
+          Array.from(
+            list.querySelectorAll<HTMLElement>(
+              '.history-item, .generation-task-card.error',
+            ),
+          ).filter((element) => Boolean(element.dataset.historyKey)),
+      ],
       selectByClick: false,
-      selectFromInside: false,
-      hitRate: 0,
-      toggleContinueSelect: 'shift',
-      dragCondition: (event) =>
-        !(event.inputEvent.target as HTMLElement).closest(
-          '.history-actions, .history-select, button, input, select',
+      selectFromInside: true,
+      preventDragFromInside: false,
+      preventClickEventOnDrag: true,
+      keyContainer: window,
+      hitRate: 1,
+      dragCondition: ({ inputEvent }) =>
+        !(inputEvent.target as HTMLElement).closest(
+          '.history-actions, .history-select, .favorite-folder-card, input, select',
         ),
+      scrollOptions: {
+        container: list,
+        threshold: 64,
+        throttleTime: 16,
+        checkScrollEvent: true,
+        requestScroll: ({ container, direction }) => {
+          container.scrollTop += direction[1] * 12
+          container.scrollLeft += direction[0] * 12
+        },
+      },
     })
-    selecto.on('select', (event) => {
-      history.selected = new Set(elementKeys(event.selected))
+    selecto.on('selectStart', () => {
+      selectionBeforeDrag = new Set(history.selected)
+      dragging = true
+      list.classList.add('is-selecting')
+    })
+    selecto.on('select', ({ selected }) => {
+      history.selected = toggled(selected)
+    })
+    selecto.on('selectEnd', ({ selected }) => {
+      history.selected = toggled(selected)
+      dragging = false
+      list.classList.remove('is-selecting')
+      void syncSelection()
+    })
+    selecto.on('dragEnd', () => {
+      dragging = false
+      list.classList.remove('is-selecting')
     })
     void syncSelection()
+  }
+  onMounted(() => {
+    bind()
+    mobile.addEventListener('change', bind)
   })
-  watch(() => history.selected, syncSelection, {
+  watch(() => [history.selected, history.cards], syncSelection, {
     flush: 'post',
+    deep: true,
   })
-  onScopeDispose(() => selecto?.destroy())
+  onScopeDispose(() => {
+    mobile.removeEventListener('change', bind)
+    selecto?.destroy()
+  })
 }

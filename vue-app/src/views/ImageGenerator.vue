@@ -31,12 +31,6 @@ function drop(event: DragEvent) {
 
 <template>
   <div class="image-generator-column">
-    <div class="image-copy">
-      <div class="welcome-kicker">
-        <span class="sparkle">✦</span> Image studio
-      </div>
-      <h2>把描述, 变成<br /><em>一张画面</em></h2>
-    </div>
     <div class="image-generator-panel" @dragover.prevent @drop="drop">
       <div class="panel-label-row">
         <span>描述你想要的画面</span>
