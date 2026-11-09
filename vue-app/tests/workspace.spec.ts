@@ -1528,6 +1528,35 @@ test('接口模板校验、自动命名、同名覆盖、临时配置和删除�
   )
 })
 
+test('获取模型时按钮显示请求中状态并禁止重复点击', async ({ page }) => {
+  await page.route('https://models.test/v1/models', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    await route.fulfill({ json: { data: [{ id: 'model-one' }] } })
+  })
+  await openWorkspace(page)
+  await page.locator('#topbarSettings').click()
+  for (const [tab, baseUrl, apiKey, buttonId] of [
+    ['#settings-tab-chat', '#chatBaseUrl', '#chatApiKey', '#loadChatModels'],
+    [
+      '#settings-tab-image',
+      '#imageBaseUrl',
+      '#imageApiKey',
+      '#loadImageModels',
+    ],
+  ]) {
+    await page.locator(tab).click()
+    await page.locator(baseUrl).fill('https://models.test/v1')
+    await page.locator(apiKey).fill('test-key')
+    const button = page.locator(buttonId)
+    await button.click()
+    await expect(button).toHaveText('获取中...')
+    await expect(button).toBeDisabled()
+    await expect(page.locator('#toast')).toContainText('已获取 1 个模型')
+    await expect(button).toHaveText('获取模型')
+    await expect(button).toBeEnabled()
+  }
+})
+
 test('顶部连接状态沿用对话接口配置和聊天请求状态', async ({ page }) => {
   await page.route('https://chat.test/**', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 300))

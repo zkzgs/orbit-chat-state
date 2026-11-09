@@ -250,6 +250,13 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .toast { z-index: 200; }
 .data-management-actions { display: flex; gap: 8px; align-items: end; flex-wrap: nowrap; }
 .data-management-actions .secondary-button { flex: 1; }
+.import-progress { margin-top: 14px; }
+.import-progress[hidden] { display: none; }
+.import-progress-label { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; color: var(--muted); font-size: 10px; }
+.import-progress-track { height: 5px; overflow: hidden; border-radius: 3px; background: rgba(255,255,255,.08); }
+.import-progress-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--cyan); transition: width .12s linear; }
+.import-progress.indeterminate .import-progress-track span { width: 28%; animation: import-progress 1s ease-in-out infinite alternate; }
+@keyframes import-progress { from { transform: translateX(0); } to { transform: translateX(260%); } }
 .data-scope-modal { width: min(460px, 100%); }
 .data-scope-body { padding: 20px 25px 24px; }
 .data-scope-body p { margin: 0 0 14px; color: var(--muted); font-size: 11px; line-height: 1.6; }
@@ -1149,6 +1156,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
         <div class="settings-section compact-section data-management-section" id="settings-panel-data" role="tabpanel" aria-labelledby="settings-tab-data" data-settings-panel="data" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">08</span><div><strong>数据管理</strong><small>操作时选择需要导出或清除的范围</small></div></div>
           <div class="data-management-actions"><button class="secondary-button" id="exportWorkspace" type="button">导出</button><button class="secondary-button" id="importWorkspace" type="button">导入</button><button class="secondary-button danger" id="resetLocalData" type="button">清除数据</button><input type="file" id="workspaceImportFile" accept="application/json,.json" hidden></div>
+          <div class="import-progress" id="importProgress" role="status" aria-live="polite" hidden><div class="import-progress-label"><span id="importProgressLabel"></span><span id="importProgressValue">0%</span></div><div class="import-progress-track"><span id="importProgressFill"></span></div></div>
         </div>
       </div>
       </div>
@@ -1423,6 +1431,8 @@ let customTooltipNode = null;
 let historySelecto = null;
 let dataScopeResolver = null;
 let exportingWorkspace = false;
+let importingWorkspace = false;
+let importProgressValue = 0;
 let verifiedProxyUrl = '';
 const modelCatalog = {
   chat: [...(state.connectionProfiles.chat.find((profile) => profile.id === state.activeConnectionProfiles.chat)?.models || [])],
@@ -6920,28 +6930,75 @@ async function persistImageStore() {
   }
 }
 
-function mergeImageResources(baseRecords, sourceRecords) {
+async function mergeImageResources(baseRecords, sourceRecords, onProgress) {
   const records = new Map(baseRecords.map((record) => [record.id, record]));
   const idMap = new Map();
-  sourceRecords.forEach((source) => {
-    const sourceIdentity = getImageIdentity(source.src);
-    const sameId = records.get(source.id);
-    if (sameId && getImageIdentity(sameId.src) === sourceIdentity) {
-      idMap.set(source.id, sameId.id);
-      records.set(sameId.id, { ...source, id: sameId.id, type: 'image' });
-      return;
+  const fingerprintIds = new Map();
+  const contentStart = (src) => src.startsWith('data:') ? src.indexOf(',') + 1 : 0;
+  const fingerprint = async (src) => {
+    const start = contentStart(src);
+    let first = 2166136261;
+    let second = 2246822519;
+    for (let index = start; index < src.length; index += 1) {
+      const code = src.charCodeAt(index);
+      first = Math.imul(first ^ code, 16777619);
+      second = Math.imul(second ^ code, 3266489917);
+      if (index > start && (index - start) % (256 * 1024) === 0) await new Promise((resolve) => window.setTimeout(resolve, 0));
     }
-    const sameSource = [...records.values()].find((record) => getImageIdentity(record.src) === sourceIdentity);
+    return `${src.length - start}:${(first >>> 0).toString(36)}:${(second >>> 0).toString(36)}`;
+  };
+  const sameImage = async (first, second) => {
+    const firstStart = contentStart(first);
+    const secondStart = contentStart(second);
+    const length = first.length - firstStart;
+    if (length !== second.length - secondStart) return false;
+    for (let offset = 0; offset < length; offset += 256 * 1024) {
+      if (first.slice(firstStart + offset, firstStart + offset + 256 * 1024) !== second.slice(secondStart + offset, secondStart + offset + 256 * 1024)) return false;
+      if (offset && offset % (4 * 1024 * 1024) === 0) await new Promise((resolve) => window.setTimeout(resolve, 0));
+    }
+    return true;
+  };
+  const indexImage = (record, fingerprint) => {
+    const ids = fingerprintIds.get(fingerprint) || [];
+    ids.push(record.id);
+    fingerprintIds.set(fingerprint, ids);
+  };
+  for (let index = 0; index < baseRecords.length; index += 1) {
+    const record = baseRecords[index];
+    indexImage(record, await fingerprint(record.src));
+    if (index % 8 === 0) {
+      onProgress?.(baseRecords.length ? ((index + 1) / baseRecords.length) * 0.2 : 0.2);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    }
+  }
+  for (let index = 0; index < sourceRecords.length; index += 1) {
+    const source = sourceRecords[index];
+    const imageFingerprint = await fingerprint(source.src);
+    const sameId = records.get(source.id);
+    let sameSource = sameId && await sameImage(sameId.src, source.src) ? sameId : null;
+    if (!sameSource) {
+      for (const id of fingerprintIds.get(imageFingerprint) || []) {
+        const candidate = records.get(id);
+        if (candidate && await sameImage(candidate.src, source.src)) { sameSource = candidate; break; }
+      }
+    }
     if (sameSource) {
       idMap.set(source.id, sameSource.id);
       records.set(sameSource.id, { ...source, id: sameSource.id, type: 'image' });
-      return;
+    } else {
+      let id = source.id;
+      if (records.has(id)) id = createId();
+      idMap.set(source.id, id);
+      const record = { ...source, id, type: 'image' };
+      records.set(id, record);
+      indexImage(record, imageFingerprint);
     }
-    let id = source.id;
-    if (records.has(id)) id = createId();
-    idMap.set(source.id, id);
-    records.set(id, { ...source, id, type: 'image' });
-  });
+    if (index % 8 === 0) {
+      onProgress?.(0.2 + ((index + 1) / Math.max(sourceRecords.length, 1)) * 0.8);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    }
+  }
+  onProgress?.(1);
   return { records, idMap };
 }
 
@@ -6964,12 +7021,183 @@ function mergeImageBatches(existingBatches, incomingBatches) {
   return [...new Map([...existingBatches, ...incomingBatches].map((batch) => [batch.id, batch])).values()].sort((left, right) => right.createdAt - left.createdAt);
 }
 
+class WorkspaceJsonStreamReader {
+  constructor(stream, onProgress) {
+    this.reader = stream.getReader();
+    this.decoder = new TextDecoder();
+    this.onProgress = onProgress;
+    this.buffer = '';
+    this.index = 0;
+    this.done = false;
+    this.loaded = 0;
+  }
+
+  async fill() {
+    while (this.index >= this.buffer.length && !this.done) {
+      const { value, done } = await this.reader.read();
+      this.done = done;
+      this.loaded += value?.byteLength || 0;
+      this.buffer = this.decoder.decode(value, { stream: !done });
+      this.index = 0;
+      this.onProgress?.(this.loaded);
+    }
+  }
+
+  async peek() {
+    await this.fill();
+    return this.index < this.buffer.length ? this.buffer[this.index] : null;
+  }
+
+  async read() {
+    await this.fill();
+    if (this.index >= this.buffer.length) return null;
+    return this.buffer[this.index++];
+  }
+
+  async skipWhitespace() {
+    while (/\s/.test((await this.peek()) || '\u0000')) await this.read();
+  }
+
+  async expect(char) {
+    await this.skipWhitespace();
+    if ((await this.read()) !== char) throw new SyntaxError(`JSON 格式错误, 预期 ${char}`);
+  }
+
+  async readValue() {
+    await this.skipWhitespace();
+    const first = await this.read();
+    if (!first) throw new SyntaxError('JSON 内容不完整');
+    const parts = [];
+    const finish = () => parts.join('');
+    parts.push(first);
+
+    if (first === '"') {
+      let escaped = false;
+      while (true) {
+        await this.fill();
+        if (this.index >= this.buffer.length) throw new SyntaxError('JSON 字符串未结束');
+        const start = this.index;
+        let end = start;
+        let closed = false;
+        while (end < this.buffer.length) {
+          const char = this.buffer[end++];
+          if (escaped) escaped = false;
+          else if (char === '\\') escaped = true;
+          else if (char === '"') { closed = true; break; }
+        }
+        parts.push(this.buffer.slice(start, end));
+        this.index = end;
+        if (closed) return finish();
+      }
+    }
+
+    if (first === '{' || first === '[') {
+      const stack = [first];
+      let inString = false;
+      let escaped = false;
+      while (stack.length) {
+        await this.fill();
+        if (this.index >= this.buffer.length) throw new SyntaxError('JSON 内容不完整');
+        const start = this.index;
+        let end = start;
+        while (end < this.buffer.length && stack.length) {
+          const char = this.buffer[end++];
+          if (inString) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === '"') inString = false;
+          } else if (char === '"') inString = true;
+          else if (char === '{' || char === '[') stack.push(char);
+          else if (char === '}' || char === ']') stack.pop();
+        }
+        parts.push(this.buffer.slice(start, end));
+        this.index = end;
+      }
+      return finish();
+    }
+
+    while (true) {
+      await this.fill();
+      const start = this.index;
+      let end = start;
+      while (end < this.buffer.length && !/[\s,\]}]/.test(this.buffer[end])) end += 1;
+      parts.push(this.buffer.slice(start, end));
+      this.index = end;
+      if (end < this.buffer.length || this.done) return finish();
+    }
+  }
+}
+
+async function readWorkspaceJson(file, onProgress) {
+  if (!file.stream) throw new Error('当前浏览器不支持流式读取导入文件');
+  let lastProgressAt = 0;
+  const reader = new WorkspaceJsonStreamReader(file.stream(), (loaded) => {
+    const now = performance.now();
+    if (now - lastProgressAt < 100 && loaded < file.size) return;
+    lastProgressAt = now;
+    onProgress?.(Math.min(loaded / file.size, 1));
+  });
+  await reader.expect('{');
+  const payload = Object.create(null);
+  let itemCount = 0;
+  while (true) {
+    await reader.skipWhitespace();
+    const next = await reader.peek();
+    if (next === '}') { await reader.read(); break; }
+    if (next === null) throw new SyntaxError('JSON 内容不完整');
+    const key = JSON.parse(await reader.readValue());
+    await reader.expect(':');
+    await reader.skipWhitespace();
+    if (await reader.peek() !== '[') payload[key] = JSON.parse(await reader.readValue());
+    else {
+      await reader.read();
+      const items = [];
+      await reader.skipWhitespace();
+      if (await reader.peek() !== ']') {
+        while (true) {
+          items.push(JSON.parse(await reader.readValue()));
+          itemCount += 1;
+          await reader.skipWhitespace();
+          const separator = await reader.read();
+          if (separator === ']') break;
+          if (separator !== ',') throw new SyntaxError('JSON 数组格式错误');
+          if (itemCount % 8 === 0) await new Promise((resolve) => window.setTimeout(resolve, 0));
+        }
+      } else await reader.read();
+      payload[key] = items;
+    }
+    await reader.skipWhitespace();
+    const separator = await reader.read();
+    if (separator === '}') break;
+    if (separator !== ',') throw new SyntaxError('JSON 对象格式错误');
+  }
+  await reader.skipWhitespace();
+  if ((await reader.peek()) !== null) throw new SyntaxError('JSON 对象后存在多余内容');
+  onProgress?.(1);
+  return payload;
+}
+
 async function importWorkspace(file) {
-  if (!file) return;
+  if (!file || importingWorkspace) return;
+  importingWorkspace = true;
+  const button = $('#importWorkspace');
+  button.disabled = true;
+  updateImportProgress('正在读取并解析 JSON', 0);
   try {
-    const payload = JSON.parse(await file.text());
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const payload = await readWorkspaceJson(file, (progress) => updateImportProgress('正在读取并解析 JSON', Math.round(progress * 60)));
+    updateImportProgress('已读取备份, 等待确认', 60, true);
     const scope = ['chat', 'image', 'workspace', 'config', 'all'].includes(payload.scope) ? payload.scope : 'workspace';
-    const sourceImages = (Array.isArray(payload.images) ? payload.images : []).filter((image) => image && image.id && image.src).map((image) => createStoredImage(image));
+    const sourceImages = Array.isArray(payload.images) ? payload.images : [];
+    let validImageCount = 0;
+    sourceImages.forEach((image) => {
+      if (!image || !image.id || !image.src) return;
+      image.type = 'image';
+      if (image.responseMeta) image.responseMeta = { ...image.responseMeta };
+      sourceImages[validImageCount] = image;
+      validImageCount += 1;
+    });
+    sourceImages.length = validImageCount;
     const sourceHistory = (Array.isArray(payload.imageHistory) ? payload.imageHistory : []).filter((batch) => batch && batch.id).map((batch) => createStoredBatch(batch));
     const sourceTasks = (Array.isArray(payload.imageTasks) ? payload.imageTasks : []).filter((task) => task && task.id).map((task) => createStoredImageTask(task));
     const sourceFavoriteFolders = normalizeFavoriteFolders(payload.favoriteFolders);
@@ -6986,6 +7214,7 @@ async function importWorkspace(file) {
     const mode = String(modeInput).trim().toLowerCase();
     if (!['覆盖', '合并', 'overwrite', 'merge'].includes(mode)) throw new Error('导入方式只能填写 "覆盖" 或 "合并"');
     const merge = mode === '合并' || mode === 'merge';
+    updateImportProgress('正在匹配图片内容', 65);
     const favoriteFolderIdMap = new Map();
     let importedFavoriteFolders = favoriteFolders;
     if (Array.isArray(payload.favoriteFolders) && ['image', 'workspace', 'all'].includes(scope)) {
@@ -7015,7 +7244,7 @@ async function importWorkspace(file) {
     const templateImageIds = getTemplateImageIds();
     const preservedIds = scope === 'all' ? new Set() : scope === 'chat' ? new Set([...getImageWorkspaceImageIds(), ...templateImageIds]) : scope === 'image' ? new Set([...getConversationImageIds(), ...templateImageIds]) : scope === 'workspace' ? templateImageIds : new Set(storedImages.keys());
     const baseRecords = merge || scope === 'config' ? [...storedImages.values()].filter((record) => record.type === 'image') : [...storedImages.values()].filter((record) => preservedIds.has(record.id));
-    const mergedImages = mergeImageResources(baseRecords, sourceImages);
+    const mergedImages = await mergeImageResources(baseRecords, sourceImages, (progress) => updateImportProgress('正在匹配图片内容', 65 + Math.round(progress * 25)));
     if (Array.isArray(payload.favoriteFolders) && ['image', 'workspace', 'all'].includes(scope)) {
       sourceFavoriteFolders.forEach((source) => {
         if (!Object.hasOwn(source, 'coverImageId')) return;
@@ -7052,10 +7281,12 @@ async function importWorkspace(file) {
       });
       if (scope === 'config') {
         storedImages = mergedImages.records;
+        updateImportProgress('正在写入本地缓存', 93, true);
         await removeUnreferencedImages();
         await persistImageStore();
         persist();
         render();
+        updateImportProgress('导入完成', 100);
         showToast('配置已导入');
         return;
       }
@@ -7086,16 +7317,33 @@ async function importWorkspace(file) {
     }
     storedImages = mergedImages.records;
     ensureActiveConversation();
+    updateImportProgress('正在写入本地缓存', 93, true);
     await removeUnreferencedImages();
     await persistImageStore();
     persist();
     render();
     renderImageHistory();
     renderMessages();
+    updateImportProgress('导入完成', 100);
     showToast(`${getExportScopeLabel(scope)}已${merge ? '合并导入' : '覆盖导入'}`);
   } catch (error) {
     showErrorToast(error.message || '导入失败, 请选择有效的工作区 JSON 文件');
+  } finally {
+    if (importProgressValue >= 100) await new Promise((resolve) => window.setTimeout(resolve, 600));
+    updateImportProgress('', 0, false, false);
+    importingWorkspace = false;
+    button.disabled = false;
   }
+}
+
+function updateImportProgress(label, progress, indeterminate = false, visible = true) {
+  importProgressValue = progress;
+  const root = $('#importProgress');
+  root.hidden = !visible;
+  root.classList.toggle('indeterminate', indeterminate);
+  $('#importProgressLabel').textContent = label;
+  $('#importProgressValue').textContent = `${progress}%`;
+  $('#importProgressFill').style.width = `${progress}%`;
 }
 
 async function handleAttachment(event) {

@@ -56,19 +56,84 @@ export function collectImageIds(
   ])
 }
 
-export function mergeImages(base: StoredImage[], incoming: StoredImage[]) {
+export async function mergeImages(
+  base: StoredImage[],
+  incoming: StoredImage[],
+  onProgress?: (progress: number) => void,
+) {
   const records = new Map(base.map((item) => [item.id, item]))
   const idMap = new Map<string, string>()
-  const identity = (src: string) =>
-    src.startsWith('data:') ? src.slice(src.indexOf(',') + 1) : src
-  for (const source of incoming) {
-    const same = [...records.values()].find(
-      (item) => identity(item.src) === identity(source.src),
-    )
+  const contentStart = (src: string) =>
+    src.startsWith('data:') ? src.indexOf(',') + 1 : 0
+  const fingerprint = async (src: string) => {
+    const start = contentStart(src)
+    let first = 2166136261
+    let second = 2246822519
+    for (let i = start; i < src.length; i++) {
+      const code = src.charCodeAt(i)
+      first = Math.imul(first ^ code, 16777619)
+      second = Math.imul(second ^ code, 3266489917)
+      if (i > start && (i - start) % (256 * 1024) === 0)
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+    }
+    return `${src.length - start}:${(first >>> 0).toString(36)}:${(second >>> 0).toString(36)}`
+  }
+  const sameImage = async (first: string, second: string) => {
+    const firstStart = contentStart(first)
+    const secondStart = contentStart(second)
+    const length = first.length - firstStart
+    if (length !== second.length - secondStart) return false
+    for (let offset = 0; offset < length; offset += 256 * 1024) {
+      if (
+        first.slice(firstStart + offset, firstStart + offset + 256 * 1024) !==
+        second.slice(secondStart + offset, secondStart + offset + 256 * 1024)
+      )
+        return false
+      if (offset && offset % (4 * 1024 * 1024) === 0)
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+    }
+    return true
+  }
+  const fingerprints = new Map<string, string[]>()
+  function indexImage(image: StoredImage, key: string) {
+    const ids = fingerprints.get(key) || []
+    ids.push(image.id)
+    fingerprints.set(key, ids)
+  }
+  for (let i = 0; i < base.length; i++) {
+    const image = base[i]
+    indexImage(image, await fingerprint(image.src))
+    if (i % 8 === 0) {
+      onProgress?.(base.length ? ((i + 1) / base.length) * 0.2 : 0.2)
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    }
+  }
+  for (let i = 0; i < incoming.length; i++) {
+    const source = incoming[i]
+    const key = await fingerprint(source.src)
+    const sameId = records.get(source.id)
+    let same =
+      sameId && (await sameImage(sameId.src, source.src)) ? sameId : undefined
+    if (!same) {
+      for (const id of fingerprints.get(key) || []) {
+        const candidate = records.get(id)!
+        if (await sameImage(candidate.src, source.src)) {
+          same = candidate
+          break
+        }
+      }
+    }
     const id = same?.id || (records.has(source.id) ? createId() : source.id)
     idMap.set(source.id, id)
-    records.set(id, { ...source, id, type: 'image' })
+    const record = { ...source, id, type: 'image' as const }
+    records.set(id, record)
+    if (!same) indexImage(record, key)
+    if (i % 8 === 0) {
+      onProgress?.(0.2 + ((i + 1) / Math.max(incoming.length, 1)) * 0.8)
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    }
   }
+  onProgress?.(1)
   return {
     records: [...records.values()],
     remap: (ids: string[] = []) => [

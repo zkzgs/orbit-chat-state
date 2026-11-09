@@ -10,6 +10,7 @@ import { createJsonBlob } from '../utils/json-export'
 import { errorMessage, formatExportTimestamp } from '../utils/format'
 import { createDefaultSettings } from '../constants/workspace'
 import { createInitialState, normalizeFavoriteFolders } from '../storage/state'
+import { readWorkspaceJson } from '../utils/json-import'
 import {
   collectImageIds,
   combineNamedRecords,
@@ -18,6 +19,7 @@ import {
   mergeImages,
 } from '../storage/transfer'
 import type { DataScope, WorkspaceExport } from '../types/models'
+import { reactive } from 'vue'
 
 const scopeLabels: Record<DataScope, string> = {
   chat: '对话工作区',
@@ -39,6 +41,24 @@ export function useWorkspaceData() {
   const ui = useInterfaceStore()
   const image = useImageGenerationStore()
   const chat = useChatStore()
+  const importProgress = reactive({
+    active: false,
+    indeterminate: false,
+    label: '',
+    percent: 0,
+  })
+  function setImportProgress(
+    label: string,
+    percent: number,
+    indeterminate = false,
+  ) {
+    Object.assign(importProgress, {
+      active: true,
+      label,
+      percent,
+      indeterminate,
+    })
+  }
   function open(action: 'export' | 'clear') {
     ui.dataScope.action = action
     ui.dataScope.open = true
@@ -120,8 +140,14 @@ export function useWorkspaceData() {
   }
   async function importFile(file?: File) {
     if (!file) return
+    if (importProgress.active) return
+    setImportProgress('正在读取并解析 JSON', 0)
     try {
-      const incoming = JSON.parse(await file.text()) as WorkspaceExport
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      const incoming = (await readWorkspaceJson(file, (progress) =>
+        setImportProgress('正在读取并解析 JSON', Math.round(progress * 60)),
+      )) as unknown as WorkspaceExport
+      setImportProgress('已读取备份, 等待确认', 60, true)
       const scope = ['chat', 'image', 'workspace', 'config', 'all'].includes(
         incoming.scope,
       )
@@ -147,6 +173,7 @@ export function useWorkspaceData() {
       if (!['覆盖', '合并', 'overwrite', 'merge'].includes(mode))
         throw new Error('导入方式只能填写 "覆盖" 或 "合并"')
       const merge = ['合并', 'merge'].includes(mode)
+      setImportProgress('正在匹配图片内容', 65)
       // 覆盖只移除所选工作区独占的图片, 保留其他工作区和模板的引用
       const preserved = collectImageIds(
         includeChat ? [] : workspace.state.conversations,
@@ -176,11 +203,13 @@ export function useWorkspaceData() {
           })
         }
       }
-      const combined = mergeImages(
+      const combined = await mergeImages(
         merge || scope === 'config'
           ? workspace.images
           : workspace.images.filter((item) => preserved.has(item.id)),
         sourceImages,
+        (progress) =>
+          setImportProgress('正在匹配图片内容', 65 + Math.round(progress * 25)),
       )
       const remap = combined.remap
       if (includeImages && incoming.favoriteFolders) {
@@ -327,11 +356,22 @@ export function useWorkspaceData() {
         }
       }
       await workspace.collectUnusedImages()
+      setImportProgress('正在写入本地缓存', 93, true)
       await workspace.saveAllImages()
       if (ui.settingsOpen) useSettingsStore().open()
+      setImportProgress('导入完成', 100)
       ui.notify(`工作区已${merge ? '合并导入' : '覆盖导入'}`)
     } catch (error) {
       ui.notify(errorMessage(error), 'error')
+    } finally {
+      if (importProgress.percent >= 100)
+        await new Promise((resolve) => window.setTimeout(resolve, 600))
+      Object.assign(importProgress, {
+        active: false,
+        indeterminate: false,
+        label: '',
+        percent: 0,
+      })
     }
   }
   async function clearScope(scope: DataScope) {
@@ -387,5 +427,5 @@ export function useWorkspaceData() {
     if (ui.dataScope.action === 'export') await exportScope(scope)
     else await clearScope(scope)
   }
-  return { open, choose, importFile }
+  return { open, choose, importFile, importProgress }
 }

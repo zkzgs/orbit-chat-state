@@ -201,9 +201,10 @@ function onTabKey(event: KeyboardEvent) {
                     class="field-action"
                     id="loadChatModels"
                     type="button"
+                    :disabled="settings.loadingModels.chat"
                     @click="settings.loadModels('chat')"
                   >
-                    获取模型
+                    {{ settings.loadingModels.chat ? '获取中...' : '获取模型' }}
                   </button></span
                 ><ModelInput
                   v-model="settings.draft.chatModel"
@@ -331,9 +332,10 @@ function onTabKey(event: KeyboardEvent) {
                     class="field-action"
                     id="loadImageModels"
                     type="button"
+                    :disabled="settings.loadingModels.image"
                     @click="settings.loadModels('image')"
                   >
-                    获取模型
+                    {{ settings.loadingModels.image ? '获取中...' : '获取模型' }}
                   </button></span
                 ><ModelInput
                   v-model="settings.draft.imageModel"
@@ -630,9 +632,10 @@ function onTabKey(event: KeyboardEvent) {
                 class="secondary-button"
                 id="importWorkspace"
                 type="button"
+                :disabled="data.importProgress.active"
                 @click="importInput?.click()"
               >
-                导入</button
+                {{ data.importProgress.active ? '导入中' : '导入' }}</button
               ><button
                 class="secondary-button danger"
                 id="resetLocalData"
@@ -648,6 +651,23 @@ function onTabKey(event: KeyboardEvent) {
                 hidden
                 @change="data.importFile(inputFiles($event)[0])"
               />
+            </div>
+            <div
+              v-if="data.importProgress.active"
+              class="import-progress"
+              role="status"
+              aria-live="polite"
+              :class="{ indeterminate: data.importProgress.indeterminate }"
+            >
+              <div class="import-progress-label">
+                <span>{{ data.importProgress.label }}</span>
+                <span>{{ data.importProgress.percent }}%</span>
+              </div>
+              <div class="import-progress-track">
+                <span
+                  :style="{ width: `${data.importProgress.percent}%` }"
+                ></span>
+              </div>
             </div>
           </div>
         </div>

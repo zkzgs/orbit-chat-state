@@ -15,7 +15,6 @@ import {
   saveState,
 } from '../storage/state'
 import { readImages, updateImages } from '../storage/database'
-import { cloneData } from '../utils/clone'
 import { createId } from '../utils/id'
 import { imageSize } from '../utils/image-options'
 
@@ -184,7 +183,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
   async function saveAllImages() {
     await persistRecords(
-      cloneData([...images.value, ...batches.value, ...tasks.value]),
+      [...images.value, ...batches.value, ...tasks.value],
       [],
       true,
     )

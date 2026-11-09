@@ -143,6 +143,72 @@ for (const [version, url] of [
   ['HTML', '/index.html'],
   ['Vue', '/vue-app/dist/index.html'],
 ]) {
+  test(`${version} 流式导入大图片 JSON, 不读取整文件字符串或整体克隆`, async ({
+    page,
+  }) => {
+    await page.goto(url)
+    const images = Array.from({ length: 4 }, (_, index) => ({
+      id: `large-import-image-${index}`,
+      type: 'image',
+      src: `data:image/png;base64,${'A'.repeat(1024 * 1024)}${index}`,
+      createdAt: index + 1,
+    }))
+    const payload = {
+      version: 12,
+      scope: 'image',
+      images,
+      imageHistory: images.map((image, index) => ({
+        id: `large-import-batch-${index}`,
+        type: 'generation-batch',
+        prompt: `引用 "图片 ${index}"`,
+        imageIds: [image.id],
+        referenceImageIds: [],
+        imageCount: 1,
+        createdAt: index + 1,
+        startedAt: index + 1,
+        durationMs: 0,
+      })),
+      imageTasks: [],
+    }
+    const buffer = Buffer.from(JSON.stringify(payload))
+    await page.evaluate(() => {
+      const stats = { maxParse: 0, maxStringify: 0 }
+      Object.assign(window, { importMemoryStats: stats })
+      const parse = JSON.parse
+      JSON.parse = function (
+        text: string,
+        reviver?: (this: unknown, key: string, value: unknown) => unknown,
+      ) {
+        stats.maxParse = Math.max(stats.maxParse, text.length)
+        return parse.call(this, text, reviver)
+      }
+      const stringify = JSON.stringify
+      JSON.stringify = function (...args: Parameters<typeof JSON.stringify>) {
+        const text = stringify(...args)
+        stats.maxStringify = Math.max(stats.maxStringify, text?.length || 0)
+        return text
+      } as typeof JSON.stringify
+      File.prototype.text = () =>
+        Promise.reject(new Error('导入不应一次性读取整个文件'))
+    })
+    page.on('dialog', (dialog) =>
+      dialog.accept(dialog.type() === 'prompt' ? '覆盖' : undefined),
+    )
+    await page.locator('#topbarSettings').click()
+    await page.locator('#settings-tab-data').click()
+    await page.locator('#workspaceImportFile').setInputFiles({
+      name: 'large-image-workspace.json',
+      mimeType: 'application/json',
+      buffer,
+    })
+    await expect(page.locator('#toast')).toContainText('覆盖导入')
+    await page.locator('#cancelSettings').click()
+    await expect(page.locator('.history-item')).toHaveCount(images.length)
+    const stats = await page.evaluate(() => (window as any).importMemoryStats)
+    expect(stats.maxParse).toBeLessThan(buffer.length / 2)
+    expect(stats.maxStringify).toBeLessThan(1024 * 1024)
+  })
+
   test(`${version} 分块导出保持五种范围、共享图片及原始响应, 可重新导入`, async ({
     page,
   }) => {

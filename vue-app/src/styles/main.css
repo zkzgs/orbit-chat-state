@@ -1857,6 +1857,43 @@ select:not(:disabled):hover {
 .data-management-actions .secondary-button {
   flex: 1;
 }
+.import-progress {
+  margin-top: 14px;
+}
+.import-progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.import-progress-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.import-progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cyan);
+  transition: width 0.12s linear;
+}
+.import-progress.indeterminate .import-progress-track span {
+  width: 28%;
+  animation: import-progress 1s ease-in-out infinite alternate;
+}
+@keyframes import-progress {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
 .data-scope-modal {
   width: min(460px, 100%);
 }
