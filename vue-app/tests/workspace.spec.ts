@@ -518,7 +518,8 @@ test('失败的生图任务可以查看详情、恢复配置和重试', async ({
   await page.locator('[data-generation-action="reuse-task"]').click()
   await expect(page.locator('#imagePrompt')).toHaveValue('失败后保留的关键词')
   await page.locator('[data-generation-action="retry-task"]').click()
-  await expect(page.locator('.generation-task-card.error')).toHaveCount(2)
+  await expect(page.locator('.generation-task-card.running')).toHaveCount(0)
+  await expect(page.locator('.generation-task-card.error')).toHaveCount(1)
   expect(calls).toBe(2)
 })
 

@@ -1,9 +1,19 @@
 import { onMounted, onScopeDispose, watch, nextTick, type Ref } from 'vue'
 import Selecto from 'selecto'
 import { useHistoryStore } from '../stores/history'
+import { useEventListener } from './useEventListener'
 
 export function useHistorySelection(container: Ref<HTMLElement | null>) {
   const history = useHistoryStore()
+  useEventListener(document, 'click', (event) => {
+    if (
+      (event.target as Element).closest?.(
+        '.history-item, .generation-task-card, .history-selection-bar, .history-heading',
+      )
+    )
+      return
+    if (history.selected.size) history.selected = new Set()
+  })
   let selecto: Selecto | null = null
   let selectionBeforeDrag = new Set<string>()
   let dragging = false
@@ -93,9 +103,8 @@ export function useHistorySelection(container: Ref<HTMLElement | null>) {
     bind()
     mobile.addEventListener('change', bind)
   })
-  watch(() => [history.selected, history.cards], syncSelection, {
+  watch(() => [[...history.selected], history.cards], syncSelection, {
     flush: 'post',
-    deep: true,
   })
   onScopeDispose(() => {
     mobile.removeEventListener('change', bind)

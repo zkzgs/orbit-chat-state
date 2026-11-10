@@ -237,7 +237,7 @@ for (const [version, url] of [
         .locator('[data-generation-action="retry-task"]')
         .first()
         .click()
-      await expect(page.locator('.generation-task-card.error')).toHaveCount(2)
+      await expect(page.locator('.generation-task-card.error')).toHaveCount(1)
       expect(requests).toEqual(
         Array(2).fill('https://mode.test/v1/images/generations'),
       )

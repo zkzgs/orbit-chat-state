@@ -306,6 +306,7 @@ export const useHistoryStore = defineStore('history', () => {
   }
   async function deleteCards(items: HistoryCard[]) {
     if (!items.length || !confirm(`删除选中的 ${items.length} 条记录?`)) return
+    await workspace.initialize()
     const removed: string[] = []
     const changedImages: StoredImage[] = []
     for (const card of items) {
@@ -402,6 +403,7 @@ export const useHistoryStore = defineStore('history', () => {
     })
   }
   async function saveFavorite() {
+    await workspace.initialize()
     const changed: (StoredImage | GenerationTask)[] = []
     ui.favorite.imageIds.forEach((id) => {
       const image = workspace.imageMap.get(id)
@@ -463,6 +465,7 @@ export const useHistoryStore = defineStore('history', () => {
       })
   }
   async function confirmDeleteFolder() {
+    await workspace.initialize()
     const id = ui.favoriteDelete.folderId
     const changed: (StoredImage | GenerationTask | GenerationBatch)[] = []
     const deleted: string[] = []
@@ -532,6 +535,7 @@ export const useHistoryStore = defineStore('history', () => {
     await workspace.collectUnusedImages()
   }
   async function action(action: string, card: HistoryCard) {
+    await workspace.initialize()
     const batch = workspace.batches.find((item) => item.id === card.batchId)
     const task = workspace.tasks.find((item) => item.id === card.taskId)
     if (action === 'cover' && card.image && library.value === 'favorites') {

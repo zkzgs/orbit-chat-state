@@ -63,10 +63,13 @@ export async function apiFetch(
   endpoint: string,
   options: RequestInit = {},
   proxyConfig: ProxyConfig = useWorkspaceStore().state.settings,
+  onSent?: () => void,
 ) {
   const request = routeApiRequest(endpoint, options, proxyConfig)
   try {
-    return await fetch(request.endpoint, request.options)
+    const response = fetch(request.endpoint, request.options)
+    onSent?.()
+    return await response
   } catch (error) {
     if (proxyConfig.proxyEnabled && (error as Error).name !== 'AbortError')
       throw new Error(

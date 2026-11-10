@@ -212,7 +212,11 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       return
     }
     const generation = workspace.generation
-    const removeOldRetry = workspace.state.settings.deleteRetriedRecordOnSuccess
+    const removeOldRetry =
+      workspace.state.settings.deleteRetriedRecordOnSuccess &&
+      workspace.tasks.some(
+        (task) => task.id === override?.retryOf && task.status === 'error',
+      )
     const id = createId()
     const startedAt = Date.now()
     const originals = [...(override?.references || references.value)]
@@ -246,6 +250,11 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     controllers.set(id, controller)
     const timeout = setTimeout(() => controller.abort(), 300000)
     const persist = () => workspace.persistRecords([task])
+    let retryCleanup: Promise<void> | undefined
+    const onRequestSent = () => {
+      if (removeOldRetry && !retryCleanup)
+        retryCleanup = removeRetriedRecord(override!.retryOf!, task, generation)
+    }
     try {
       for (const reference of originals) {
         if (generation !== workspace.generation) return
@@ -267,6 +276,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
         task.detail = '生成演示图片'
         task.requestLog = { mode: 'demo', config, createdAt: Date.now() }
         await persist()
+        onRequestSent()
         await new Promise((resolve) => setTimeout(resolve, 1100))
         images = Array.from({ length: config.count }, (_, index) => ({
           src: createDemoImage(text, index, config.width, config.height),
@@ -315,6 +325,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
                 prepared,
                 controller.signal,
                 (phase) => updateRequestPhase(task, index, phase),
+                onRequestSent,
               )
               task.responses.push({
                 requestIndex: index + 1,
@@ -355,6 +366,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
             : new Error('接口没有返回图片地址')
         }
       }
+      await retryCleanup
       if (generation !== workspace.generation) return
       task.detail = '保存结果中'
       const batchId = createId()
@@ -405,26 +417,14 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       task.status = failed ? 'partial' : 'success'
       task.finishedAt = finishedAt
       task.detail = `${failed ? '部分完成' : '已完成'} · ${formatDuration(finishedAt - startedAt)}`
-      const persisted = await workspace.persistRecords(
-        override?.retryOf && removeOldRetry
-          ? [...workspace.batchImages(batch), batch, task]
-          : [batch, task],
-      )
-      if (
-        !failed &&
-        override?.retryOf &&
-        removeOldRetry &&
-        persisted &&
-        generation === workspace.generation
-      ) {
-        await removeRetriedRecord(override.retryOf, generation)
-      }
+      await workspace.persistRecords([batch, task])
       if (failed)
         ui.notify(
           `并发请求完成 ${requestTotal - failed}/${requestTotal} 个`,
           'warning',
         )
     } catch (error) {
+      await retryCleanup
       if (generation !== workspace.generation) return
       task.status = 'error'
       task.finishedAt = Date.now()
@@ -435,6 +435,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     } finally {
       clearTimeout(timeout)
       controllers.delete(id)
+      await retryCleanup
     }
   }
   function reuseTask(task: GenerationTask) {
@@ -445,11 +446,15 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       '已恢复原任务配置',
     )
   }
-  async function removeRetriedRecord(taskId: string, generation: number) {
+  async function removeRetriedRecord(
+    taskId: string,
+    newTask: GenerationTask,
+    generation: number,
+  ) {
     const oldTask = workspace.tasks.find((task) => task.id === taskId)
     if (
       !oldTask ||
-      oldTask.status === 'running' ||
+      oldTask.status !== 'error' ||
       generation !== workspace.generation
     )
       return
@@ -464,9 +469,14 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
           .some((image) => image.favoriteFolderIds?.length),
       )
     ) {
-      ui.notify('重试成功，原记录含收藏内容，已保留')
+      ui.notify('原记录含收藏内容，已保留')
       return
     }
+    if (!(await workspace.persistRecords([newTask]))) {
+      ui.notify('新请求记录未能保存到本地，旧记录已保留', 'warning')
+      return
+    }
+    if (generation !== workspace.generation) return
     const removed = new Set([taskId, ...batches.map((batch) => batch.id)])
     if (!(await workspace.persistRecords([], [...removed]))) {
       ui.notify('旧记录无法从本地存储移除，已保留', 'warning')

@@ -21,22 +21,40 @@ function openDatabase(): Promise<IDBDatabase> {
     request.onerror = () => reject(request.error)
   })
 }
-export async function readImages(): Promise<ImageRecord[]> {
+export async function readImages(
+  onRecords: (records: ImageRecord[]) => void,
+): Promise<void> {
   const db = await openDatabase()
   try {
     return await new Promise((resolve, reject) => {
-      const records: ImageRecord[] = []
+      let pending: ImageRecord[] = []
+      let lastPublish = performance.now()
+      let firstPublish = true
+      function publish() {
+        if (!pending.length) return
+        onRecords(pending)
+        pending = []
+        lastPublish = performance.now()
+        firstPublish = false
+      }
       const request = db
         .transaction(IMAGE_STORE_NAME)
         .objectStore(IMAGE_STORE_NAME)
-        .openCursor()
+        .openCursor(null, 'prev')
       request.onsuccess = () => {
         const cursor = request.result
         if (!cursor) {
-          resolve(records)
+          publish()
+          resolve()
           return
         }
-        records.push(cursor.value as ImageRecord)
+        pending.push(cursor.value as ImageRecord)
+        // 新记录优先展示, 不等全部原图读取完才生成列表。
+        if (
+          pending.length >= (firstPublish ? 4 : 16) ||
+          performance.now() - lastPublish >= 32
+        )
+          publish()
         cursor.continue()
       }
       request.onerror = () => reject(request.error)

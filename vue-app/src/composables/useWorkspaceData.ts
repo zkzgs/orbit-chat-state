@@ -79,6 +79,7 @@ export function useWorkspaceData() {
     const includeConfig = scope === 'all' || scope === 'config'
     ui.exporting = true
     try {
+      await workspace.initialize()
       const conversations = includeChat ? workspace.state.conversations : []
       const imageHistory = includeImages ? workspace.batches : []
       const imageTasks = includeImages ? workspace.tasks : []
@@ -143,6 +144,7 @@ export function useWorkspaceData() {
     if (importProgress.active) return
     setImportProgress('正在读取并解析 JSON', 0)
     try {
+      await workspace.initialize()
       await new Promise((resolve) => requestAnimationFrame(resolve))
       const incoming = (await readWorkspaceJson(file, (progress) =>
         setImportProgress('正在读取并解析 JSON', Math.round(progress * 60)),
@@ -386,6 +388,7 @@ export function useWorkspaceData() {
               ? '会删除生图记录及其未被对话引用的图片。'
               : '会删除对话、生图记录、图片缓存、接口配置和模板。'
     if (!window.confirm(`清除${scopeLabels[scope]}?\n\n${detail}`)) return
+    await workspace.initialize()
     if (['chat', 'workspace', 'all'].includes(scope)) {
       chat.stop()
       chat.resetDraft()

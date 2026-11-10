@@ -29,7 +29,7 @@ async function seed(
     async ({ mode, settings }) => {
       const config = {
         model: 'test-image',
-        requestType: 'generation',
+        requestType: mode === 'failed-reference' ? 'edit' : 'generation',
         count: mode === 'partial' ? 2 : 1,
         size: 'auto',
         quality: 'auto',
@@ -50,19 +50,18 @@ async function seed(
             demoMode: false,
             imageApiKey: 'test-only',
             imageBaseUrl: 'https://habits.test/v1',
-            imagePromptTemplates:
-              mode === 'shared'
-                ? [
-                    {
-                      id: 'template',
-                      name: '共享参考图',
-                      prompt: '参考',
-                      referenceImageIds: ['old-image'],
-                      createdAt: 1,
-                      updatedAt: 1,
-                    },
-                  ]
-                : [],
+            imagePromptTemplates: ['shared', 'failed-shared'].includes(mode)
+              ? [
+                  {
+                    id: 'template',
+                    name: '共享参考图',
+                    prompt: '参考',
+                    referenceImageIds: ['old-image'],
+                    createdAt: 1,
+                    updatedAt: 1,
+                  },
+                ]
+              : [],
             ...settings,
           },
           conversations: Array.from({ length: 14 }, (_, i) => ({
@@ -70,7 +69,7 @@ async function seed(
             title: `对话 ${i + 1}`,
             createdAt: i + 1,
             messages:
-              i === 0 && mode === 'shared'
+              i === 0 && ['shared', 'failed-shared'].includes(mode)
                 ? [
                     {
                       id: 'message',
@@ -112,11 +111,19 @@ async function seed(
           'failed-again',
           'task-favorite',
           'partial',
+          'off',
+          'failed-shared',
+          'failed-reference',
+          'network',
         ].includes(mode)
         store.put({
           id: 'old-task',
           type: 'generation-task',
-          status: failed ? 'error' : 'success',
+          status: failed
+            ? 'error'
+            : mode === 'partial-existing'
+              ? 'partial'
+              : 'success',
           batchId: failed ? '' : 'old-batch',
           title: '原始提示词',
           prompt: '原始提示词',
@@ -124,11 +131,12 @@ async function seed(
           config,
           startedAt: 1,
           finishedAt: 2,
-          referenceImageIds: [],
+          referenceImageIds:
+            mode === 'failed-reference' ? ['old-reference'] : [],
           responses: [],
           favoriteFolderIds: mode === 'task-favorite' ? ['saved'] : [],
         })
-        if (!failed) {
+        if (!failed || mode === 'failed-shared') {
           const imageIds =
             mode === 'hidden' ? ['old-image', 'old-visible'] : ['old-image']
           for (const id of imageIds)
@@ -173,6 +181,25 @@ async function seed(
       canvas.width = canvas.height = 8
       canvas.getContext('2d')!.fillStyle = 'teal'
       canvas.getContext('2d')!.fillRect(0, 0, 8, 8)
+      if (mode === 'failed-reference') {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open('orbit-chat-images-v1', 1)
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        })
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction('generations', 'readwrite')
+          tx.objectStore('generations').put({
+            id: 'old-reference',
+            type: 'image',
+            src: canvas.toDataURL('image/png'),
+            createdAt: 1,
+          })
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => reject(tx.error)
+        })
+        db.close()
+      }
       return canvas.toDataURL('image/png').split(',')[1]
     },
     { mode, settings },
@@ -406,11 +433,15 @@ for (const [version, url] of [
     'failed',
     'failed-again',
     'partial',
+    'partial-existing',
     'off',
     'favorite',
     'hidden',
     'task-favorite',
     'shared',
+    'failed-shared',
+    'failed-reference',
+    'network',
   ])
     test(`${version} 重试记录清理与收藏共享资源保护: ${mode}`, async ({
       page,
@@ -419,18 +450,32 @@ for (const [version, url] of [
         alwaysShowRetryButton: true,
         deleteRetriedRecordOnSuccess: mode !== 'off',
       })
+      let releaseResponse!: () => void
+      const responseGate = new Promise<void>((resolve) => {
+        releaseResponse = resolve
+      })
       let calls = 0,
         sentPrompt = '',
         sentReference: unknown
-      await page.route('https://habits.test/v1/**', (route) => {
+      await page.route('https://habits.test/v1/**', async (route) => {
         if (route.request().url().endsWith('/models'))
           return route.fulfill({ json: { data: [{ id: 'test-image' }] } })
-        const body = route.request().postDataJSON()
-        sentPrompt = body.prompt
-        sentReference = body.image
+        if (mode === 'failed-reference') {
+          const body = route.request().postData() || ''
+          expect(body).toContain('name="image"')
+          expect(body).toContain('原始提示词')
+          sentPrompt = '原始提示词'
+        } else {
+          const body = route.request().postDataJSON()
+          sentPrompt = body.prompt
+          sentReference = body.image
+        }
         calls++
+        const requestIndex = calls
+        await responseGate
+        if (mode === 'network') return route.abort('failed')
         return route.fulfill(
-          mode === 'failed-again' || (mode === 'partial' && calls === 2)
+          mode === 'failed-again' || (mode === 'partial' && requestIndex === 2)
             ? { status: 400, json: { error: { message: '重试测试失败' } } }
             : { json: { data: [{ b64_json: png }] } },
         )
@@ -448,12 +493,40 @@ for (const [version, url] of [
         )
         .first()
         .click()
-      const status =
-        mode === 'failed-again'
-          ? 'error'
-          : mode === 'partial'
-            ? 'partial'
-            : 'success'
+      const keep = [
+        'success',
+        'partial-existing',
+        'off',
+        'favorite',
+        'hidden',
+        'task-favorite',
+        'shared',
+      ].includes(mode)
+      try {
+        await expect.poll(() => calls).toBeGreaterThan(0)
+        await expect
+          .poll(async () =>
+            (await records(page)).some((item) => item.id === 'old-task'),
+          )
+          .toBe(keep)
+        await expect(
+          page.locator('#imageHistory > [data-task-id="old-task"]'),
+        ).toHaveCount(keep ? 1 : 0)
+        await expect(
+          page.locator('#imageHistory .generation-task-card.running'),
+        ).toHaveCount(1)
+        if (mode === 'failed-reference')
+          expect(
+            (await records(page)).some((item) => item.id === 'old-reference'),
+          ).toBe(true)
+      } finally {
+        releaseResponse()
+      }
+      const status = ['failed-again', 'network'].includes(mode)
+        ? 'error'
+        : mode === 'partial'
+          ? 'partial'
+          : 'success'
       await expect
         .poll(
           async () =>
@@ -465,23 +538,19 @@ for (const [version, url] of [
             ).length,
         )
         .toBe(1)
-      const keep = [
-        'failed-again',
-        'partial',
-        'off',
-        'favorite',
-        'hidden',
-        'task-favorite',
-      ].includes(mode)
       await expect
         .poll(async () =>
           (await records(page)).some((r) => r.id === 'old-task'),
         )
         .toBe(keep)
       const items = await records(page)
-      if (['success', 'shared'].includes(mode))
+      if (!keep) {
         expect(items.some((r) => r.id === 'old-batch')).toBe(false)
-      if (mode === 'shared')
+        await expect(
+          page.locator('#imageHistory [data-task-id="old-task"]'),
+        ).toHaveCount(0)
+      }
+      if (['shared', 'failed-shared'].includes(mode))
         expect(items.some((r) => r.id === 'old-image')).toBe(true)
       if (['favorite', 'hidden'].includes(mode))
         expect(
@@ -497,7 +566,118 @@ for (const [version, url] of [
         '不应被重试覆盖的未提交草稿',
       )
       await expect(page.locator('#imageReferencePreview img')).toHaveCount(1)
+      if (mode === 'failed-again') {
+        const previousTask = items.find(
+          (item) => item.id !== 'old-task' && item.type === 'generation-task',
+        )
+        await page
+          .locator(
+            `#imageHistory [data-task-id="${previousTask.id}"] [data-generation-action="retry-task"]`,
+          )
+          .first()
+          .click()
+        await expect
+          .poll(
+            async () =>
+              (await records(page)).filter(
+                (item) =>
+                  item.type === 'generation-task' && item.status === 'error',
+              ).length,
+          )
+          .toBe(1)
+        await expect
+          .poll(async () =>
+            (await records(page)).some((item) => item.id === previousTask.id),
+          )
+          .toBe(false)
+        await expect(
+          page.locator('#imageHistory > [data-task-id]'),
+        ).toHaveCount(1)
+      }
       await page.reload()
       expect((await records(page)).some((r) => r.id === 'old-task')).toBe(keep)
     })
+
+  test(`${version} 重试校验未通过时保留旧失败记录`, async ({ page }) => {
+    await seed(page, url, 'failed', { deleteRetriedRecordOnSuccess: true })
+    await page.evaluate(async () => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('orbit-chat-images-v1', 1)
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('generations', 'readwrite')
+        const store = tx.objectStore('generations')
+        const request = store.get('old-task')
+        request.onsuccess = () => {
+          const task = request.result
+          task.config.background = 'transparent'
+          task.config.format = 'jpeg'
+          store.put(task)
+        }
+        tx.oncomplete = () => resolve()
+        tx.onerror = () => reject(tx.error)
+      })
+      db.close()
+    })
+    await page.reload()
+    let requests = 0
+    page.on('request', (request) => {
+      if (request.url().includes('/images/')) requests++
+    })
+    await page
+      .locator('#imageHistory [data-generation-action="retry-task"]')
+      .first()
+      .click()
+    await expect(page.locator('#toast')).toContainText(
+      '透明背景只支持 PNG 或 WebP 格式',
+    )
+    await expect(
+      page.locator('#imageHistory > [data-task-id="old-task"]'),
+    ).toHaveCount(1)
+    expect(
+      (await records(page)).filter((item) => item.type === 'generation-task'),
+    ).toHaveLength(1)
+    expect(requests).toBe(0)
+  })
+
+  test(`${version} 新请求记录无法写入缓存时保留旧失败记录`, async ({
+    page,
+  }) => {
+    const png = await seed(page, url, 'failed', {
+      alwaysShowRetryButton: true,
+      deleteRetriedRecordOnSuccess: true,
+    })
+    await page.evaluate(() => {
+      const store = IDBObjectStore.prototype as any
+      const put = store.put
+      store.put = function (value: any, ...args: any[]) {
+        if (value?.type === 'generation-task' && value.id !== 'old-task')
+          throw new DOMException('storage full', 'QuotaExceededError')
+        return put.call(this, value, ...args)
+      }
+    })
+    await page.route('https://habits.test/v1/**', (route) => {
+      if (route.request().url().endsWith('/models'))
+        return route.fulfill({ json: { data: [{ id: 'test-image' }] } })
+      return route.fulfill({
+        json: { data: [{ b64_json: png }] },
+      })
+    })
+    await page
+      .locator(
+        '#imageHistory [data-task-id="old-task"] [data-generation-action="retry-task"]',
+      )
+      .first()
+      .click()
+    await expect(page.locator('#toast')).toContainText(
+      version === 'Vue'
+        ? '新请求记录未能保存到本地，旧记录已保留'
+        : '本地存储未完成，已保留旧记录',
+    )
+    expect(
+      (await records(page)).some((record) => record.id === 'old-task'),
+    ).toBe(true)
+  })
 }

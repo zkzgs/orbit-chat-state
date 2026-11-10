@@ -21,6 +21,7 @@ function sendImageEditRequest(
   options: RequestInit,
   settings: Settings,
   onUploaded: () => void,
+  onSent?: () => void,
 ) {
   return new Promise<Response>((resolve, reject) => {
     let routed: ReturnType<typeof routeApiRequest>
@@ -95,6 +96,7 @@ function sendImageEditRequest(
       return
     }
     request.send(routed.options.body as XMLHttpRequestBodyInit)
+    onSent?.()
   })
 }
 
@@ -132,6 +134,7 @@ export async function requestImages(
   references: PreparedReference[],
   signal: AbortSignal,
   onPhase?: (phase: ImageRequestPhase) => void,
+  onSent?: () => void,
 ): Promise<GeneratedResponse> {
   const isEdit = config.requestType
     ? config.requestType === 'edit'
@@ -187,12 +190,16 @@ export async function requestImages(
   let response: Response
   if (references.length) {
     onPhase?.('uploading')
-    response = await sendImageEditRequest(endpoint, options, settings, () =>
-      onPhase?.('waiting'),
+    response = await sendImageEditRequest(
+      endpoint,
+      options,
+      settings,
+      () => onPhase?.('waiting'),
+      onSent,
     )
   } else {
     onPhase?.('waiting')
-    response = await apiFetch(endpoint, options, settings)
+    response = await apiFetch(endpoint, options, settings, onSent)
   }
   onPhase?.('parsing')
   const raw = await response.text()

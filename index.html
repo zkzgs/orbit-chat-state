@@ -1143,7 +1143,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
         </div>
         <div class="settings-section compact-section" id="settings-panel-habits" role="tabpanel" aria-labelledby="settings-tab-habits" data-settings-panel="habits" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">06</span><div><strong>习惯配置</strong><small>仅影响生图任务，不改变对话消息的重试方式</small></div></div>
-          <label class="toggle-row"><span><strong>重试请求后删除旧记录</strong><small>仅重试完全成功后删除；失败、部分成功或原记录含收藏内容时保留。</small></span><input type="checkbox" id="deleteRetriedRecordOnSuccess"><span class="toggle-ui"></span></label>
+          <label class="toggle-row"><span><strong>重试请求后删除旧记录 (仅失败)</strong><small>新请求发出后删除失败旧记录, 不等待结果; 成功、部分成功或含收藏内容的记录保留。</small></span><input type="checkbox" id="deleteRetriedRecordOnSuccess"><span class="toggle-ui"></span></label>
           <label class="toggle-row"><span><strong>生图后清空对话框</strong><small>提交生图后清空提示词，保留参考图；重试不影响正在编辑的输入。</small></span><input type="checkbox" id="clearInputAfterSubmit"><span class="toggle-ui"></span></label>
           <label class="toggle-row"><span><strong>成功请求也显示重试按钮</strong><small>在已完成的生图记录上也提供重试操作。</small></span><input type="checkbox" id="alwaysShowRetryButton"><span class="toggle-ui"></span></label>
         </div>
@@ -1406,6 +1406,9 @@ let currentImage = null;
 let imageTasks = [];
 let imageTaskTimer = null;
 let imageHistoryRenderTimer = 0;
+let imageHistoryPreserveCards = false;
+const historyCardMarkup = new WeakMap();
+let imageHistoryLoading = true;
 let imageHistoryRenderVersion = 0;
 let historyImageObserver = null;
 let messageImageObserver = null;
@@ -1702,6 +1705,7 @@ function findStoredImageBySource(src) {
 }
 
 async function saveChatImage(src, name) {
+  await imageHistoryReady;
   const existing = findStoredImageBySource(src);
   if (existing) return existing.id;
   const record = { id: createId(), src, name, type: 'image', createdAt: Date.now() };
@@ -1745,29 +1749,46 @@ async function deleteStoredImageRecord(id) {
 }
 
 async function loadImageHistory() {
+  let db;
   try {
-    const db = await openImageDb();
-    const items = await new Promise((resolve, reject) => {
-      const records = [];
-      // 每条记录分开读取, 避免一次反序列化全部原图阻塞主线程。
-      const request = db.transaction(IMAGE_STORE_NAME, 'readonly').objectStore(IMAGE_STORE_NAME).openCursor();
+    db = await openImageDb();
+    await new Promise((resolve, reject) => {
+      let pending = [];
+      let lastPublish = performance.now();
+      let firstPublish = true;
+      const publish = () => {
+        if (!pending.length) return;
+        imageHistory.push(...hydrateGenerationBatches(pending));
+        imageHistory.sort((left, right) => right.createdAt - left.createdAt);
+        imageTasks.push(...hydrateImageTasks(pending));
+        imageTasks.sort((left, right) => right.startedAt - left.startedAt);
+        pending = [];
+        lastPublish = performance.now();
+        firstPublish = false;
+        renderImageHistory(true);
+      };
+      // ID 按创建时间生成, 倒序分批展示最近记录, 不等全部原图读完。
+      const request = db.transaction(IMAGE_STORE_NAME, 'readonly').objectStore(IMAGE_STORE_NAME).openCursor(null, 'prev');
       request.onsuccess = () => {
         const cursor = request.result;
-        if (!cursor) { resolve(records); return; }
-        records.push(cursor.value);
+        if (!cursor) { publish(); resolve(); return; }
+        const record = cursor.value;
+        storedImages.set(record.id, record);
+        pending.push(record);
+        if (pending.length >= (firstPublish ? 4 : 16) || performance.now() - lastPublish >= 32) publish();
         cursor.continue();
       };
       request.onerror = () => reject(request.error);
     });
-    db.close();
-    storedImages = new Map(items.map((item) => [item.id, item]));
+    imageHistoryLoading = false;
+    const items = [...storedImages.values()];
     imageHistory = hydrateGenerationBatches(items);
     imageTasks = hydrateImageTasks(items);
-    renderImageHistory();
+    renderImageHistory(true);
     renderMessages();
   } catch (error) {
     imageHistory = [];
-  }
+  } finally { imageHistoryLoading = false; db?.close(); }
   await restoreActiveImagePromptTemplate();
 }
 
@@ -1779,6 +1800,7 @@ async function removeImageFavoriteMemberships(images) {
 }
 
 async function deleteGenerationRecord(batchId = '', taskId = '') {
+  await imageHistoryReady;
   const batch = imageHistory.find((item) => item.id === batchId || item.taskId === taskId);
   const task = imageTasks.find((item) => item.id === taskId || item.batchId === batchId);
   if (!batch && !task) return;
@@ -1840,16 +1862,17 @@ async function clearStoredImages() {
   imageTaskPersistTimers.clear();
 }
 
-function renderImageHistory() {
+function renderImageHistory(preserveCards = false) {
+  imageHistoryPreserveCards = preserveCards;
   imageHistoryRenderVersion += 1;
   if (imageHistoryRenderTimer) return;
   imageHistoryRenderTimer = window.setTimeout(() => {
     imageHistoryRenderTimer = 0;
-    renderImageHistoryNow();
+    renderImageHistoryNow(imageHistoryPreserveCards);
   }, 50);
 }
 
-async function renderImageHistoryNow() {
+async function renderImageHistoryNow(preserveCards = false) {
   const folderImages = getFavoriteFolderImageIndex();
   favoriteCoverImageIndex = folderImages;
   cleanFavoriteFolderCovers(folderImages);
@@ -1875,14 +1898,33 @@ async function renderImageHistoryNow() {
   const items = isFolderIndex ? favoriteFolders : isFavorites ? getFavoriteFolderEntries(activeFavoriteFolderId) : getGenerationTimelineEntries();
   const renderCard = isFolderIndex ? (folder) => renderFavoriteFolderCard(folder, folderImages.get(folder.id) || []) : renderGenerationRecord;
   const emptyHero = isFavorites ? '' : '<div class="image-copy"><div class="welcome-kicker"><span class="sparkle">✦</span> Image studio</div><h2>把描述, 变成<br><em>一张画面</em></h2></div>';
-  list.innerHTML = `<div class="history-empty ${isFavorites ? '' : 'is-studio-empty'}" hidden>${emptyHero}<p>${isFolderIndex ? '没有匹配的收藏夹' : isFavorites ? '这个收藏夹里还没有内容' : '没有匹配的生成记录'}</p></div>`;
+  if (!preserveCards || !list.querySelector('.history-empty')) list.innerHTML = `<div class="history-empty ${isFavorites ? '' : 'is-studio-empty'}" hidden>${emptyHero}<p>${isFolderIndex ? '没有匹配的收藏夹' : isFavorites ? '这个收藏夹里还没有内容' : '没有匹配的生成记录'}</p></div>`;
+  const cardKey = (item) => isFolderIndex ? `folder:${item.id}` : item.batch && item.image && !item.favoriteTaskOnly ? `${item.batch.id}:${item.favoriteSingle || imageHistoryView === 'single' ? item.index : 'all'}` : `task:${item.task?.id}`;
+  const existing = new Map([...list.querySelectorAll('[data-render-key]')].map((card) => [card.dataset.renderKey, card]));
+  const keys = new Set(items.map(cardKey));
+  existing.forEach((card, key) => { if (!keys.has(key)) card.remove(); });
+  let previousCard = null;
   // 分批插入卡片, 在批次之间给布局、绘制和用户操作留出时间。
   for (let index = 0; index < items.length; index += 4) {
     if (renderVersion !== imageHistoryRenderVersion) return;
-    const template = document.createElement('template');
-    template.innerHTML = items.slice(index, index + 4).map(renderCard).join('');
-    bindImageHistoryActions(template.content);
-    list.insertBefore(template.content, list.lastElementChild);
+    for (const item of items.slice(index, index + 4)) {
+      const key = cardKey(item);
+      let card = existing.get(key);
+      const markup = renderCard(item);
+      if (!card || historyCardMarkup.get(card) !== markup) {
+        const template = document.createElement('template');
+        template.innerHTML = markup;
+        bindImageHistoryActions(template.content);
+        const nextCard = template.content.firstElementChild;
+        if (card) card.replaceWith(nextCard);
+        card = nextCard;
+        card.dataset.renderKey = key;
+        historyCardMarkup.set(card, markup);
+      }
+      const next = previousCard ? previousCard.nextElementSibling : list.firstElementChild;
+      if (card !== next) list.insertBefore(card, next);
+      previousCard = card;
+    }
     filterRenderedHistory();
     if (index === 0) hydrateDeferredImages(list, 'history');
     await new Promise((resolve) => window.setTimeout(resolve, 16));
@@ -2022,6 +2064,7 @@ function getFavoriteFolderImageIndex() {
 }
 
 function cleanFavoriteFolderCovers(folderImages) {
+  if (imageHistoryLoading) return;
   let changed = false;
   favoriteFolders.forEach((folder) => {
     if (typeof folder.coverImageId === 'string' && !(folderImages.get(folder.id) || []).some((image) => image.id === folder.coverImageId)) {
@@ -2130,6 +2173,7 @@ function closeFavoriteFolderDialog() {
 }
 
 async function saveFavoriteFolderSelection() {
+  await imageHistoryReady;
   const writes = [];
   favoriteDialogImageIds.forEach((id) => {
     const image = storedImages.get(id);
@@ -2201,6 +2245,7 @@ function handleFavoriteFolderAction(action, folderId, inDialog = false) {
 }
 
 async function confirmFavoriteFolderDelete() {
+  await imageHistoryReady;
   const folderId = pendingFavoriteFolderDeleteId;
   const folder = favoriteFolders.find((entry) => entry.id === folderId);
   if (!folder) return closeFavoriteDeleteDialog();
@@ -2277,6 +2322,7 @@ function bindGenerationTaskActions(root) {
 }
 
 async function retryImageTask(taskId) {
+  await imageHistoryReady;
   const task = imageTasks.find((item) => item.id === taskId);
   if (!task || task.status === 'running') return;
   await generateImage({ retryTask: task });
@@ -2377,6 +2423,7 @@ function closeImageTaskAudit() {
 }
 
 async function restoreImageTask(taskId) {
+  await imageHistoryReady;
   const task = imageTasks.find((entry) => entry.id === taskId);
   if (!task) return;
   setImagePromptText(task.prompt || '');
@@ -2410,6 +2457,7 @@ async function downloadSelectedHistory() {
 }
 
 async function deleteSelectedHistory() {
+  await imageHistoryReady;
   const entries = getSelectedHistoryEntries();
   if (!entries.length) return;
   const grouped = imageHistoryLibrary !== 'favorites' && imageHistoryView === 'group';
@@ -2510,6 +2558,7 @@ function getReferencedImageIds(excludedBatchIds = new Set()) {
 }
 
 async function removeUnreferencedImages() {
+  await imageHistoryReady;
   const referencedImageIds = getReferencedImageIds();
   const removableIds = [...storedImages.values()].filter((record) => record.type === 'image' && !referencedImageIds.has(record.id)).map((record) => record.id);
   if (!removableIds.length) return;
@@ -3479,6 +3528,7 @@ function saveImageSize() {
 }
 
 async function applyImageConfig(item) {
+  await imageHistoryReady;
   setImagePromptText(item.prompt || '');
   await setImageReferencesFromSources(getBatchReferenceSources(item.batch || item));
   setImageConfig(item.config);
@@ -4097,10 +4147,12 @@ function routeApiRequest(endpoint, options = {}, proxyConfig = state.settings) {
   return { endpoint: `${proxyUrl}/proxy`, options: { ...options, headers } };
 }
 
-async function apiFetch(endpoint, options = {}, proxyConfig = state.settings) {
+async function apiFetch(endpoint, options = {}, proxyConfig = state.settings, onSent) {
   const request = routeApiRequest(endpoint, options, proxyConfig);
   try {
-    return await fetch(request.endpoint, request.options);
+    const response = fetch(request.endpoint, request.options);
+    onSent?.();
+    return await response;
   } catch (error) {
     if (proxyConfig.proxyEnabled && error.name !== 'AbortError') throw new Error(`无法连接本地代理 ${normalizeProxyUrl(proxyConfig.proxyUrl)}, 请先启动代理服务`);
     throw error;
@@ -4588,7 +4640,7 @@ function abbreviateResponseValue(value) {
   return `${text.slice(0, 42)}...${text.slice(-42)}（共 ${text.length} 个字符）`;
 }
 
-function sendImageEditRequest(endpoint, fetchOptions, onUploaded) {
+function sendImageEditRequest(endpoint, fetchOptions, onUploaded, onSent) {
   return new Promise((resolve, reject) => {
     let routed;
     try { routed = routeApiRequest(endpoint, fetchOptions); } catch (error) { reject(error); return; }
@@ -4609,12 +4661,13 @@ function sendImageEditRequest(endpoint, fetchOptions, onUploaded) {
       resolve(new Response(request.responseText, { status: request.status, statusText: request.statusText, headers }));
     };
     request.send(routed.options.body);
+    onSent?.();
   });
 }
 
-async function fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, onPhase) {
+async function fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, onPhase, onSent) {
   onPhase?.(hasReference ? 'uploading' : 'waiting');
-  const response = hasReference ? await sendImageEditRequest(endpoint, fetchOptions, () => onPhase?.('waiting')) : await apiFetch(endpoint, fetchOptions);
+  const response = hasReference ? await sendImageEditRequest(endpoint, fetchOptions, () => onPhase?.('waiting'), onSent) : await apiFetch(endpoint, fetchOptions, state.settings, onSent);
   onPhase?.('parsing');
   await new Promise((resolve) => window.setTimeout(resolve, 0));
   return parseImageResponse(response, endpoint, isEdit);
@@ -4623,15 +4676,15 @@ async function fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, o
 async function removeRetriedGenerationRecord(oldTaskId, newTaskId, generation) {
   const oldTask = imageTasks.find((task) => task.id === oldTaskId);
   const newTask = imageTasks.find((task) => task.id === newTaskId);
-  if (!oldTask || !newTask || oldTask.status === 'running' || generation !== localDataGeneration) return;
+  if (!oldTask || !newTask || oldTask.status !== 'error' || generation !== localDataGeneration) return;
   const batches = imageHistory.filter((batch) => batch.taskId === oldTaskId || batch.id === oldTask.batchId);
   if (oldTask.favoriteFolderIds?.length || batches.some((batch) => getBatchImages(batch).some((image) => image.favoriteFolderIds?.length))) {
-    showToast('重试成功，原记录含收藏内容，已保留');
+    showToast('原记录含收藏内容，已保留');
     return;
   }
   const removed = new Set([oldTaskId, ...batches.map((batch) => batch.id)]);
   try {
-    // Do not delete the source until the new images, batch and final task are durable.
+    // 先保存新请求和参考图引用, 再清理旧失败记录。
     await saveImageHistory(createStoredImageTask(newTask));
     if (generation !== localDataGeneration) return;
     const db = await openImageDb();
@@ -4652,14 +4705,15 @@ async function removeRetriedGenerationRecord(oldTaskId, newTaskId, generation) {
   removed.forEach((id) => storedImages.delete(id));
   await removeUnreferencedImages(); // Keeps resources still used in chat/templates/drafts/favorites.
   selectedHistoryKeys.clear();
-  renderImageHistory();
+  updateImageHistoryAfterDelete(new Set(batches.map((batch) => batch.id)), new Set([oldTaskId]));
 }
 
 async function generateImage(options = {}) {
+  await imageHistoryReady;
   const retryTask = options.retryTask;
   const prompt = (retryTask?.prompt ?? $('#imagePrompt').value).trim();
   const references = retryTask ? (retryTask.referenceImageIds || []).map((id) => storedImages.get(id)).filter((image) => image?.src).map((image) => ({ data: image.src })) : imageReferences.map((reference) => ({ data: reference.data, file: reference.file }));
-  const removeOldRetry = state.settings.deleteRetriedRecordOnSuccess;
+  const removeOldRetry = state.settings.deleteRetriedRecordOnSuccess && retryTask?.status === 'error';
   if (!prompt) {
     showErrorToast('先写下你想生成的画面');
     $('#imagePrompt').focus();
@@ -4686,6 +4740,10 @@ async function generateImage(options = {}) {
   if (!retryTask && state.settings.clearInputAfterSubmit) setImagePromptText('');
   startImageTaskTimer();
   updateImageTask(taskId, {});
+  let retryCleanup;
+  const onRequestSent = () => {
+    if (removeOldRetry && !retryCleanup) retryCleanup = removeRetriedGenerationRecord(retryTask.id, taskId, generation);
+  };
   try {
     for (let index = 0; index < references.length; index += 1) {
       updateImageTask(taskId, { detail: `保存原始参考图 ${index + 1}/${references.length}` });
@@ -4696,10 +4754,12 @@ async function generateImage(options = {}) {
     updateImageTask(taskId, { referenceImageIds: [...referenceImageIds] });
     if (state.settings.demoMode || !state.settings.imageApiKey || !state.settings.imageBaseUrl) {
       updateImageTask(taskId, { detail: '生成演示图片', requestLog: { mode: 'demo', config: { ...config }, createdAt: Date.now() } });
+      onRequestSent();
       await new Promise((resolve) => setTimeout(resolve, 1100));
+      await retryCleanup;
       if (generation !== localDataGeneration) return;
       updateImageRequestPhase(taskId, 0, 'saving');
-      await showDemoImage(prompt, config, references.map((reference) => reference.data), taskId, Boolean(retryTask && removeOldRetry), generation);
+      await showDemoImage(prompt, config, references.map((reference) => reference.data), taskId, generation);
     } else {
       const hasReference = references.length > 0;
       const isEdit = config.requestType === 'edit';
@@ -4741,7 +4801,7 @@ async function generateImage(options = {}) {
       if (countMode === 'parallel') {
         const results = await Promise.allSettled(Array.from({ length: config.count }, (_, requestIndex) => (async () => {
           try {
-            const result = await fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, (phase) => updateImageRequestPhase(taskId, requestIndex, phase));
+            const result = await fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, (phase) => updateImageRequestPhase(taskId, requestIndex, phase), onRequestSent);
             result.meta.requestIndex = requestIndex + 1;
             result.meta.requestLog = requestLog;
             recordImageTaskResponse(taskId, requestIndex, result.meta.upstreamResponse);
@@ -4753,6 +4813,7 @@ async function generateImage(options = {}) {
             throw error;
           }
         })()));
+        await retryCleanup;
         const successful = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
         const imageDataList = successful.flatMap((result) => result.images.map((image) => ({ ...image, responseMeta: { ...result.meta, ...(image.responseMeta || {}) } })));
         if (!imageDataList.length) {
@@ -4764,12 +4825,13 @@ async function generateImage(options = {}) {
         if (generation !== localDataGeneration) return;
         const task = imageTasks.find((entry) => entry.id === taskId);
         updateImageTask(taskId, { detail: '保存结果中' });
-        await presentGeneratedImages(imageDataList, prompt, config, referenceSources, { ...(successful[0]?.meta || {}), taskId, source: endpoint, requestType: config.requestType, parallel: true, requestedCount: config.count, failedCount: failed, requestLog, responses: task?.responses || [] }, startedAt, generation, Boolean(retryTask && removeOldRetry));
+        await presentGeneratedImages(imageDataList, prompt, config, referenceSources, { ...(successful[0]?.meta || {}), taskId, source: endpoint, requestType: config.requestType, parallel: true, requestedCount: config.count, failedCount: failed, requestLog, responses: task?.responses || [] }, startedAt, generation);
         if (failed) { taskFinalStatus = 'partial'; taskResultDetail = `部分完成 ${successful.length}/${config.count} 个 · ${formatDuration(Date.now() - startedAt)}`; showErrorToast(`并发请求完成 ${successful.length}/${config.count} 个，${failed} 个失败`); }
       } else {
         let result;
         try {
-          result = await fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, (phase) => updateImageRequestPhase(taskId, 0, phase));
+          result = await fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, (phase) => updateImageRequestPhase(taskId, 0, phase), onRequestSent);
+          await retryCleanup;
           result.meta.requestIndex = 1;
           result.meta.requestLog = requestLog;
           recordImageTaskResponse(taskId, 0, result.meta.upstreamResponse);
@@ -4782,13 +4844,13 @@ async function generateImage(options = {}) {
         if (!result.images.length) throw new Error('接口没有返回图片地址');
         if (generation !== localDataGeneration) return;
         updateImageRequestPhase(taskId, 0, 'saving');
-        await presentGeneratedImages(result.images, prompt, config, referenceSources, { ...result.meta, taskId, requestLog, responses: [result.meta.upstreamResponse] }, startedAt, generation, Boolean(retryTask && removeOldRetry));
+        await presentGeneratedImages(result.images, prompt, config, referenceSources, { ...result.meta, taskId, requestLog, responses: [result.meta.upstreamResponse] }, startedAt, generation);
       }
     }
     if (generation !== localDataGeneration) return;
     updateImageTask(taskId, { status: taskFinalStatus, requestPhases: Array(requestTotal).fill('done'), finishedAt: Date.now(), detail: taskResultDetail || `已完成 · ${formatDuration(Date.now() - startedAt)}` });
-    if (retryTask && removeOldRetry && taskFinalStatus === 'success') await removeRetriedGenerationRecord(retryTask.id, taskId, generation);
   } catch (error) {
+    await retryCleanup;
     if (generation !== localDataGeneration) return;
     const detail = error.message || '生图失败, 请检查接口设置';
     if (!error.responsesRecorded && error.upstreamResponse) recordImageTaskResponse(taskId, 0, error.upstreamResponse);
@@ -4796,6 +4858,7 @@ async function generateImage(options = {}) {
     showErrorToast(detail);
   } finally {
     stopImageTaskTimerIfIdle();
+    await retryCleanup;
   }
 }
 
@@ -4976,7 +5039,7 @@ async function detectTransparency(image) {
   return false;
 }
 
-async function presentGeneratedImages(imageDataList, prompt, config, referenceSources, responseMeta = {}, startedAt = Date.now(), generationToken = localDataGeneration, waitForPersistence = false) {
+async function presentGeneratedImages(imageDataList, prompt, config, referenceSources, responseMeta = {}, startedAt = Date.now(), generationToken = localDataGeneration) {
   if (generationToken !== localDataGeneration) return;
   const createdAt = Date.now();
   const batchId = createId();
@@ -5004,7 +5067,6 @@ async function presentGeneratedImages(imageDataList, prompt, config, referenceSo
   // 缩略图先显示, 分帧写入详情以避免手机同时解码多张大图
   const imagePersistence = persistGeneratedImages(records, generationToken);
   imagePersistence.catch(() => showErrorToast('图片已生成, 但部分图片无法写入本地历史'));
-  if (waitForPersistence) await Promise.all([batchPersistence, imagePersistence]);
   return batch;
 }
 
@@ -5814,13 +5876,13 @@ async function applyPolishResult() {
   showToast('已使用润色结果');
 }
 
-async function showDemoImage(prompt, config = getImageConfig(), referenceSources = imageReferences.map((reference) => reference.data), taskId = '', waitForPersistence = false, generationToken = localDataGeneration) {
+async function showDemoImage(prompt, config = getImageConfig(), referenceSources = imageReferences.map((reference) => reference.data), taskId = '', generationToken = localDataGeneration) {
   const images = Array.from({ length: config.count }, (_, index) => {
     const accent = ['#e6f36b', '#74d4cb', '#f4b96b', '#aeb9ff'][index % 4];
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760"><rect width="1200" height="760" fill="#152536"/><circle cx="${925 - index * 35}" cy="${160 + index * 22}" r="125" fill="${accent}" opacity=".85"/><path d="M0 590 285 360l176 125 170-203 369 308H0Z" fill="#2d5960"/><path d="M0 670 260 488l185 115 155-124 367 191H0Z" fill="#173a4a"/><rect x="45" y="55" width="510" height="72" rx="10" fill="#0d1725" opacity=".83"/><text x="78" y="101" fill="#ecf2f9" font-family="sans-serif" font-size="24">${escapeHtml(prompt.slice(0, 27))} · ${index + 1}</text><text x="78" y="711" fill="#94a8b8" font-family="sans-serif" font-size="16">Orbit Image Studio · Demo preview</text></svg>`;
     return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, responseMeta: { source: '演示模式', model: '', size: config.size, format: 'svg+xml', requestType: config.requestType || (referenceSources.length ? 'edit' : 'generation') } };
   });
-  await presentGeneratedImages(images, prompt, config, referenceSources, { taskId }, Date.now() - 1100, generationToken, waitForPersistence);
+  await presentGeneratedImages(images, prompt, config, referenceSources, { taskId }, Date.now() - 1100, generationToken);
   showToast('已生成演示预览, 配置生图接口后可获得真实图片');
 }
 
@@ -6796,6 +6858,7 @@ function closeDataScope(scope = null) {
 async function clearLocalData() {
   const scope = await chooseDataScope('clear');
   if (!scope) return;
+  await imageHistoryReady;
   const label = scope === 'all' ? '全部数据' : getExportScopeLabel(scope);
   if (!window.confirm(`清除${label}?\n\n${scope === 'config' ? '会删除接口配置、模板和模型列表。' : scope === 'workspace' ? '会删除对话和生图记录, 保留接口配置。' : scope === 'chat' ? '会删除对话及其未被生图工作区引用的图片。' : scope === 'image' ? '会删除生图记录及其未被对话引用的图片。' : '会删除对话、生图记录、图片缓存、接口配置和模板。'}`)) return;
   if (scope !== 'config') compressedRequestImageCache.clear();
@@ -6872,6 +6935,7 @@ async function exportWorkspace() {
   button.disabled = true;
   button.textContent = '导出中';
   try {
+    await imageHistoryReady;
     if (scope === 'config') {
       const imageIds = getTemplateImageIds();
       const workspace = { version: 11, scope, exportedAt: Date.now(), images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(createStoredImage), apiConfig: { settings: state.settings, connectionProfiles: state.connectionProfiles, activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
@@ -7184,6 +7248,7 @@ async function importWorkspace(file) {
   button.disabled = true;
   updateImportProgress('正在读取并解析 JSON', 0);
   try {
+    await imageHistoryReady;
     await new Promise((resolve) => requestAnimationFrame(resolve));
     const payload = await readWorkspaceJson(file, (progress) => updateImportProgress('正在读取并解析 JSON', Math.round(progress * 60)));
     updateImportProgress('已读取备份, 等待确认', 60, true);

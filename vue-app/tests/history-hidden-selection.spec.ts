@@ -753,5 +753,12 @@ for (const [version, url] of [
     )
     await page.mouse.up()
     await expect(page.locator('#imageHistory .selected')).toHaveCount(0)
+    await cards.first().hover()
+    await cards.first().locator('.history-select').check()
+    await page.locator('.history-heading').click({ position: { x: 8, y: 8 } })
+    await expect(page.locator('#imageHistory .selected')).toHaveCount(1)
+    await page.locator('#imagePrompt').click()
+    await expect(page.locator('#imageHistory .selected')).toHaveCount(0)
+    await expect(page.locator('#historySelectionBar')).toBeHidden()
   })
 }

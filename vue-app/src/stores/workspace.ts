@@ -37,6 +37,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       )?.models || [],
   })
   const ready = ref(false)
+  let initialization: Promise<void> | undefined
   const generation = ref(0)
   const activeConversation = computed(
     () =>
@@ -98,41 +99,55 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return false
     }
   }
-  async function initialize() {
-    try {
-      const records = await readImages()
-      images.value = records.filter(
-        (item): item is StoredImage => item.type === 'image',
-      )
-      batches.value = records
-        .filter(
-          (item): item is GenerationBatch => item.type === 'generation-batch',
-        )
-        .sort((a, b) => b.createdAt - a.createdAt)
-      tasks.value = records
-        .filter(
-          (item): item is GenerationTask => item.type === 'generation-task',
-        )
-        .map((task) =>
-          task.status === 'running'
-            ? {
-                ...task,
-                status: 'error' as const,
-                finishedAt: Date.now(),
-                detail: '页面刷新后无法确认上次请求结果',
-              }
-            : task,
-        )
-        .sort((a, b) => b.startedAt - a.startedAt)
-    } finally {
-      ready.value = true
-    }
+  function initialize(): Promise<void> {
+    if (initialization) return initialization
+    initialization = (async () => {
+      try {
+        await readImages((records) => {
+          const newImages = records.filter(
+            (item): item is StoredImage => item.type === 'image',
+          )
+          const newBatches = records.filter(
+            (item): item is GenerationBatch => item.type === 'generation-batch',
+          )
+          const newTasks = records
+            .filter(
+              (item): item is GenerationTask => item.type === 'generation-task',
+            )
+            .map((task) =>
+              task.status === 'running'
+                ? {
+                    ...task,
+                    status: 'error' as const,
+                    finishedAt: Date.now(),
+                    detail: '页面刷新后无法确认上次请求结果',
+                  }
+                : task,
+            )
+          if (newImages.length) images.value = [...images.value, ...newImages]
+          if (newBatches.length)
+            batches.value = [...batches.value, ...newBatches].sort(
+              (a, b) => b.createdAt - a.createdAt,
+            )
+          if (newTasks.length)
+            tasks.value = [...tasks.value, ...newTasks].sort(
+              (a, b) => b.startedAt - a.startedAt,
+            )
+        })
+      } catch {
+        /* IndexedDB 禁用时保留页面内数据 */
+      } finally {
+        ready.value = true
+      }
+    })()
+    return initialization
   }
   async function saveImage(
     src: string,
     name: string,
     metadata: Partial<StoredImage> = {},
   ) {
+    if (!ready.value) await initialize()
     const identity = (source: string) =>
       source.startsWith('data:')
         ? source.slice(source.indexOf(',') + 1)
@@ -154,6 +169,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return image.id
   }
   async function collectUnusedImages() {
+    if (!ready.value) await initialize()
     const used = new Set<string>(imageDraftIds.value)
     state.conversations.forEach((item) =>
       item.messages.forEach((message) =>
@@ -182,6 +198,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await persistRecords([], deleted)
   }
   async function saveAllImages() {
+    if (!ready.value) await initialize()
     await persistRecords(
       [...images.value, ...batches.value, ...tasks.value],
       [],

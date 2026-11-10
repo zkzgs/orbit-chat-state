@@ -530,9 +530,10 @@ function onTabKey(event: KeyboardEvent) {
             </div>
             <label class="toggle-row"
               ><span
-                ><strong>重试请求后删除旧记录</strong
+                ><strong>重试请求后删除旧记录 (仅失败)</strong
                 ><small
-                  >仅重试完全成功后删除；失败、部分成功或原记录含收藏内容时保留。</small
+                  >新请求发出后删除失败旧记录, 不等待结果;
+                  成功、部分成功或含收藏内容的记录保留。</small
                 ></span
               ><input
                 id="deleteRetriedRecordOnSuccess"
