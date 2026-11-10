@@ -52,7 +52,7 @@ export function routeApiRequest(
 ) {
   if (!proxyConfig.proxyEnabled) return { endpoint, options }
   const proxyUrl = normalizeProxyUrl(proxyConfig.proxyUrl)
-  if (!proxyUrl) throw new Error('已启用本地代理, 但代理地址为空')
+  if (!proxyUrl) throw new Error('已启用代理, 但代理地址为空')
   const targetUrl = new URL(endpoint).href
   const headers = new Headers(options.headers || {})
   headers.set('X-Orbit-Target-Url', targetUrl)
@@ -72,9 +72,7 @@ export async function apiFetch(
     return await response
   } catch (error) {
     if (proxyConfig.proxyEnabled && (error as Error).name !== 'AbortError')
-      throw new Error(
-        `无法连接本地代理 ${normalizeProxyUrl(proxyConfig.proxyUrl)}, 请先启动代理服务`,
-      )
+      throw new Error(`无法连接代理 ${normalizeProxyUrl(proxyConfig.proxyUrl)}`)
     throw error
   }
 }

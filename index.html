@@ -239,6 +239,21 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
 .field-action { padding: 0; border: 0; background: transparent; color: var(--cyan); font-size: 10px; }
 .proxy-address-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .proxy-address-row .secondary-button { min-height: 35px; white-space: nowrap; }
+.proxy-url-combo { position: relative; min-width: 0; }
+.proxy-url-combo input { padding-right: 32px; }
+.proxy-history-toggle { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted-2); font-size: 11px; line-height: 1; }
+.proxy-history-toggle:hover, .proxy-history-toggle[aria-expanded="true"] { background: rgba(255,255,255,.06); color: var(--ink); }
+.proxy-history-toggle:disabled { cursor: default; opacity: .35; }
+.proxy-history-menu { position: fixed; z-index: 130; overflow-x: hidden; overflow-y: auto; padding: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: #162235; box-shadow: 0 16px 36px rgba(0,0,0,.42); }
+.proxy-history-menu[hidden] { display: none; }
+.proxy-history-item { display: flex; align-items: center; gap: 2px; min-width: 0; min-height: 32px; padding: 0 2px 0 4px; border-radius: 4px; }
+.proxy-history-item:hover, .proxy-history-item:focus-within { background: rgba(116,212,203,.1); }
+.proxy-history-item.selected { background: rgba(230,243,107,.1); }
+.proxy-history-select { min-width: 0; flex: 1; display: flex; align-items: center; gap: 6px; overflow: hidden; padding: 6px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); font-size: 11px; line-height: 1.4; text-align: left; white-space: nowrap; }
+.proxy-history-url { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proxy-history-item.selected .proxy-history-select { color: var(--accent); }
+.proxy-history-delete { width: 26px; height: 26px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted-2); font-size: 16px; line-height: 1; }
+.proxy-history-delete:hover, .proxy-history-delete:focus-visible { background: rgba(255,255,255,.08); color: var(--danger, #ff8f8f); outline: 0; }
 .proxy-test-status { display: block; margin-top: 7px; color: var(--muted-2); font-size: 10px; }
 .proxy-test-status.success { color: var(--cyan); }
 .proxy-test-status.error { color: var(--danger, #ff8f8f); }
@@ -1127,7 +1142,7 @@ select:not(:disabled):hover { border-color: rgba(116,212,203,.38); }
         </div>
         <div class="settings-section" id="settings-panel-proxy" role="tabpanel" aria-labelledby="settings-tab-proxy" data-settings-panel="proxy" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">03</span><div><strong>本地请求代理</strong><small>用于访问不支持浏览器跨域的接口</small></div></div>
-          <div class="field-label"><label for="proxyUrl">代理地址</label><div class="proxy-address-row"><input id="proxyUrl" type="url" placeholder="http://127.0.0.1:8787"><button class="secondary-button" id="testProxyConnection" type="button">测试连接</button></div><small class="proxy-test-status" id="proxyTestStatus">尚未测试代理服务</small></div>
+          <div class="field-label"><label for="proxyUrl">代理地址</label><div class="proxy-address-row"><div class="proxy-url-combo" id="proxyUrlCombo"><input id="proxyUrl" type="url" placeholder="http://127.0.0.1:8787" autocomplete="off" spellcheck="false"><button class="proxy-history-toggle" id="proxyHistoryToggle" type="button" aria-label="代理地址历史" aria-haspopup="listbox" aria-expanded="false" aria-controls="proxyHistoryMenu" disabled>▾</button></div><button class="secondary-button" id="testProxyConnection" type="button">测试连接</button></div><small class="proxy-test-status" id="proxyTestStatus">尚未测试代理服务</small></div>
           <label class="toggle-row is-disabled" id="proxyToggleRow"><span><strong>使用本地代理</strong><small>测试成功后才可开启, 开启后对话, 模型, 润色和生图接口统一转发</small></span><input type="checkbox" id="proxyEnabled" disabled><span class="toggle-ui"></span></label>
           <p class="field-help">代理只处理请求转发和跨域响应, 不保存 Key 或请求内容, Key 仍保存在当前浏览器</p>
         </div>
@@ -1334,6 +1349,10 @@ self.onmessage = async (event) => {
   <script>
 const STORAGE_KEY = 'orbit-chat-state-v1';
 const FAVORITE_FOLDER_STORAGE_KEY = 'orbit-image-favorite-folders-v1';
+const PROXY_URL_HISTORY_KEY = 'orbit-proxy-url-history-v1';
+const PROXY_URL_HISTORY_LIMIT = 10;
+const LEGACY_PROXY_PRESET_DISMISSED_KEY = 'orbit-proxy-url-preset-dismissed-v1';
+const DEFAULT_PROXY_URL_HISTORY = ['http://127.0.0.1:8787', 'https://orbit-proxy.zgs2020893278.workers.dev/7f2d9a4c81e0b563fa7290cd418be35'];
 const DEFERRED_IMAGE_PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 const defaultState = {
@@ -4137,10 +4156,173 @@ function normalizeProxyUrl(value) {
   return String(value || '').trim().replace(/\/+$/, '');
 }
 
+function defaultProxyUrlHistory() {
+  return DEFAULT_PROXY_URL_HISTORY.map((item) => normalizeProxyUrl(item));
+}
+
+function loadProxyUrlHistory() {
+  try { localStorage.removeItem(LEGACY_PROXY_PRESET_DISMISSED_KEY); } catch { }
+  try {
+    const raw = localStorage.getItem(PROXY_URL_HISTORY_KEY);
+    if (raw == null) return defaultProxyUrlHistory();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return defaultProxyUrlHistory();
+    const seen = new Set();
+    const history = [];
+    parsed.forEach((item) => {
+      const url = normalizeProxyUrl(String(item || ''));
+      if (!url || seen.has(url) || history.length >= PROXY_URL_HISTORY_LIMIT) return;
+      seen.add(url);
+      history.push(url);
+    });
+    return history;
+  } catch {
+    return defaultProxyUrlHistory();
+  }
+}
+
+function persistProxyUrlHistory(history) {
+  const next = history.slice(0, PROXY_URL_HISTORY_LIMIT);
+  try { localStorage.setItem(PROXY_URL_HISTORY_KEY, JSON.stringify(next)); } catch { }
+  return next;
+}
+
+function rememberProxyUrl(value) {
+  const url = normalizeProxyUrl(value);
+  const history = loadProxyUrlHistory().filter((item) => item !== url);
+  if (url) history.unshift(url);
+  return persistProxyUrlHistory(history);
+}
+
+function forgetProxyUrl(value) {
+  return persistProxyUrlHistory(loadProxyUrlHistory().filter((item) => item !== normalizeProxyUrl(value)));
+}
+
+function clearProxyUrlHistory() {
+  try {
+    localStorage.removeItem(PROXY_URL_HISTORY_KEY);
+    localStorage.removeItem(LEGACY_PROXY_PRESET_DISMISSED_KEY);
+  } catch { }
+}
+
+function syncProxyHistoryToggle() {
+  const toggle = $('#proxyHistoryToggle');
+  if (!toggle) return;
+  toggle.disabled = loadProxyUrlHistory().length === 0;
+}
+
+function closeProxyHistoryMenu() {
+  const menu = $('#proxyHistoryMenu');
+  const toggle = $('#proxyHistoryToggle');
+  if (menu) menu.hidden = true;
+  if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+function positionProxyHistoryMenu() {
+  const combo = $('#proxyUrlCombo');
+  const menu = $('#proxyHistoryMenu');
+  if (!combo || !menu || menu.hidden) return;
+  const rect = combo.getBoundingClientRect();
+  const viewport = window.visualViewport;
+  const viewportTop = viewport?.offsetTop || 0;
+  const viewportHeight = viewport?.height || window.innerHeight;
+  const spaceAbove = Math.max(0, rect.top - viewportTop - 8);
+  const spaceBelow = Math.max(0, viewportTop + viewportHeight - rect.bottom - 8);
+  const desired = Math.min(menu.scrollHeight || 210, 210);
+  const opensUp = spaceBelow < desired && spaceAbove > spaceBelow;
+  const available = opensUp ? spaceAbove : spaceBelow;
+  menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8))}px`;
+  menu.style.width = `${Math.max(1, Math.min(rect.width, window.innerWidth - 16))}px`;
+  menu.style.maxHeight = `${Math.max(1, Math.min(210, available))}px`;
+  menu.style.top = opensUp ? 'auto' : `${Math.max(viewportTop, rect.bottom + 4)}px`;
+  menu.style.bottom = opensUp ? `${Math.max(0, window.innerHeight - rect.top + 4)}px` : 'auto';
+}
+
+function renderProxyHistoryMenu() {
+  const menu = $('#proxyHistoryMenu');
+  if (!menu) return;
+  const current = normalizeProxyUrl($('#proxyUrl').value);
+  const history = loadProxyUrlHistory();
+  syncProxyHistoryToggle();
+  menu.innerHTML = history.map((url) => `<div class="proxy-history-item${url === current ? ' selected' : ''}"><button type="button" class="proxy-history-select" role="option" data-proxy-history-url="${escapeHtml(url)}" title="${escapeHtml(url)}" aria-selected="${url === current ? 'true' : 'false'}"><span class="proxy-history-url">${escapeHtml(url)}</span></button><button type="button" class="proxy-history-delete" data-proxy-history-delete="${escapeHtml(url)}" title="删除这条记录" aria-label="删除 ${escapeHtml(url)}">×</button></div>`).join('');
+}
+
+function openProxyHistoryMenu() {
+  const history = loadProxyUrlHistory();
+  if (!history.length) {
+    closeProxyHistoryMenu();
+    return;
+  }
+  renderProxyHistoryMenu();
+  $('#proxyHistoryMenu').hidden = false;
+  $('#proxyHistoryToggle').setAttribute('aria-expanded', 'true');
+  positionProxyHistoryMenu();
+}
+
+function toggleProxyHistoryMenu() {
+  if ($('#proxyHistoryMenu')?.hidden === false) closeProxyHistoryMenu();
+  else openProxyHistoryMenu();
+}
+
+function selectProxyHistoryUrl(url) {
+  const input = $('#proxyUrl');
+  if (input.value !== url) {
+    input.value = url;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  rememberProxyUrl(url);
+  syncProxyHistoryToggle();
+  closeProxyHistoryMenu();
+}
+
+function bindProxyUrlHistory() {
+  let menu = $('#proxyHistoryMenu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'proxyHistoryMenu';
+    menu.className = 'proxy-history-menu';
+    menu.role = 'listbox';
+    menu.setAttribute('aria-label', '代理地址历史');
+    document.body.appendChild(menu);
+  } else if (menu.parentElement !== document.body) {
+    document.body.appendChild(menu);
+  }
+  menu.hidden = true;
+  const input = $('#proxyUrl');
+  const toggle = $('#proxyHistoryToggle');
+  input.addEventListener('focus', () => { if (loadProxyUrlHistory().length) openProxyHistoryMenu(); });
+  input.addEventListener('blur', (event) => { rememberProxyUrl(input.value); syncProxyHistoryToggle(); if (event.relatedTarget?.closest?.('#proxyUrlCombo, #proxyHistoryMenu')) return; closeProxyHistoryMenu(); });
+  toggle.addEventListener('mousedown', (event) => event.preventDefault());
+  toggle.addEventListener('click', (event) => { event.stopPropagation(); toggleProxyHistoryMenu(); });
+  menu.addEventListener('mousedown', (event) => event.preventDefault());
+  menu.addEventListener('click', (event) => {
+    const remove = event.target.closest('[data-proxy-history-delete]');
+    if (remove) {
+      event.preventDefault();
+      event.stopPropagation();
+      forgetProxyUrl(remove.dataset.proxyHistoryDelete);
+      if (!loadProxyUrlHistory().length) closeProxyHistoryMenu();
+      else openProxyHistoryMenu();
+      return;
+    }
+    const select = event.target.closest('[data-proxy-history-url]');
+    if (select) selectProxyHistoryUrl(select.dataset.proxyHistoryUrl);
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if ($('#proxyHistoryMenu').hidden) return;
+    if (event.target.closest('#proxyUrlCombo, #proxyHistoryMenu')) return;
+    closeProxyHistoryMenu();
+  });
+  window.addEventListener('resize', positionProxyHistoryMenu);
+  window.visualViewport?.addEventListener('resize', positionProxyHistoryMenu);
+  window.visualViewport?.addEventListener('scroll', positionProxyHistoryMenu);
+  syncProxyHistoryToggle();
+}
+
 function routeApiRequest(endpoint, options = {}, proxyConfig = state.settings) {
   if (!proxyConfig.proxyEnabled) return { endpoint, options };
   const proxyUrl = normalizeProxyUrl(proxyConfig.proxyUrl);
-  if (!proxyUrl) throw new Error('已启用本地代理, 但代理地址为空');
+  if (!proxyUrl) throw new Error('已启用代理, 但代理地址为空');
   const targetUrl = new URL(endpoint).href;
   const headers = new Headers(options.headers || {});
   headers.set('X-Orbit-Target-Url', targetUrl);
@@ -4154,7 +4336,7 @@ async function apiFetch(endpoint, options = {}, proxyConfig = state.settings, on
     onSent?.();
     return await response;
   } catch (error) {
-    if (proxyConfig.proxyEnabled && error.name !== 'AbortError') throw new Error(`无法连接本地代理 ${normalizeProxyUrl(proxyConfig.proxyUrl)}, 请先启动代理服务`);
+    if (proxyConfig.proxyEnabled && error.name !== 'AbortError') throw new Error(`无法连接代理 ${normalizeProxyUrl(proxyConfig.proxyUrl)}`);
     throw error;
   }
 }
@@ -4649,7 +4831,7 @@ function sendImageEditRequest(endpoint, fetchOptions, onUploaded, onSent) {
     request.open(routed.options.method || 'POST', routed.endpoint);
     new Headers(routed.options.headers || {}).forEach((value, name) => request.setRequestHeader(name, value));
     request.upload.onloadend = () => { if (!responseReceived) onUploaded?.(); };
-    request.onerror = () => reject(new Error(state.settings.proxyEnabled ? `无法连接本地代理 ${normalizeProxyUrl(state.settings.proxyUrl)}, 请先启动代理服务` : '网络请求失败, 请检查接口地址和跨域设置'));
+    request.onerror = () => reject(new Error(state.settings.proxyEnabled ? `无法连接代理 ${normalizeProxyUrl(state.settings.proxyUrl)}` : '网络请求失败, 请检查接口地址和跨域设置'));
     request.onabort = () => reject(new Error('请求已中断'));
     request.onload = () => {
       responseReceived = true;
@@ -6658,8 +6840,10 @@ async function testProxyConnection() {
   try {
     const response = await fetch(`${proxyUrl}/health`, { cache: 'no-store', signal: controller.signal });
     const payload = await response.json();
-    if (!response.ok || payload?.service !== 'orbit-api-proxy') throw new Error('目标不是 Orbit 本地代理服务');
+    if (!response.ok || payload?.service !== 'orbit-api-proxy') throw new Error('目标不是 Orbit 代理服务');
     verifiedProxyUrl = proxyUrl;
+    rememberProxyUrl(proxyUrl);
+    syncProxyHistoryToggle();
     updateProxyToggleState();
     setProxyTestStatus('success', `连接成功, 代理版本 ${payload.version || '1'}`);
     showToast('代理服务连接成功, 现在可以开启代理');
@@ -6667,9 +6851,9 @@ async function testProxyConnection() {
     verifiedProxyUrl = '';
     $('#proxyEnabled').checked = false;
     updateProxyToggleState();
-    const message = error.name === 'AbortError' ? '连接代理超时' : error.message === '目标不是 Orbit 本地代理服务' ? error.message : '无法连接代理服务';
+    const message = error.name === 'AbortError' ? '连接代理超时' : error.message === '目标不是 Orbit 代理服务' ? error.message : '无法连接代理服务';
     setProxyTestStatus('error', message);
-    showErrorToast(`${message}, 请先运行 start-proxy.bat`);
+    showErrorToast(message);
   } finally {
     window.clearTimeout(timeout);
     button.disabled = false;
@@ -6691,6 +6875,7 @@ function selectSettingsTab(id, focus = false) {
   });
   $$('#settingsBackdrop [data-settings-panel]').forEach((panel) => panel.hidden = panel.dataset.settingsPanel !== id);
   $('#settingsBackdrop .settings-scroll').scrollTop = 0;
+  closeProxyHistoryMenu();
   if (focus) { button.focus(); button.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
 }
 function bindSettingsTabs() {
@@ -6746,6 +6931,7 @@ function openSettings() {
 
 function closeSettings() {
   $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
+  closeProxyHistoryMenu();
   $('#settingsBackdrop').hidden = true;
 }
 
@@ -6766,6 +6952,7 @@ function saveSettings() {
     return;
   }
   state.settings = { chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim() || 'gpt-4o-mini', imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), chatStream: Boolean(state.settings.chatStream), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, imagePrivacyEnabled: $('#imagePrivacyEnabled').checked, imagePrivacyMode: $('#imagePrivacyMode').value, demoMode: $('#demoMode').checked, deleteRetriedRecordOnSuccess: $('#deleteRetriedRecordOnSuccess').checked, clearInputAfterSubmit: $('#clearInputAfterSubmit').checked, alwaysShowRetryButton: $('#alwaysShowRetryButton').checked };
+  rememberProxyUrl(proxyUrl);
   persist();
   closeSettings();
   render();
@@ -6874,6 +7061,7 @@ async function clearLocalData() {
   if (scope === 'all') {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(FAVORITE_FOLDER_STORAGE_KEY);
+    clearProxyUrlHistory();
     await clearStoredImages();
     state = createInitialState();
     favoriteFolders = loadFavoriteFolders();
@@ -6883,6 +7071,7 @@ async function clearLocalData() {
     clearImageReferences();
     setImagePromptText('');
   } else if (scope === 'config') {
+    clearProxyUrlHistory();
     state.settings = { ...defaultState.settings, imageOptions: { ...defaultState.settings.imageOptions }, imagePolishTemplates: [] };
     state.connectionProfiles = { chat: [], image: [] };
     state.activeConnectionProfiles = { chat: '', image: '' };
@@ -7613,6 +7802,7 @@ function bindEvents() {
   $('#loadChatModels').addEventListener('click', () => loadModels('chat'));
   $('#loadImageModels').addEventListener('click', () => loadModels('image'));
   $('#proxyUrl').addEventListener('input', invalidateProxyConnection);
+  bindProxyUrlHistory();
   $('#testProxyConnection').addEventListener('click', testProxyConnection);
   $('#proxyEnabled').addEventListener('change', () => {
     if ($('#proxyEnabled').checked && normalizeProxyUrl($('#proxyUrl').value) !== verifiedProxyUrl) {
@@ -7818,6 +8008,7 @@ function bindEvents() {
     }
     if (event.key !== 'Escape') return;
     if (editingConversationId) { event.preventDefault(); cancelConversationRename(); return; }
+    if ($('#proxyHistoryMenu') && !$('#proxyHistoryMenu').hidden) { event.preventDefault(); event.stopPropagation(); closeProxyHistoryMenu(); return; }
     if ($('.custom-select-menu:not([hidden])')) { event.preventDefault(); closeCustomSelects(); return; }
     if (!$('#conversationExportMenu').hidden) { event.preventDefault(); event.stopPropagation(); closeConversationExportMenu(); return; }
     if (!$('#favoriteDeleteBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closeFavoriteDeleteDialog(); return; }

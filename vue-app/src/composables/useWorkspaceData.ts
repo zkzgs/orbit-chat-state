@@ -10,6 +10,7 @@ import { createJsonBlob } from '../utils/json-export'
 import { errorMessage, formatExportTimestamp } from '../utils/format'
 import { createDefaultSettings } from '../constants/workspace'
 import { createInitialState, normalizeFavoriteFolders } from '../storage/state'
+import { clearProxyUrlHistory } from '../storage/proxy-url-history'
 import { readWorkspaceJson } from '../utils/json-import'
 import {
   collectImageIds,
@@ -413,6 +414,7 @@ export function useWorkspaceData() {
       useHistoryStore().setLibrary('history')
     }
     if (scope === 'all' || scope === 'config') {
+      clearProxyUrlHistory()
       usePromptTemplatesStore().dispose()
       Object.assign(workspace.state.settings, createDefaultSettings())
       workspace.state.connectionProfiles = { chat: [], image: [] }

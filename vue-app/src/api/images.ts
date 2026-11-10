@@ -55,7 +55,7 @@ function sendImageEditRequest(
       fail(
         new Error(
           settings.proxyEnabled
-            ? `无法连接本地代理 ${normalizeProxyUrl(settings.proxyUrl)}, 请先启动代理服务`
+            ? `无法连接代理 ${normalizeProxyUrl(settings.proxyUrl)}`
             : '网络请求失败, 请检查接口地址和跨域设置',
         ),
       )

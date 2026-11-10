@@ -1817,6 +1817,113 @@ select:not(:disabled):hover {
   min-height: 35px;
   white-space: nowrap;
 }
+.proxy-url-combo {
+  position: relative;
+  min-width: 0;
+}
+.proxy-url-combo input {
+  padding-right: 32px;
+}
+.proxy-history-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted-2);
+  font-size: 11px;
+  line-height: 1;
+}
+.proxy-history-toggle:hover,
+.proxy-history-toggle[aria-expanded='true'] {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+}
+.proxy-history-toggle:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+.proxy-history-menu {
+  position: fixed;
+  z-index: 130;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: #162235;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42);
+}
+.proxy-history-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 2px 0 4px;
+  border-radius: 4px;
+}
+.proxy-history-item:hover,
+.proxy-history-item:focus-within {
+  background: rgba(116, 212, 203, 0.1);
+}
+.proxy-history-item.selected {
+  background: rgba(230, 243, 107, 0.1);
+}
+.proxy-history-select {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  padding: 6px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: left;
+  white-space: nowrap;
+}
+.proxy-history-url {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.proxy-history-item.selected .proxy-history-select {
+  color: var(--accent);
+}
+.proxy-history-delete {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted-2);
+  font-size: 16px;
+  line-height: 1;
+}
+.proxy-history-delete:hover,
+.proxy-history-delete:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--danger, #ff8f8f);
+  outline: 0;
+}
 .proxy-test-status {
   display: block;
   margin-top: 7px;

@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useEventListener } from '../composables/useEventListener'
 import { useSettingsStore } from '../stores/settings'
 import { useWorkspaceData } from '../composables/useWorkspaceData'
 import { inputFiles } from '../utils/events'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useInterfaceStore } from '../stores/interface'
+import {
+  forgetProxyUrl,
+  proxyUrlHistory,
+  rememberProxyUrl,
+} from '../storage/proxy-url-history'
 import CustomSelect from './CustomSelect.vue'
 import ModelInput from './ModelInput.vue'
 const workspace = useWorkspaceStore()
@@ -29,10 +34,117 @@ const narrow = ref(window.innerWidth <= 780)
 useEventListener(window, 'resize', () => {
   narrow.value = window.innerWidth <= 780
 })
+watch(
+  () => ui.settingsOpen,
+  (open) => {
+    if (!open) closeProxyHistory()
+  },
+)
 function selectTab(id: string) {
   activeTab.value = id
+  closeProxyHistory()
   if (settingsPane.value) settingsPane.value.scrollTop = 0
 }
+const proxyCombo = ref<HTMLDivElement | null>(null)
+const proxyMenu = ref<HTMLDivElement | null>(null)
+const proxyHistoryOpen = ref(false)
+const proxyHistory = proxyUrlHistory
+
+function closeProxyHistory() {
+  proxyHistoryOpen.value = false
+}
+function positionProxyHistory() {
+  const anchor = proxyCombo.value
+  const dropdown = proxyMenu.value
+  if (!anchor || !dropdown) return
+  const rect = anchor.getBoundingClientRect()
+  const viewport = window.visualViewport
+  const viewportTop = viewport?.offsetTop || 0
+  const viewportHeight = viewport?.height || window.innerHeight
+  const spaceAbove = Math.max(0, rect.top - viewportTop - 8)
+  const spaceBelow = Math.max(0, viewportTop + viewportHeight - rect.bottom - 8)
+  const desired = Math.min(dropdown.scrollHeight || 210, 210)
+  const opensUp = spaceBelow < desired && spaceAbove > spaceBelow
+  const available = opensUp ? spaceAbove : spaceBelow
+  dropdown.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8))}px`
+  dropdown.style.width = `${Math.max(1, Math.min(rect.width, window.innerWidth - 16))}px`
+  dropdown.style.maxHeight = `${Math.max(1, Math.min(210, available))}px`
+  dropdown.style.top = opensUp
+    ? 'auto'
+    : `${Math.max(viewportTop, rect.bottom + 4)}px`
+  dropdown.style.bottom = opensUp
+    ? `${Math.max(0, window.innerHeight - rect.top + 4)}px`
+    : 'auto'
+}
+async function openProxyHistory() {
+  if (!proxyHistory.value.length) {
+    closeProxyHistory()
+    return
+  }
+  proxyHistoryOpen.value = true
+  await nextTick()
+  positionProxyHistory()
+}
+function toggleProxyHistory() {
+  if (proxyHistoryOpen.value) closeProxyHistory()
+  else void openProxyHistory()
+}
+function onProxyUrlInput(event: Event) {
+  settings.draft.proxyUrl = (event.target as HTMLInputElement).value
+  settings.invalidateProxy()
+}
+function rememberCurrentProxyUrl(event?: FocusEvent) {
+  rememberProxyUrl(settings.draft.proxyUrl)
+  const next = event?.relatedTarget as Node | null
+  if (proxyCombo.value?.contains(next) || proxyMenu.value?.contains(next))
+    return
+  closeProxyHistory()
+}
+function chooseProxyHistory(url: string) {
+  if (url !== settings.draft.proxyUrl) {
+    settings.draft.proxyUrl = url
+    settings.invalidateProxy()
+  }
+  rememberProxyUrl(url)
+  closeProxyHistory()
+}
+function removeProxyHistory(url: string, event: Event) {
+  event.preventDefault()
+  event.stopPropagation()
+  forgetProxyUrl(url)
+  if (!proxyHistory.value.length) closeProxyHistory()
+  else void nextTick(positionProxyHistory)
+}
+function onProxyHistoryOutside(event: Event) {
+  const target = event.target as Node
+  if (proxyCombo.value?.contains(target) || proxyMenu.value?.contains(target))
+    return
+  closeProxyHistory()
+}
+function onProxyHistoryKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && proxyHistoryOpen.value) {
+    event.preventDefault()
+    event.stopPropagation()
+    closeProxyHistory()
+  }
+}
+function onProxyHistoryViewport() {
+  if (proxyHistoryOpen.value) positionProxyHistory()
+}
+onMounted(() => {
+  document.addEventListener('pointerdown', onProxyHistoryOutside)
+  window.addEventListener('keydown', onProxyHistoryKeydown, true)
+  window.addEventListener('resize', onProxyHistoryViewport)
+  window.visualViewport?.addEventListener('resize', onProxyHistoryViewport)
+  window.visualViewport?.addEventListener('scroll', onProxyHistoryViewport)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onProxyHistoryOutside)
+  window.removeEventListener('keydown', onProxyHistoryKeydown, true)
+  window.removeEventListener('resize', onProxyHistoryViewport)
+  window.visualViewport?.removeEventListener('resize', onProxyHistoryViewport)
+  window.visualViewport?.removeEventListener('scroll', onProxyHistoryViewport)
+})
 function onTabKey(event: KeyboardEvent) {
   const keys = narrow.value
     ? ['ArrowLeft', 'ArrowRight']
@@ -335,7 +447,9 @@ function onTabKey(event: KeyboardEvent) {
                     :disabled="settings.loadingModels.image"
                     @click="settings.loadModels('image')"
                   >
-                    {{ settings.loadingModels.image ? '获取中...' : '获取模型' }}
+                    {{
+                      settings.loadingModels.image ? '获取中...' : '获取模型'
+                    }}
                   </button></span
                 ><ModelInput
                   v-model="settings.draft.imageModel"
@@ -393,13 +507,75 @@ function onTabKey(event: KeyboardEvent) {
             <div class="field-label">
               <label for="proxyUrl">代理地址</label>
               <div class="proxy-address-row">
-                <input
-                  v-model="settings.draft.proxyUrl"
-                  id="proxyUrl"
-                  type="url"
-                  placeholder="http://127.0.0.1:8787"
-                  @input="settings.invalidateProxy()"
-                /><button
+                <div
+                  ref="proxyCombo"
+                  class="proxy-url-combo"
+                  id="proxyUrlCombo"
+                >
+                  <input
+                    :value="settings.draft.proxyUrl"
+                    id="proxyUrl"
+                    type="url"
+                    placeholder="http://127.0.0.1:8787"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @input="onProxyUrlInput"
+                    @focus="proxyHistory.length && openProxyHistory()"
+                    @blur="rememberCurrentProxyUrl($event)"
+                  /><button
+                    class="proxy-history-toggle"
+                    id="proxyHistoryToggle"
+                    type="button"
+                    aria-label="代理地址历史"
+                    aria-haspopup="listbox"
+                    :aria-expanded="proxyHistoryOpen"
+                    aria-controls="proxyHistoryMenu"
+                    :disabled="!proxyHistory.length"
+                    @mousedown.prevent
+                    @click="toggleProxyHistory"
+                  >
+                    ▾
+                  </button>
+                </div>
+                <Teleport to="body">
+                  <div
+                    v-show="proxyHistoryOpen"
+                    id="proxyHistoryMenu"
+                    ref="proxyMenu"
+                    class="proxy-history-menu"
+                    role="listbox"
+                    aria-label="代理地址历史"
+                  >
+                    <div
+                      v-for="url in proxyHistory"
+                      :key="url"
+                      class="proxy-history-item"
+                      :class="{ selected: url === settings.draft.proxyUrl }"
+                    >
+                      <button
+                        type="button"
+                        class="proxy-history-select"
+                        role="option"
+                        :title="url"
+                        :aria-selected="url === settings.draft.proxyUrl"
+                        @mousedown.prevent
+                        @click="chooseProxyHistory(url)"
+                      >
+                        <span class="proxy-history-url">{{ url }}</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="proxy-history-delete"
+                        title="删除这条记录"
+                        :aria-label="`删除 ${url}`"
+                        @mousedown.prevent
+                        @click="removeProxyHistory(url, $event)"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div> </Teleport
+                ><button
                   class="secondary-button"
                   id="testProxyConnection"
                   type="button"

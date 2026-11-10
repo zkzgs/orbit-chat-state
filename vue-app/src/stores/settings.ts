@@ -7,6 +7,7 @@ import type { ApiKind, ConnectionProfile } from '../types/models'
 import { cloneData } from '../utils/clone'
 import { createId } from '../utils/id'
 import { errorMessage } from '../utils/format'
+import { rememberProxyUrl } from '../storage/proxy-url-history'
 
 export const useSettingsStore = defineStore('settings-form', () => {
   const workspace = useWorkspaceStore()
@@ -33,6 +34,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
   }
   function save() {
     Object.assign(workspace.state.settings, cloneData(draft))
+    rememberProxyUrl(draft.proxyUrl)
     close()
     ui.notify('设置已保存')
   }
@@ -57,11 +59,15 @@ export const useSettingsStore = defineStore('settings-form', () => {
       if (!payload.ok || payload.service !== 'orbit-api-proxy')
         throw new Error('该地址不是 Orbit 代理服务')
       verifiedProxy.value = normalizeProxyUrl(draft.proxyUrl)
+      rememberProxyUrl(draft.proxyUrl)
       proxyStatus.value = '代理连接成功'
     } catch (error) {
       verifiedProxy.value = ''
       draft.proxyEnabled = false
-      proxyStatus.value = errorMessage(error)
+      const timedOut =
+        error instanceof DOMException &&
+        (error.name === 'TimeoutError' || error.name === 'AbortError')
+      proxyStatus.value = timedOut ? '连接代理超时' : errorMessage(error)
       ui.notify(proxyStatus.value, 'error')
     } finally {
       proxyTesting.value = false
