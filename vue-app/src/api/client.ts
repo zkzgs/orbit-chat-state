@@ -1,4 +1,5 @@
 import { useWorkspaceStore } from '../stores/workspace'
+import { joinProxyPath } from '../utils/proxy-url'
 
 interface ProxyConfig {
   proxyEnabled: boolean
@@ -56,7 +57,10 @@ export function routeApiRequest(
   const targetUrl = new URL(endpoint).href
   const headers = new Headers(options.headers || {})
   headers.set('X-Orbit-Target-Url', targetUrl)
-  return { endpoint: `${proxyUrl}/proxy`, options: { ...options, headers } }
+  return {
+    endpoint: joinProxyPath(proxyUrl, 'proxy'),
+    options: { ...options, headers },
+  }
 }
 
 export async function apiFetch(

@@ -1352,7 +1352,7 @@ const FAVORITE_FOLDER_STORAGE_KEY = 'orbit-image-favorite-folders-v1';
 const PROXY_URL_HISTORY_KEY = 'orbit-proxy-url-history-v1';
 const PROXY_URL_HISTORY_LIMIT = 10;
 const LEGACY_PROXY_PRESET_DISMISSED_KEY = 'orbit-proxy-url-preset-dismissed-v1';
-const DEFAULT_PROXY_URL_HISTORY = ['http://127.0.0.1:8787', 'https://orbit-proxy.zgs2020893278.workers.dev/7f2d9a4c81e0b563fa7290cd418be35'];
+const DEFAULT_PROXY_URL_HISTORY = ['http://127.0.0.1:8787', 'https://orbit-proxy.zkzgs.workers.dev/7f2d9a4c81e0b563fa7290cd418be35'];
 const DEFERRED_IMAGE_PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 const defaultState = {
@@ -4156,6 +4156,19 @@ function normalizeProxyUrl(value) {
   return String(value || '').trim().replace(/\/+$/, '');
 }
 
+function joinProxyPath(proxyUrl, suffix) {
+  const segment = String(suffix || '').replace(/^\/+/, '');
+  const raw = String(proxyUrl || '').trim();
+  try {
+    const url = new URL(raw);
+    url.pathname = `${url.pathname.replace(/\/+$/, '')}/${segment}`;
+    return url.href;
+  } catch {
+    const base = raw.replace(/\/+$/, '');
+    return segment ? `${base}/${segment}` : base;
+  }
+}
+
 function defaultProxyUrlHistory() {
   return DEFAULT_PROXY_URL_HISTORY.map((item) => normalizeProxyUrl(item));
 }
@@ -4326,7 +4339,7 @@ function routeApiRequest(endpoint, options = {}, proxyConfig = state.settings) {
   const targetUrl = new URL(endpoint).href;
   const headers = new Headers(options.headers || {});
   headers.set('X-Orbit-Target-Url', targetUrl);
-  return { endpoint: `${proxyUrl}/proxy`, options: { ...options, headers } };
+  return { endpoint: joinProxyPath(proxyUrl, 'proxy'), options: { ...options, headers } };
 }
 
 async function apiFetch(endpoint, options = {}, proxyConfig = state.settings, onSent) {
@@ -6838,7 +6851,7 @@ async function testProxyConnection() {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 5000);
   try {
-    const response = await fetch(`${proxyUrl}/health`, { cache: 'no-store', signal: controller.signal });
+    const response = await fetch(joinProxyPath(proxyUrl, 'health'), { cache: 'no-store', signal: controller.signal });
     const payload = await response.json();
     if (!response.ok || payload?.service !== 'orbit-api-proxy') throw new Error('目标不是 Orbit 代理服务');
     verifiedProxyUrl = proxyUrl;

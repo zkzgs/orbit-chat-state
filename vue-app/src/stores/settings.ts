@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { useWorkspaceStore } from './workspace'
 import { useInterfaceStore } from './interface'
 import { apiFetch, buildModelsEndpoint, normalizeProxyUrl } from '../api/client'
+import { joinProxyPath } from '../utils/proxy-url'
 import type { ApiKind, ConnectionProfile } from '../types/models'
 import { cloneData } from '../utils/clone'
 import { createId } from '../utils/id'
@@ -47,10 +48,9 @@ export const useSettingsStore = defineStore('settings-form', () => {
     proxyTesting.value = true
     proxyStatus.value = '正在连接'
     try {
-      const response = await fetch(
-        `${normalizeProxyUrl(draft.proxyUrl)}/health`,
-        { signal: AbortSignal.timeout(8000) },
-      )
+      const response = await fetch(joinProxyPath(draft.proxyUrl, 'health'), {
+        signal: AbortSignal.timeout(8000),
+      })
       if (!response.ok) throw new Error(`代理返回 ${response.status}`)
       const payload = (await response.json()) as {
         ok: boolean
