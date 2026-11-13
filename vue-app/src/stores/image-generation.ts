@@ -518,6 +518,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
         taskId: id,
         status: task.status,
         imageIds,
+        batchId,
         error: failed ? '部分请求失败' : undefined,
       }
     } catch (error) {
@@ -529,7 +530,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       task.error = { message: task.detail, occurredAt: Date.now() }
       await persist()
       ui.notify(task.detail, 'error')
-      return { taskId: id, status: 'error', imageIds: [], error: task.detail }
+      return { taskId: id, status: 'error', imageIds: [], batchId: task.batchId, error: task.detail }
     } finally {
       clearTimeout(timeout)
       controllers.delete(id)

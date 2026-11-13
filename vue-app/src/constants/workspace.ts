@@ -59,7 +59,7 @@ export function createDefaultSettings(): Settings {
     persistInputContent: true,
     compressRequestImages: true,
     requestImageCompressionLimitMb: 1,
-    systemPrompt: '你是一位简洁, 直接的中文助手',
+    systemPrompt: '你是一位简洁, 直接的中文助手，使用中文思考',
     reasoningEffort: 'auto',
     chatWebSearch: false,
     chatStream: true,

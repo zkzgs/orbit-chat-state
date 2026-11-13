@@ -735,15 +735,6 @@ function onTabKey(event: KeyboardEvent) {
               <span class="section-number">06</span>
               <div><strong>生图 Agent</strong></div>
             </div>
-            <label class="field-label">
-              Agent 生图补充提示词
-              <textarea
-                v-model="settings.draft.imageAgentInstruction"
-                id="imageAgentInstruction"
-                rows="4"
-                placeholder="给对话模型的额外生图要求"
-              ></textarea>
-            </label>
             <label class="toggle-row"
               ><span><strong>由 AI 决定生图参数</strong></span>
               <input
@@ -800,6 +791,15 @@ function onTabKey(event: KeyboardEvent) {
                 >由 AI 判断是否重试, 失败和效果检查共用次数</small
               >
             </label>
+            <label class="field-label">
+              Agent 生图补充提示词
+              <textarea
+                v-model="settings.draft.imageAgentInstruction"
+                id="imageAgentInstruction"
+                rows="4"
+                placeholder="给对话模型的额外生图要求"
+              ></textarea>
+            </label>
           </div>
           <div
             class="settings-section compact-section"
@@ -821,7 +821,7 @@ function onTabKey(event: KeyboardEvent) {
                 v-model="settings.draft.systemPrompt"
                 id="systemPrompt"
                 rows="3"
-                placeholder="例如: 你是一位简洁, 直接的中文助手"
+                placeholder="例如: 你是一位简洁, 直接的中文助手，使用中文思考"
               ></textarea
               ><small class="field-help"
                 >作为对话请求中的 system 消息发送, 不会拼接到生图关键词</small

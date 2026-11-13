@@ -6,6 +6,9 @@ import ChatMessage from '../components/ChatMessage.vue'
 const workspace = useWorkspaceStore()
 const chat = useChatStore()
 const messages = computed(() => workspace.activeConversation?.messages || [])
+const agentTimelineOpen = computed(() =>
+  Boolean(messages.value.find((message) => message.id === chat.streamingId)?.steps?.length),
+)
 async function quickPrompt(text: string) {
   chat.draft = text
   await nextTick()
@@ -67,7 +70,8 @@ async function quickPrompt(text: string) {
     <div
       v-if="
         chat.agentActivity &&
-        chat.generatingConversationId === workspace.state.activeConversationId
+        chat.generatingConversationId === workspace.state.activeConversationId &&
+        !agentTimelineOpen
       "
       class="agent-activity"
       role="status"

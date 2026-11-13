@@ -160,7 +160,12 @@ for (const [version, url] of [
           const messages = body.messages
           const last = messages.at(-1)
           let message: any
-          if (last.role === 'tool')
+          const previewed = Array.isArray(last.content)
+            ? last.content.some(
+                (part: any) => part?.type === 'image_url' || part?.image_url,
+              )
+            : false
+          if (last.role === 'tool' || previewed)
             message = { role: 'assistant', content: '图片已经完成' }
           else {
             const system = messages[0].content as string

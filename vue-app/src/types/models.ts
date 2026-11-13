@@ -113,9 +113,31 @@ export interface ChatFile {
   size: number
   file?: File
 }
+export interface AgentStep {
+  type:
+    | 'thinking'
+    | 'tool_call'
+    | 'waiting'
+    | 'image'
+    | 'retry'
+    | 'summary'
+  text?: string
+  name?: string
+  prompt?: string
+  params?: Record<string, unknown>
+  toolCallId?: string
+  retryOf?: string
+  retry?: boolean
+  startedAt?: number
+  endedAt?: number
+  imageIds?: string[]
+  batchId?: string
+  error?: string
+}
 export interface Message {
   files?: ChatFile[]
   error?: string
+  steps?: AgentStep[]
   toolRounds?: {
     assistant: {
       role: string

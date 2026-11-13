@@ -133,3 +133,68 @@ for (const [version, url] of [
       },
     )
 }
+
+
+async function tallPng(page: Page, color = '#3b6cff') {
+  return page.evaluate((color) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 320
+    canvas.height = 900
+    const context = canvas.getContext('2d')!
+    context.fillStyle = color
+    context.fillRect(0, 0, 320, 900)
+    return canvas.toDataURL('image/png').split(',')[1]
+  }, color)
+}
+
+async function addTallMessage(page: Page, png: string, text: string) {
+  await page.evaluate(
+    async ({ png, text }) => {
+      const src = 'data:image/png;base64,' + png
+      const id = await saveChatImage(src, 'tall.png')
+      const conversation = activeConversation()
+      conversation.messages.push({
+        id: createId(),
+        role: 'user',
+        content: text,
+        imageIds: [],
+        createdAt: Date.now(),
+      })
+      conversation.messages.push({
+        id: createId(),
+        role: 'assistant',
+        content: '图片已经完成',
+        imageIds: [id],
+        createdAt: Date.now() + 1,
+      })
+      renderMessages()
+    },
+    { png, text },
+  )
+}
+
+test('HTML 消息重绘大图后仍跟随到底部, 上滑后再绘不跟随', async ({ page }) => {
+  await open(page, '/index.html')
+  await expect.poll(() => gap(page)).toBeLessThan(3)
+  const first = await tallPng(page, '#3b6cff')
+  const second = await tallPng(page, '#ff7a18')
+  const third = await tallPng(page, '#2bb36b')
+  await addTallMessage(page, first, '生成一只猫')
+  await expect(page.locator('.message.assistant .message-image')).toHaveCount(1)
+  await expect.poll(() => gap(page)).toBeLessThan(80)
+  await expect(page.locator('#scrollChatBottom')).toBeHidden()
+  await addTallMessage(page, second, '改成橘猫')
+  await expect(page.locator('.message.assistant .message-image')).toHaveCount(2)
+  await expect.poll(() => gap(page)).toBeLessThan(80)
+  await expect(page.locator('#scrollChatBottom')).toBeHidden()
+  await page.locator('.content-stage').evaluate((el) => {
+    el.scrollTop = 0
+  })
+  await expect(page.locator('#scrollChatBottom')).toBeVisible()
+  await addTallMessage(page, third, '再来一张')
+  await expect(page.locator('.message.assistant .message-image')).toHaveCount(3)
+  await expect(page.locator('#scrollChatBottom')).toBeVisible()
+  await expect
+    .poll(() => page.locator('.content-stage').evaluate((el) => el.scrollTop))
+    .toBeLessThan(80)
+})

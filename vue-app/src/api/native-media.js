@@ -6,7 +6,6 @@ export function nativeEndpoint(base, suffix, provider) {
     .replace(/\/models(?:\/.*)?$/, '')
   if (!path) path = provider === 'gemini' ? '/v1beta' : '/v1'
   url.pathname = path + suffix
-  url.search = ''
   return url.href
 }
 

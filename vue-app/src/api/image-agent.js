@@ -233,6 +233,42 @@ export function chatReasoningMessages(messages, settings) {
   return messages.map(({ reasoning_content, ...message }) => message)
 }
 
+
+function parsePartialToolArgs(raw) {
+  if (!raw) return {}
+  try {
+    const value = JSON.parse(raw)
+    return value && typeof value === 'object' ? value : {}
+  } catch {}
+  const match = String(raw).match(/"prompt"\s*:\s*"((?:\\.|[^"\\])*)"/)
+  if (!match) return {}
+  try {
+    return { prompt: JSON.parse(`"${match[1]}"`) }
+  } catch {
+    return {}
+  }
+}
+
+export function agentStepTitle(step) {
+  if (step.type === 'thinking') return '思考'
+  if (step.type === 'tool_call') return '调用 ' + (step.name || 'generate_image')
+  if (step.type === 'retry') return '重试生图'
+  if (step.type === 'waiting') {
+    const retry = step.name === 'retry_image' || step.retry
+    if (step.endedAt) return retry ? '已重试' : '已生成'
+    return retry ? '正在重试图片' : '正在生成图片'
+  }
+  if (step.type === 'image')
+    return step.error && !(step.imageIds || []).length ? '生图失败' : '生成的图片'
+  if (step.type === 'summary') return '回复'
+  return step.type || ''
+}
+
+export function agentWaitSeconds(step, now = Date.now()) {
+  if (!step?.startedAt) return 0
+  return Math.max(0, Math.round(((step.endedAt || now) - step.startedAt) / 1000))
+}
+
 export async function requestToolChat(
   fetchApi,
   settings,
@@ -316,7 +352,7 @@ export async function requestToolChat(
           : call.function.arguments
       calls.set(key, previous)
     }
-    onChunk?.(content, reasoning)
+    onChunk?.(content, reasoning, [...calls.values()])
   }
   if (
     response.headers.get('content-type')?.includes('text/event-stream') &&
@@ -419,20 +455,83 @@ export async function runImageAgent(options) {
     ? `\n当前默认生图模型为 ${options.settings.imageModel}。根据用户要求选择每次 image_options, model 只能从用户可用模型列表中选, 重试时也可修正参数。接口、数量提交策略、背景实现策略和请求图片压缩由客户端控制。`
     : '\n生图参数沿用用户的生图工作区配置, 不要自行设置 image_options。'
   let used = 0
+  const steps = []
+  const emitSteps = () => options.onSteps?.(steps)
+  function startTextStep() {
+    const step = { type: 'thinking', text: '' }
+    steps.push(step)
+    emitSteps()
+    return step
+  }
+  function dropIfEmpty(step) {
+    if (step?.text) return
+    const index = steps.lastIndexOf(step)
+    if (index >= 0) steps.splice(index, 1)
+  }
+  function upsertToolStep(call, index, toolSteps) {
+    if (!call?.function?.name) return
+    let step = toolSteps.get(index)
+    if (!step && call.id) {
+      for (const item of toolSteps.values()) {
+        if (item.toolCallId === call.id) {
+          step = item
+          break
+        }
+      }
+    }
+    if (!step) {
+      step = {
+        type: call.function.name === 'retry_image' ? 'retry' : 'tool_call',
+        name: call.function.name,
+        prompt: '',
+        params: {},
+        toolCallId: call.id || '',
+      }
+      steps.push(step)
+    }
+    if (call.id) step.toolCallId = call.id
+    const args = parsePartialToolArgs(call.function.arguments)
+    if (args.prompt) step.prompt = args.prompt
+    if (args.image_options && typeof args.image_options === 'object')
+      step.params = args.image_options
+    if (args.tool_call_id) step.retryOf = args.tool_call_id
+    toolSteps.set(index, step)
+    return step
+  }
   const rounds = 5 + (allowRetry ? retryLimit : 0)
   for (let index = 0; index < rounds; index++) {
     if (options.signal.aborted) throw options.signal.reason
     options.onStatus?.({ status: '正在等待对话模型', prompt: '' })
+    const textStep = startTextStep()
+    const toolSteps = new Map()
+    const stream = Boolean(options.onChunk)
     const result = await requestToolChat(
       options.fetch,
       options.settings,
       messages,
       options.signal,
-      options.onChunk,
+      stream
+        ? (content, reasoning, toolCalls) => {
+            textStep.text = reasoning
+            for (const [toolIndex, call] of (toolCalls || []).entries())
+              upsertToolStep(call, toolIndex, toolSteps)
+            options.onChunk?.(content, reasoning)
+            emitSteps()
+          }
+        : undefined,
       options.onUnsupportedSearch,
       index === rounds - 1 ? [] : tools,
     )
-    if (!result.tool_calls.length) return result
+    textStep.text = result.reasoning || textStep.text || ''
+    for (const [toolIndex, call] of result.tool_calls.entries())
+      upsertToolStep(call, toolIndex, toolSteps)
+    dropIfEmpty(textStep)
+    if (!result.tool_calls.length) {
+      if (result.content) steps.push({ type: 'summary', text: result.content })
+      emitSteps()
+      return result
+    }
+    emitSteps()
     if (index === rounds - 1) throw new Error('已达到本轮图片工具调用上限')
     const assistant = {
       role: 'assistant',
@@ -497,12 +596,32 @@ export async function runImageAgent(options) {
             : '正在生成图片',
           prompt: args.prompt,
         })
-        output = await options.generate(args.prompt, ids, parameters)
+        const waiting = {
+          type: 'waiting',
+          name: call.function.name,
+          retry: isRetry,
+          startedAt: Date.now(),
+        }
+        steps.push(waiting)
+        emitSteps()
+        try {
+          output = await options.generate(args.prompt, ids, parameters)
+        } finally {
+          waiting.endedAt = Date.now()
+        }
         if (!output) throw new Error('生成任务已中止')
         attempt.hasImages = Boolean(output.imageIds?.length)
         for (const id of output.imageIds || []) available.add(id)
         if (options.settings.imageAgentPreview)
           previewIds.push(...(output.imageIds || []))
+        steps.push({
+          type: 'image',
+          imageIds: output.imageIds || [],
+          batchId: output.batchId,
+          error: output.error || '',
+          toolCallId: call.id,
+        })
+        emitSteps()
         options.onStatus?.({
           status: attempt.hasImages
             ? '图片已生成, 正在整理回复'
@@ -512,6 +631,17 @@ export async function runImageAgent(options) {
       } catch (error) {
         if (options.signal.aborted) throw options.signal.reason
         output = { status: 'error', error: error.message, imageIds: [] }
+        const last = steps[steps.length - 1]
+        if (last?.type === 'waiting' && !last.endedAt) last.endedAt = Date.now()
+        if (last?.type !== 'image' || last.toolCallId !== call.id)
+          steps.push({
+            type: 'image',
+            imageIds: [],
+            error: error.message,
+            toolCallId: call.id,
+          })
+        else if (!last.imageIds?.length) last.error = error.message
+        emitSteps()
       }
       if (allowRetry)
         output = {
@@ -610,4 +740,8 @@ export function remapAgentMessage(message, remap) {
       } catch {}
     }
   }
+  for (const step of message.steps || []) {
+    if (step.imageIds) step.imageIds = remap(step.imageIds)
+  }
 }
+

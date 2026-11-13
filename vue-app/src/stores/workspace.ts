@@ -17,7 +17,6 @@ import {
 import { imageStorage, readImages, updateImages } from '../storage/database'
 import { createId } from '../utils/id'
 import { imageSize } from '../utils/image-options'
-import { agentImageIds } from '../api/image-agent.js'
 import { chatDocuments } from '../api/chat-files.js'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
@@ -85,6 +84,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return ids.flatMap((id) => {
       const image = imageMap.value.get(id)
       return image ? [image] : []
+    })
+  }
+  function messageBatchImages(message: { steps?: { batchId?: string }[] }) {
+    return (message.steps || []).flatMap((step) => {
+      if (!step.batchId) return []
+      const batch = batches.value.find((item) => item.id === step.batchId)
+      return batch ? batchImages(batch) : []
     })
   }
   function setImageFavoriteFolders(id: string, folderIds: string[]) {
@@ -201,11 +207,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     ])
     state.conversations.forEach((item) =>
       item.messages.forEach((message) =>
-        [
-          ...message.imageIds,
-          ...(message.mentionImageIds || []),
-          ...agentImageIds(message),
-        ].forEach((id) => used.add(id)),
+        [...message.imageIds, ...(message.mentionImageIds || [])].forEach(
+          (id) => used.add(id),
+        ),
       ),
     )
     batches.value.forEach((item) =>
@@ -256,6 +260,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     imageConfig,
     batchImages,
     messageImages,
+    messageBatchImages,
     setImageFavoriteFolders,
     persistRecords,
     initialize,

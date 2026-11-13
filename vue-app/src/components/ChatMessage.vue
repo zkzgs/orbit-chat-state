@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { Message, StoredImage } from '../types/models'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import type { AgentStep, Message, StoredImage } from '../types/models'
 import { renderMarkdown } from '../utils/markdown'
 import { formatTime } from '../utils/format'
 import { copyText } from '../utils/files'
+import { agentStepTitle, agentWaitSeconds } from '../api/image-agent.js'
 import { useChatStore } from '../stores/chat'
 import { useInterfaceStore } from '../stores/interface'
 import { useViewerStore } from '../stores/viewer'
@@ -16,6 +18,29 @@ const chat = useChatStore()
 const ui = useInterfaceStore()
 const viewer = useViewerStore()
 const workspace = useWorkspaceStore()
+const now = ref(Date.now())
+let timer: ReturnType<typeof setInterval> | undefined
+watch(
+  () =>
+    Boolean(
+      props.streaming &&
+        props.message.steps?.some(
+          (step) => step.type === 'waiting' && !step.endedAt,
+        ),
+    ),
+  (running) => {
+    clearInterval(timer)
+    timer = undefined
+    if (!running) return
+    now.value = Date.now()
+    timer = setInterval(() => {
+      now.value = Date.now()
+    }, 1000)
+  },
+  { immediate: true },
+)
+onUnmounted(() => clearInterval(timer))
+const hasSteps = computed(() => Boolean(props.message.steps?.length))
 function previewMarkdownImage(event: MouseEvent) {
   const target = event.target
   if (
@@ -36,22 +61,40 @@ async function copy() {
   await copyText(props.message.content)
   ui.notify('已复制到剪贴板')
 }
-function openImage(image: StoredImage, index: number) {
-  const batch = workspace.batches.find(
+function stepBatch(step: AgentStep) {
+  return step.batchId
+    ? workspace.batches.find((item) => item.id === step.batchId)
+    : undefined
+}
+function stepImages(step: AgentStep) {
+  if (step.batchId) return workspace.batchImages(stepBatch(step))
+  return workspace.messageImages(step.imageIds || [])
+}
+function waitLabel(step: AgentStep) {
+  return `${agentStepTitle(step)} · ${agentWaitSeconds(step, now.value)} 秒`
+}
+function stepOpen(index: number) {
+  return Boolean(props.streaming && index === (props.message.steps?.length || 0) - 1)
+}
+function openImage(image: StoredImage, index: number, batch = props.images) {
+  const found = workspace.batches.find(
     (item) => item.id === image.batchId || item.imageIds.includes(image.id),
   )
-  if (batch || image.batchId || image.taskId) {
+  if (found || image.batchId || image.taskId) {
     const task = workspace.tasks.find(
-      (item) => item.id === image.taskId || item.batchId === batch?.id,
+      (item) => item.id === image.taskId || item.batchId === found?.id,
     )
-    const batchIndex = batch?.imageIds.indexOf(image.id) ?? index
-    ui.openDetails(batch, task, Math.max(0, batchIndex), image.id)
+    const batchIndex = found?.imageIds.indexOf(image.id) ?? index
+    ui.openDetails(found, task, Math.max(0, batchIndex), image.id)
     return
   }
   viewer.open(
-    props.images.map((item) => item.src),
+    batch.map((item) => item.src),
     index,
   )
+}
+function openStepImage(step: AgentStep, image: StoredImage, index: number) {
+  openImage(image, index, stepImages(step))
 }
 </script>
 <template>
@@ -70,8 +113,81 @@ function openImage(image: StoredImage, index: number) {
         }}</span
         ><span class="message-time">{{ formatTime(message.createdAt) }}</span>
       </div>
+      <div v-if="hasSteps" class="message-steps">
+        <section
+          v-for="(step, index) in message.steps"
+          :key="index"
+          class="agent-step"
+          :class="'agent-step-' + step.type"
+        >
+          <details
+            v-if="step.type === 'thinking'"
+            class="message-reasoning"
+            :open="stepOpen(index)"
+          >
+            <summary>{{ agentStepTitle(step) }}</summary>
+            <div
+              class="message-reasoning-content markdown-body"
+              v-html="renderMarkdown(step.text || '')"
+            ></div>
+          </details>
+          <div
+            v-else-if="step.type === 'tool_call' || step.type === 'retry'"
+            class="agent-step-tool"
+          >
+            <div class="agent-step-label">{{ agentStepTitle(step) }}</div>
+            <pre v-if="step.prompt" class="agent-step-prompt">{{
+              step.prompt
+            }}</pre>
+          </div>
+          <div v-else-if="step.type === 'waiting'" class="agent-step-waiting">
+            <span
+              v-if="!step.endedAt"
+              class="agent-activity-spinner"
+              aria-hidden="true"
+            ></span>
+            <span data-step-waiting>{{ waitLabel(step) }}</span>
+          </div>
+          <div v-else-if="step.type === 'image'" class="agent-step-image">
+            <div class="agent-step-label">{{ agentStepTitle(step) }}</div>
+            <div v-if="step.error && !stepImages(step).length" class="message-error">
+              {{ step.error }}
+            </div>
+            <div
+              v-else-if="step.batchId && !stepBatch(step)"
+              class="message-images"
+            >
+              <div class="message-image-missing">已删除</div>
+            </div>
+            <div v-else-if="stepImages(step).length" class="message-images">
+              <button
+                v-for="(image, imageIndex) in stepImages(step)"
+                :key="image.id"
+                class="message-image-button"
+                aria-label="预览消息图片"
+                @click.stop="openStepImage(step, image, imageIndex)"
+              >
+                <img
+                  class="message-image"
+                  v-image-source.full="image.src"
+                  alt=""
+                  :data-image-id="image.id"
+                  draggable="false"
+                  decoding="async"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+          </div>
+          <div
+            v-else-if="step.type === 'summary'"
+            class="message-text markdown-body"
+            v-html="renderMarkdown(step.text || '')"
+          ></div>
+        </section>
+      </div>
       <details
-        v-if="message.reasoning"
+        v-else-if="message.reasoning"
         class="message-reasoning"
         :open="streaming"
       >
@@ -88,6 +204,7 @@ function openImage(image: StoredImage, index: number) {
         ></div>
       </details>
       <div
+        v-if="!hasSteps || !message.steps?.some((step) => step.type === 'summary')"
         class="message-text markdown-body"
         v-html="renderMarkdown(message.content)"
       ></div>
@@ -99,7 +216,7 @@ function openImage(image: StoredImage, index: number) {
           <span>PDF</span><span class="chat-file-name">{{ file.name }}</span>
         </div>
       </div>
-      <div class="message-images" v-if="images.length">
+      <div class="message-images" v-if="!hasSteps && images.length">
         <button
           v-for="(image, index) in images"
           :key="image.id"

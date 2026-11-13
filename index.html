@@ -1674,6 +1674,216 @@ video[hidden] {
     pointer-events: auto;
   }
 }
+
+.message-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.agent-step-label {
+  color: var(--muted);
+  font-size: 11px;
+}
+.agent-step .message-reasoning {
+  margin-top: 0;
+}
+.agent-step-prompt {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.agent-step-waiting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.context-toolbar {
+  min-width: 0;
+}
+.context-mode,
+.chat-quick-settings {
+  flex-shrink: 0;
+}
+.toolbar-label,
+.context-option,
+.search-toggle,
+.quick-setting > span,
+.toolbar-more-button {
+  white-space: nowrap;
+}
+.context-option,
+.search-toggle,
+.quick-setting,
+.toolbar-more-host {
+  flex-shrink: 0;
+}
+.toolbar-more-host {
+  position: relative;
+}
+.toolbar-more-button {
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(var(--interaction-rgb, 116, 212, 203), 0.11);
+  color: var(--cyan);
+  font-size: 11px;
+  cursor: pointer;
+}
+.toolbar-more-menu {
+  position: absolute;
+  right: 0;
+  left: auto;
+  bottom: calc(100% + 6px);
+  z-index: 240;
+  min-width: 168px;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.toolbar-more-menu[hidden] {
+  display: none;
+}
+.toolbar-more-menu .context-mode {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.toolbar-more-menu .toolbar-label,
+.toolbar-more-menu .context-option,
+.toolbar-more-menu .search-toggle {
+  margin: 0;
+  width: 100%;
+  justify-content: flex-start;
+}
+.context-toolbar.toolbar-is-compact > .toolbar-inline-extras {
+  display: none;
+}
+.context-toolbar.toolbar-is-compact .chat-quick-settings,
+.context-toolbar.toolbar-is-tight .chat-quick-settings {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.context-toolbar.toolbar-is-compact .toolbar-more-host,
+.context-toolbar.toolbar-is-tight .toolbar-more-host {
+  margin-left: auto;
+}
+.toolbar-agent-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.context-toolbar.toolbar-measuring .quick-setting.model-combo-host,
+.context-toolbar.toolbar-measuring .quick-setting:has(#chatModelQuick) {
+  flex: 0 0 auto;
+}
+.context-toolbar.toolbar-measuring .quick-setting.model-combo-host input,
+.context-toolbar.toolbar-measuring .quick-setting:has(#chatModelQuick) input,
+.context-toolbar.toolbar-measuring .quick-setting.model-combo-host .custom-select-host,
+.context-toolbar.toolbar-measuring .quick-setting:has(#chatModelQuick) .custom-select-host,
+.context-toolbar.toolbar-measuring .quick-setting.model-combo-host .custom-select-trigger,
+.context-toolbar.toolbar-measuring .quick-setting:has(#chatModelQuick) .custom-select-trigger {
+  flex: none;
+  width: 132px;
+}
+.chat-quick-settings > .search-toggle,
+.toolbar-agent-group > .search-toggle {
+  margin-left: 0;
+}
+@media (max-width: 780px) {
+  .context-toolbar {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+  .context-toolbar .chat-quick-settings {
+    display: flex;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+  }
+  .context-toolbar .quick-setting {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 4px;
+  }
+  .context-toolbar .quick-setting.model-combo-host,
+  .context-toolbar .quick-setting:has(#chatModelQuick) {
+    flex: 1 1 7rem;
+    min-width: 0;
+  }
+  .context-toolbar .quick-setting.model-combo-host input,
+  .context-toolbar .quick-setting:has(#chatModelQuick) input,
+  .context-toolbar .quick-setting.model-combo-host .custom-select-host,
+  .context-toolbar .quick-setting.model-combo-host .custom-select-trigger,
+  .context-toolbar .quick-setting:has(#chatModelQuick) .custom-select-host,
+  .context-toolbar .quick-setting:has(#chatModelQuick) .custom-select-trigger {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+}
+.toolbar-more-menu .toolbar-more-extra {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.toolbar-more-menu .toolbar-more-extra[hidden] {
+  display: none;
+}
+.toolbar-more-menu .toolbar-more-extra .search-toggle,
+.toolbar-more-menu .toolbar-more-extra .quick-setting {
+  margin: 0;
+  width: 100%;
+  justify-content: flex-start;
+}
+.toolbar-more-menu .toolbar-agent-group {
+  width: 100%;
+}
+.toolbar-more-menu .toolbar-agent-group .search-toggle,
+.toolbar-more-menu .toolbar-agent-group .agent-settings-button {
+  margin: 0;
+  width: auto;
+  justify-content: flex-start;
+}
+.agent-step-image .message-images {
+  margin-top: 8px;
+}
+
+.message-image-missing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 72px;
+  margin: 11px 7px 0 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--panel-soft, var(--panel));
+  color: var(--muted-2);
+  font-size: 11px;
+}
 /* END SHARED CHAT STYLES */
 
 .virtual-grid-spacer { grid-column: 1 / -1; min-width:0; pointer-events:none; }
@@ -1785,17 +1995,25 @@ video[hidden] {
 
       <div class="chat-scroll-anchor" id="chatScrollAnchor" hidden><button id="scrollChatBottom" class="chat-scroll-bottom" type="button" aria-label="回到底部" hidden>↓</button></div>
       <footer class="composer-wrap" id="composerWrap" hidden>
-        <div class="context-toolbar">
-          <div class="context-mode" role="group" aria-label="上下文策略">
+        <div class="context-toolbar" id="contextToolbar">
+          <div class="context-mode toolbar-inline-extras" id="contextModeGroup" role="group" aria-label="上下文策略">
             <span class="toolbar-label">上下文</span>
             <button class="context-option active" data-context="client" title="每次请求都带上本会话的历史消息">客户端拼接</button>
             <button class="context-option" data-context="single" title="每次只发送当前问题和系统提示词">单轮请求</button>
             <label class="search-toggle" title="向对话接口发送 web_search_options；是否真正联网由接口和模型决定"><input type="checkbox" id="chatWebSearch"><span>联网搜索</span></label>
             <label class="search-toggle" title="开启后边生成边显示回复；关闭则等完整回复后一次显示"><input type="checkbox" id="chatStream"><span>流式输出</span></label>
           </div>
-          <div class="chat-quick-settings" aria-label="当前对话模型设置"><label class="search-toggle" title="允许对话模型按需调用独立生图接口"><input type="checkbox" id="chatImageTools"><span>Agent 生图</span></label><button id="agentImageSettings" class="agent-settings-button" type="button" aria-haspopup="dialog" aria-controls="agentImageSettingsBackdrop">生图参数</button>
+          <div class="chat-quick-settings" aria-label="当前对话模型设置">
+            <div class="toolbar-agent-group">
+              <label class="search-toggle toolbar-bar-agent" title="允许对话模型按需调用独立生图接口"><input type="checkbox" id="chatImageTools"><span>Agent 生图</span></label>
+              <button id="agentImageSettings" class="agent-settings-button" type="button" aria-haspopup="dialog" aria-controls="agentImageSettingsBackdrop">生图参数</button>
+            </div>
             <label class="quick-setting"><span>模型</span><input id="chatModelQuick" list="chatModelOptions" type="text" aria-label="当前对话模型"></label>
-            <label class="quick-setting"><span>思考</span><select id="reasoningEffortQuick" aria-label="当前对话思考程度"><option value="auto">自动</option><option value="none">关闭</option><option value="minimal">最小</option><option value="low">轻度</option><option value="medium">中</option><option value="high">高</option><option value="xhigh">极高</option><option value="max">Ultra</option></select></label>
+            <label class="quick-setting toolbar-bar-reasoning"><span>思考</span><select id="reasoningEffortQuick" aria-label="当前对话思考程度"><option value="auto">自动</option><option value="none">关闭</option><option value="minimal">最小</option><option value="low">轻度</option><option value="medium">中</option><option value="high">高</option><option value="xhigh">极高</option><option value="max">Ultra</option></select></label>
+          </div>
+          <div class="toolbar-more-host" id="toolbarMoreHost" hidden>
+            <button type="button" class="toolbar-more-button" id="toolbarMoreButton" aria-haspopup="true" aria-expanded="false">更多</button>
+            <div class="toolbar-more-menu" id="toolbarMoreMenu" hidden><div class="toolbar-more-extra" id="toolbarMoreExtra" hidden></div></div>
           </div>
         </div>
         <div class="composer-box" id="composerBox">
@@ -1917,7 +2135,6 @@ video[hidden] {
           <div class="section-title"><span class="section-number">02</span><div><strong>生图接口</strong><small>可以使用和对话不同的服务商或密钥</small></div></div>
           <div class="profile-manager"><label class="profile-select-label">生图接口模板<select id="imageProfileSelect" aria-label="选择生图接口模板"><option value="">临时配置（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveImageProfile" type="button">另存为</button><button class="secondary-button" id="updateImageProfile" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteImageProfile" type="button" title="删除当前生图模板" aria-label="删除当前生图模板" disabled>×</button></div><small class="profile-help">选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。</small></div>
           <label class="field-label">接口协议<select id="imageProvider"><option value="openai">OpenAI 兼容</option><option value="xai">xAI / Grok 原生</option><option value="gemini">Gemini 原生</option></select></label>
-          <label class="field-label">接口地址<input id="imageBaseUrl" type="url" placeholder="https://api.openai.com/v1/images/generations"></label>
           <label class="field-label">接口地址<input id="imageBaseUrl" type="url" placeholder="https://api.openai.com/v1"><small class="field-help">填写 API 根地址, 系统会自动追加生图或改图请求路径</small></label>
           <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="imageApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="imageApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="imageModel" list="imageModelOptions" type="text" placeholder="点击获取或手动输入模型"><datalist id="imageModelOptions"></datalist></label></div>
           <div class="field-grid"><label class="field-label">数量请求方式<select id="imageCountModeSetting"><option value="parameter">单次请求，使用 n 参数</option><option value="parallel">并发请求，每次 n=1</option></select><small class="field-help">官方标准是 n；并发是客户端策略，会把一批请求关联到同一条记录。</small></label><label class="field-label">透明背景实现<select id="imageBackgroundModeSetting"><option value="parameter">使用 background 参数</option><option value="prompt">兼容模式，仅提示透明</option></select><small class="field-help">优先使用 background 参数；兼容模式只为透明背景追加提示词，不会把“不透明”写进关键词。</small></label></div>
@@ -1943,16 +2160,16 @@ video[hidden] {
         </div>
         <div class="settings-section compact-section" id="settings-panel-agent" role="tabpanel" aria-labelledby="settings-tab-agent" data-settings-panel="agent" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">06</span><div><strong>生图 Agent</strong></div></div>
-          <label class="field-label">Agent 生图补充提示词<textarea id="imageAgentInstruction" rows="4" placeholder="补充对话模型判断生图和编写提示词的要求"></textarea></label>
           <label class="toggle-row"><span><strong>由 AI 决定生图参数</strong></span><input id="imageAgentAutoParameters" type="checkbox"><span class="toggle-ui"></span></label>
           <label class="toggle-row"><span><strong>将生成图预览回传给对话模型</strong><small>用于检查生成效果, 会额外消耗图片 token</small></span><input id="imageAgentPreview" type="checkbox"><span class="toggle-ui"></span></label>
           <label class="toggle-row"><span><strong>允许 AI 在效果不符时重试</strong><small>需要开启生成图预览回传</small></span><input id="imageAgentRetryMismatch" type="checkbox"><span class="toggle-ui"></span></label>
           <label class="toggle-row"><span><strong>允许 AI 在生图失败后重试</strong></span><input id="imageAgentRetryErrors" type="checkbox"><span class="toggle-ui"></span></label>
           <label class="field-label">每轮生图重试上限<input id="imageAgentRetryLimit" type="number" min="0" max="5" step="1" value="2"><small class="field-help">由 AI 判断是否重试, 失败和效果检查共用次数</small></label>
+          <label class="field-label">Agent 生图补充提示词<textarea id="imageAgentInstruction" rows="4" placeholder="补充对话模型判断生图和编写提示词的要求"></textarea></label>
         </div>
         <div class="settings-section compact-section" id="settings-panel-prompts" role="tabpanel" aria-labelledby="settings-tab-prompts" data-settings-panel="prompts" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">07</span><div><strong>提示词偏好</strong><small>系统提示词会随对应请求发送</small></div></div>
-          <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手"></textarea><small class="field-help">作为对话请求中的 system 消息发送, 不会拼接到生图关键词</small></label>
+          <label class="field-label">系统提示词<textarea id="systemPrompt" rows="3" placeholder="例如: 你是一位简洁, 直接的中文助手，使用中文思考"></textarea><small class="field-help">作为对话请求中的 system 消息发送, 不会拼接到生图关键词</small></label>
           <label class="field-label">润色系统提示词<textarea id="imagePolishSystemPrompt" rows="4" placeholder="定义润色模型的角色和输出规则"></textarea><small class="field-help">作为润色请求中的 system 消息发送, 用于定义润色模型的角色和输出规则</small></label>
         </div>
         <div class="settings-section compact-section" id="settings-panel-habits" role="tabpanel" aria-labelledby="settings-tab-habits" data-settings-panel="habits" tabindex="0" hidden>
@@ -2263,7 +2480,7 @@ const defaultState = {
     persistInputContent: true,
     compressRequestImages: true,
     requestImageCompressionLimitMb: 1,
-    systemPrompt: '你是一位简洁, 直接的中文助手',
+    systemPrompt: '你是一位简洁, 直接的中文助手，使用中文思考',
     reasoningEffort: 'auto',
     chatWebSearch: false,
     chatStream: true,
@@ -3038,7 +3255,6 @@ function nativeEndpoint(base, suffix, provider) {
     .replace(/\/models(?:\/.*)?$/, '')
   if (!path) path = provider === 'gemini' ? '/v1beta' : '/v1'
   url.pathname = path + suffix
-  url.search = ''
   return url.href
 }
 
@@ -3584,6 +3800,42 @@ function chatReasoningMessages(messages, settings) {
   return messages.map(({ reasoning_content, ...message }) => message)
 }
 
+
+function parsePartialToolArgs(raw) {
+  if (!raw) return {}
+  try {
+    const value = JSON.parse(raw)
+    return value && typeof value === 'object' ? value : {}
+  } catch {}
+  const match = String(raw).match(/"prompt"\s*:\s*"((?:\\.|[^"\\])*)"/)
+  if (!match) return {}
+  try {
+    return { prompt: JSON.parse(`"${match[1]}"`) }
+  } catch {
+    return {}
+  }
+}
+
+function agentStepTitle(step) {
+  if (step.type === 'thinking') return '思考'
+  if (step.type === 'tool_call') return '调用 ' + (step.name || 'generate_image')
+  if (step.type === 'retry') return '重试生图'
+  if (step.type === 'waiting') {
+    const retry = step.name === 'retry_image' || step.retry
+    if (step.endedAt) return retry ? '已重试' : '已生成'
+    return retry ? '正在重试图片' : '正在生成图片'
+  }
+  if (step.type === 'image')
+    return step.error && !(step.imageIds || []).length ? '生图失败' : '生成的图片'
+  if (step.type === 'summary') return '回复'
+  return step.type || ''
+}
+
+function agentWaitSeconds(step, now = Date.now()) {
+  if (!step?.startedAt) return 0
+  return Math.max(0, Math.round(((step.endedAt || now) - step.startedAt) / 1000))
+}
+
 async function requestToolChat(
   fetchApi,
   settings,
@@ -3667,7 +3919,7 @@ async function requestToolChat(
           : call.function.arguments
       calls.set(key, previous)
     }
-    onChunk?.(content, reasoning)
+    onChunk?.(content, reasoning, [...calls.values()])
   }
   if (
     response.headers.get('content-type')?.includes('text/event-stream') &&
@@ -3770,20 +4022,83 @@ async function runImageAgent(options) {
     ? `\n当前默认生图模型为 ${options.settings.imageModel}。根据用户要求选择每次 image_options, model 只能从用户可用模型列表中选, 重试时也可修正参数。接口、数量提交策略、背景实现策略和请求图片压缩由客户端控制。`
     : '\n生图参数沿用用户的生图工作区配置, 不要自行设置 image_options。'
   let used = 0
+  const steps = []
+  const emitSteps = () => options.onSteps?.(steps)
+  function startTextStep() {
+    const step = { type: 'thinking', text: '' }
+    steps.push(step)
+    emitSteps()
+    return step
+  }
+  function dropIfEmpty(step) {
+    if (step?.text) return
+    const index = steps.lastIndexOf(step)
+    if (index >= 0) steps.splice(index, 1)
+  }
+  function upsertToolStep(call, index, toolSteps) {
+    if (!call?.function?.name) return
+    let step = toolSteps.get(index)
+    if (!step && call.id) {
+      for (const item of toolSteps.values()) {
+        if (item.toolCallId === call.id) {
+          step = item
+          break
+        }
+      }
+    }
+    if (!step) {
+      step = {
+        type: call.function.name === 'retry_image' ? 'retry' : 'tool_call',
+        name: call.function.name,
+        prompt: '',
+        params: {},
+        toolCallId: call.id || '',
+      }
+      steps.push(step)
+    }
+    if (call.id) step.toolCallId = call.id
+    const args = parsePartialToolArgs(call.function.arguments)
+    if (args.prompt) step.prompt = args.prompt
+    if (args.image_options && typeof args.image_options === 'object')
+      step.params = args.image_options
+    if (args.tool_call_id) step.retryOf = args.tool_call_id
+    toolSteps.set(index, step)
+    return step
+  }
   const rounds = 5 + (allowRetry ? retryLimit : 0)
   for (let index = 0; index < rounds; index++) {
     if (options.signal.aborted) throw options.signal.reason
     options.onStatus?.({ status: '正在等待对话模型', prompt: '' })
+    const textStep = startTextStep()
+    const toolSteps = new Map()
+    const stream = Boolean(options.onChunk)
     const result = await requestToolChat(
       options.fetch,
       options.settings,
       messages,
       options.signal,
-      options.onChunk,
+      stream
+        ? (content, reasoning, toolCalls) => {
+            textStep.text = reasoning
+            for (const [toolIndex, call] of (toolCalls || []).entries())
+              upsertToolStep(call, toolIndex, toolSteps)
+            options.onChunk?.(content, reasoning)
+            emitSteps()
+          }
+        : undefined,
       options.onUnsupportedSearch,
       index === rounds - 1 ? [] : tools,
     )
-    if (!result.tool_calls.length) return result
+    textStep.text = result.reasoning || textStep.text || ''
+    for (const [toolIndex, call] of result.tool_calls.entries())
+      upsertToolStep(call, toolIndex, toolSteps)
+    dropIfEmpty(textStep)
+    if (!result.tool_calls.length) {
+      if (result.content) steps.push({ type: 'summary', text: result.content })
+      emitSteps()
+      return result
+    }
+    emitSteps()
     if (index === rounds - 1) throw new Error('已达到本轮图片工具调用上限')
     const assistant = {
       role: 'assistant',
@@ -3848,12 +4163,32 @@ async function runImageAgent(options) {
             : '正在生成图片',
           prompt: args.prompt,
         })
-        output = await options.generate(args.prompt, ids, parameters)
+        const waiting = {
+          type: 'waiting',
+          name: call.function.name,
+          retry: isRetry,
+          startedAt: Date.now(),
+        }
+        steps.push(waiting)
+        emitSteps()
+        try {
+          output = await options.generate(args.prompt, ids, parameters)
+        } finally {
+          waiting.endedAt = Date.now()
+        }
         if (!output) throw new Error('生成任务已中止')
         attempt.hasImages = Boolean(output.imageIds?.length)
         for (const id of output.imageIds || []) available.add(id)
         if (options.settings.imageAgentPreview)
           previewIds.push(...(output.imageIds || []))
+        steps.push({
+          type: 'image',
+          imageIds: output.imageIds || [],
+          batchId: output.batchId,
+          error: output.error || '',
+          toolCallId: call.id,
+        })
+        emitSteps()
         options.onStatus?.({
           status: attempt.hasImages
             ? '图片已生成, 正在整理回复'
@@ -3863,6 +4198,17 @@ async function runImageAgent(options) {
       } catch (error) {
         if (options.signal.aborted) throw options.signal.reason
         output = { status: 'error', error: error.message, imageIds: [] }
+        const last = steps[steps.length - 1]
+        if (last?.type === 'waiting' && !last.endedAt) last.endedAt = Date.now()
+        if (last?.type !== 'image' || last.toolCallId !== call.id)
+          steps.push({
+            type: 'image',
+            imageIds: [],
+            error: error.message,
+            toolCallId: call.id,
+          })
+        else if (!last.imageIds?.length) last.error = error.message
+        emitSteps()
       }
       if (allowRetry)
         output = {
@@ -3960,6 +4306,9 @@ function remapAgentMessage(message, remap) {
         result.content = JSON.stringify(output)
       } catch {}
     }
+  }
+  for (const step of message.steps || []) {
+    if (step.imageIds) step.imageIds = remap(step.imageIds)
   }
 }
 // 图片 ID 常驻文字历史, 是否携带图片内容由对话策略决定。
@@ -5114,6 +5463,7 @@ async function deleteGenerationRecord(batchId = '', taskId = '') {
   recordIds.forEach((id) => storedImages.delete(id));
   await removeUnreferencedImages();
   updateImageHistoryAfterDelete(new Set(batch ? [batch.id] : []), new Set(task ? [task.id] : []));
+  renderMessages();
   stopImageTaskTimerIfIdle();
 }
 
@@ -5772,6 +6122,7 @@ async function deleteSelectedHistory() {
   await removeUnreferencedImages();
   selectedHistoryKeys.clear();
   updateImageHistoryAfterDelete(new Set(touchedBatches.keys()), deletedTaskIds);
+  renderMessages();
 }
 
 function activeConversation() {
@@ -5781,7 +6132,7 @@ function activeConversation() {
 function getReferencedImageIds(excludedBatchIds = new Set()) {
   const ids = new Set();
   state.conversations.forEach((conversation) => conversation.messages.forEach((message) => {
-    [...(message.imageIds || []), ...agentImageIds(message)].filter(Boolean).forEach((id) => ids.add(id));
+    [...(message.imageIds || []), ...(message.mentionImageIds || [])].filter(Boolean).forEach((id) => ids.add(id));
   }));
   imageHistory.forEach((batch) => {
     if (excludedBatchIds.has(batch.id)) return;
@@ -5827,12 +6178,33 @@ function getMessageImageRecords(message) {
   return (message.imageIds || []).map((id) => storedImages.get(id)).filter((record) => record?.src);
 }
 
+function messageBatchImages(message) {
+  return (message.steps || []).flatMap((step) => {
+    if (!step.batchId) return [];
+    const batch = imageHistory.find((item) => item.id === step.batchId);
+    return batch ? getBatchImages(batch).filter((image) => image?.src) : [];
+  });
+}
+
+function messageExportImages(message) {
+  const seen = new Set();
+  return [...getMessageImageRecords(message), ...messageBatchImages(message)].filter((image) => {
+    if (seen.has(image.id)) return false;
+    seen.add(image.id);
+    return true;
+  });
+}
+
+function renderMessageImageButtons(records) {
+  return records.map((record) => `<button class="message-image-button" data-image-id="${escapeHtml(record.id)}" aria-label="预览消息图片"><img class="message-image" src="${DEFERRED_IMAGE_PLACEHOLDER}" data-image-id="${escapeHtml(record.id)}" alt="" decoding="async"></button>`).join('');
+}
+
 function getConversationMentionImages(conversation = activeConversation()) {
   if (!conversation) return [];
-  const outputs = new Set(conversation.messages.filter(message => message.role === 'assistant').flatMap(message => message.imageIds || []));
+  const outputs = new Set(conversation.messages.flatMap((message) => messageBatchImages(message).map((image) => image.id)));
   const seen = new Set();
   const images = conversation.messages.flatMap((message) =>
-    getMessageImageRecords(message).filter((image) => {
+    messageExportImages(message).filter((image) => {
       if (image.mediaType === 'video' || seen.has(image.id)) return false;
       seen.add(image.id);
       return true;
@@ -6024,9 +6396,10 @@ function formatConversationTranscript(conversation) {
   const sections = [`# ${conversation.title}`, `> 导出时间：${formatTime(Date.now())}`];
   conversation.messages.forEach((message) => {
     const role = message.role === 'assistant' ? 'Orbit' : '你';
-    const imageLines = getMessageImageRecords(message).map((image, index) => `> 图片 ${index + 1}${image.name ? `：${image.name}` : ''}`).join('\n');
-    const reasoning = message.reasoning ? `> 思考过程\n> ${message.reasoning.replace(/\n/g, '\n> ')}\n\n` : '';
-    sections.push(`## ${role} · ${formatTime(message.createdAt)}\n\n${reasoning}${message.content || ''}${message.error ? '\n\n> 请求失败: ' + message.error : ''}${imageLines ? `\n\n${imageLines}` : ''}`);
+    const imageLines = messageExportImages(message).map((image, index) => `> 图片 ${index + 1}${image.name ? `：${image.name}` : ''}`).join('\n');
+    const reasoning = exportAgentStepsMarkdown(message);
+    const body = message.steps?.some((step) => step.type === 'summary') ? '' : (message.content || '');
+    sections.push(`## ${role} · ${formatTime(message.createdAt)}\n\n${reasoning}${body}${message.error ? '\n\n> 请求失败: ' + message.error : ''}${imageLines ? `\n\n${imageLines}` : ''}`);
   });
   return sections.join('\n\n---\n\n');
 }
@@ -6047,13 +6420,14 @@ function writeTextToClipboard(text) {
 
 async function buildConversationExportHtml(conversation) {
   const sources = new Map();
-  for (const message of conversation.messages) for (const image of getMessageImageRecords(message))
-    if (!sources.has(image.id)) { sources.set(image.id, await imageStorage.dataUrl(image.src)); updateExportProgress(Math.min(.9, sources.size / Math.max(1, conversation.messages.flatMap(message => message.imageIds || []).length) * .9)); }
+  for (const message of conversation.messages) for (const image of messageExportImages(message))
+    if (!sources.has(image.id)) { sources.set(image.id, await imageStorage.dataUrl(image.src)); updateExportProgress(Math.min(.9, sources.size / Math.max(1, conversation.messages.flatMap(message => messageExportImages(message)).length) * .9)); }
   const messageHtml = conversation.messages.map((message) => {
     const role = message.role === 'assistant' ? 'Orbit' : '你';
-    const images = getMessageImageRecords(message).map((image, index) => `<figure><img src="${escapeHtml(sources.get(image.id))}" alt="${escapeHtml(image.name || `图片 ${index + 1}`)}"><figcaption>${escapeHtml(image.name || `图片 ${index + 1}`)}</figcaption></figure>`).join('');
-    const reasoning = message.reasoning ? `<details class="message-reasoning"><summary>思考过程</summary><div class="message-reasoning-content">${renderMarkdown(message.reasoning)}</div></details>` : '';
-    return `<article><header><strong>${role}</strong><time>${escapeHtml(formatTime(message.createdAt))}</time></header>${reasoning}<div class="message-content">${renderMarkdown(message.content || '')}${message.error ? '<p>请求失败: ' + escapeHtml(message.error) + '</p>' : ''}</div>${images ? `<div class="message-images">${images}</div>` : ''}</article>`;
+    const images = messageExportImages(message).map((image, index) => `<figure><img src="${escapeHtml(sources.get(image.id))}" alt="${escapeHtml(image.name || `图片 ${index + 1}`)}"><figcaption>${escapeHtml(image.name || `图片 ${index + 1}`)}</figcaption></figure>`).join('');
+    const reasoning = exportAgentStepsHtml(message);
+    const body = message.steps?.some((step) => step.type === 'summary') ? '' : renderMarkdown(message.content || '');
+    return `<article><header><strong>${role}</strong><time>${escapeHtml(formatTime(message.createdAt))}</time></header>${reasoning}<div class="message-content">${body}${message.error ? '<p>请求失败: ' + escapeHtml(message.error) + '</p>' : ''}</div>${images ? `<div class="message-images">${images}</div>` : ''}</article>`;
   }).join('\n');
   const documentClose = '</bo' + 'dy></ht' + 'ml>';
   return `<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(conversation.title)}</title><style>body{max-width:860px;margin:0 auto;padding:32px 20px;color:#243447;background:#f6f8fb;font:15px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}h1{font-size:24px}h1,article{background:#fff;border:1px solid #dfe6ee;border-radius:10px;padding:18px 20px}article{margin-top:14px}header{display:flex;gap:12px;align-items:baseline;border-bottom:1px solid #edf1f5;padding-bottom:8px}time{color:#718096;font-size:12px}.message-content p{margin:0 0 10px}.message-content p:last-child{margin-bottom:0}.message-content pre{overflow:auto;padding:12px;background:#f1f4f7;border-radius:6px}.message-content code{padding:2px 4px;background:#eef2f5;border-radius:3px}.message-content a{color:#147d92}.message-images{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}figure{margin:0;max-width:360px}figure img{display:block;max-width:100%;max-height:420px;border-radius:7px}figcaption{margin-top:4px;color:#718096;font-size:12px}</style></head><body><h1>${escapeHtml(conversation.title)}</h1>${messageHtml}${documentClose}`;
@@ -6628,16 +7002,16 @@ function scrollChatStage(force = false) {
     stage.scrollTop = stage.scrollHeight;
     window.requestAnimationFrame(() => {
       chatScrollProgrammatic = false;
-      if (forceScroll || chatFollowBottom) chatFollowBottom = isChatStageNearBottom(stage);
+      // 程序滚底后保持跟随。消息重绘会暂时换上占位图, 高度稍后才撑开,
+      // 若此时按离底距离取消跟随, 后续出图就不再贴底。只有用户滚动/上滑才取消。
       updateChatBottomButton();
     });
   });
 }
 
 function updateChatBottomButton() {
-  const stage = $('.content-stage');
   $('#chatScrollAnchor').hidden = $('#chatView').hidden;
-  $('#scrollChatBottom').hidden = !stage || isChatStageNearBottom(stage);
+  $('#scrollChatBottom').hidden = $('#chatView').hidden || chatFollowBottom;
 }
 
 function bindChatStageScroll() {
@@ -6655,6 +7029,15 @@ function bindChatStageScroll() {
   stage.addEventListener('load', (event) => {
     if (event.target instanceof HTMLImageElement && event.target.closest('.chat-view')) scrollChatStage();
   }, true);
+  const list = $('#messageList');
+  if (list && list.dataset.chatResizeBound !== '1') {
+    list.dataset.chatResizeBound = '1';
+    new ResizeObserver(() => {
+      if ($('#chatView').hidden) return;
+      if (chatFollowBottom) scrollChatStage(false);
+      else updateChatBottomButton();
+    }).observe(list);
+  }
 }
 
 function render() {
@@ -6664,6 +7047,7 @@ function render() {
   ensureActiveConversation();
   renderConversations();
   renderMessages();
+  layoutComposerToolbar();
   $('#workspaceTitle').textContent = $('#imageView').hidden ? activeConversation().title : '生图工作区';
   $('#chatModelQuick').value = state.settings.chatModel;
   $('#reasoningEffortQuick').value = state.settings.reasoningEffort || 'auto';
@@ -6884,32 +7268,130 @@ function hydrateDeferredImages(root) {
   });
 }
 
+
+function agentStepParams(step) {
+  return Object.entries(step.params || {}).filter(([, value]) => value !== undefined && value !== '').map(([key, value]) => key + ': ' + value).join(' · ');
+}
+
+function renderAgentStep(step, active = false) {
+  const title = agentStepTitle(step);
+  if (step.type === 'thinking')
+    return `<section class="agent-step agent-step-${step.type}"><details class="message-reasoning"${active ? ' open' : ''}><summary>${escapeHtml(title)}</summary><div class="message-reasoning-content markdown-body">${renderMarkdown(step.text || '')}</div></details></section>`;
+  if (step.type === 'tool_call' || step.type === 'retry')
+    return `<section class="agent-step agent-step-${step.type}"><div class="agent-step-label">${escapeHtml(title)}</div>${step.prompt ? `<pre class="agent-step-prompt">${escapeHtml(step.prompt)}</pre>` : ''}</section>`;
+  if (step.type === 'waiting')
+    return `<section class="agent-step agent-step-waiting">${step.endedAt ? '' : '<span class="agent-activity-spinner" aria-hidden="true"></span>'}<span data-step-waiting data-started-at="${step.startedAt || ''}"${step.endedAt ? ` data-ended-at="${step.endedAt}"` : ''} data-retry="${step.retry || step.name === 'retry_image' ? '1' : ''}">${escapeHtml(title)} · ${agentWaitSeconds(step)} 秒</span></section>`;
+  if (step.type === 'image') {
+    const batch = step.batchId ? imageHistory.find((item) => item.id === step.batchId) : null;
+    const records = step.batchId ? (batch ? getBatchImages(batch).filter((image) => image?.src) : []) : (step.imageIds || []).map((id) => storedImages.get(id)).filter((record) => record?.src);
+    const images = step.batchId && !batch ? '<div class="message-image-missing">已删除</div>' : renderMessageImageButtons(records);
+    const error = step.error && !records.length && !(step.batchId && !batch) ? `<div class="message-error">${escapeHtml(step.error)}</div>` : '';
+    return `<section class="agent-step agent-step-image"><div class="agent-step-label">${escapeHtml(title)}</div>${error}${step.batchId && !batch || records.length ? `<div class="message-images">${images}</div>` : ''}</section>`;
+  }
+  if (step.type === 'summary')
+    return `<section class="agent-step agent-step-summary"><div class="message-text markdown-body">${renderMarkdown(step.text || '')}</div></section>`;
+  return '';
+}
+
+function renderAgentSteps(message) {
+  if (!message.steps?.length) return '';
+  const streaming = message.id === chatRuns.get(state.activeConversationId)?.messageId;
+  const last = message.steps.length - 1;
+  return `<div class="message-steps">${message.steps.map((step, index) => renderAgentStep(step, streaming && index === last)).join('')}</div>`;
+}
+
+function exportAgentStepsMarkdown(message) {
+  if (!message.steps?.length)
+    return message.reasoning ? `> 思考过程\n> ${message.reasoning.replace(/\n/g, '\n> ')}\n\n` : '';
+  const blocks = message.steps.flatMap((step) => {
+    if (step.type === 'thinking' || step.type === 'summary')
+      return step.text ? [`> ${agentStepTitle(step)}\n> ${step.text.replace(/\n/g, '\n> ')}`] : [];
+    if (step.type === 'tool_call' || step.type === 'retry')
+      return [`> ${agentStepTitle(step)}${step.prompt ? `\n> ${step.prompt.replace(/\n/g, '\n> ')}` : ''}`];
+    if (step.type === 'image' && step.error && !step.imageIds?.length)
+      return [`> 生图失败: ${step.error}`];
+    return [];
+  });
+  return blocks.length ? blocks.join('\n\n') + '\n\n' : '';
+}
+
+function exportAgentStepsHtml(message) {
+  if (!message.steps?.length)
+    return message.reasoning ? `<details class="message-reasoning"><summary>思考过程</summary><div class="message-reasoning-content">${renderMarkdown(message.reasoning)}</div></details>` : '';
+  return `<div class="message-steps">${message.steps.map((step) => {
+    if (step.type === 'thinking' || step.type === 'summary')
+      return step.text ? `<section><h3>${escapeHtml(agentStepTitle(step))}</h3><div>${renderMarkdown(step.text)}</div></section>` : '';
+    if (step.type === 'tool_call' || step.type === 'retry')
+      return `<section><h3>${escapeHtml(agentStepTitle(step))}</h3>${step.prompt ? `<pre>${escapeHtml(step.prompt)}</pre>` : ''}</section>`;
+    if (step.type === 'image' && step.error && !step.imageIds?.length)
+      return `<section><p>生图失败: ${escapeHtml(step.error)}</p></section>`;
+    return '';
+  }).join('')}</div>`;
+}
+
+let agentWaitTimer = 0;
+function tickAgentWaitLabels() {
+  document.querySelectorAll('[data-step-waiting]').forEach((node) => {
+    const started = Number(node.dataset.startedAt || 0);
+    if (!started) return;
+    const finished = Number(node.dataset.endedAt || 0);
+    const ended = finished || Date.now();
+    const retry = node.dataset.retry === '1';
+    const title = finished ? (retry ? '已重试' : '已生成') : (retry ? '正在重试图片' : '正在生成图片');
+    node.textContent = `${title} · ${Math.max(0, Math.round((ended - started) / 1000))} 秒`;
+  });
+}
+function ensureAgentWaitTimer() {
+  if (agentWaitTimer) return;
+  if (!document.querySelector('[data-step-waiting]:not([data-ended-at])')) return;
+  agentWaitTimer = window.setInterval(() => {
+    tickAgentWaitLabels();
+    if (!document.querySelector('[data-step-waiting]:not([data-ended-at])')) {
+      window.clearInterval(agentWaitTimer);
+      agentWaitTimer = 0;
+    }
+  }, 1000);
+}
+
+function bindMessageImageButtons(root) {
+  root.querySelectorAll('.message-image-button').forEach((button) => {
+    if (button.dataset.bound) return;
+    button.dataset.bound = '1';
+    button.addEventListener('click', () => {
+      const buttons = [...button.parentElement.querySelectorAll('.message-image-button')];
+      const sources = buttons.map((item) => storedImages.get(item.dataset.imageId)?.src).filter(Boolean);
+      const image = storedImages.get(button.dataset.imageId) || storedImages.get(Number(button.dataset.imageId));
+      if (image?.src) openMessageImage(image, sources, buttons.indexOf(button));
+    });
+  });
+}
+
 function renderMessages() {
   const conversation = activeConversation();
   const list = $('#messageList');
   const hasMessages = conversation.messages.length > 0;
   $('#welcomePanel').hidden = hasMessages;
+  chatScrollProgrammatic = true;
   list.innerHTML = conversation.messages.map((message) => {
-    const imageRecords = getMessageImageRecords(message);
-  const image = imageRecords.map(record => `<button class="message-image-button" data-image-id="${escapeHtml(record.id)}" aria-label="预览消息图片"><img class="message-image" src="${DEFERRED_IMAGE_PLACEHOLDER}" data-image-id="${escapeHtml(record.id)}" alt="" decoding="async"></button>`).join('');
+    const hasSteps = Boolean(message.steps?.length);
+    const image = hasSteps ? '' : renderMessageImageButtons(getMessageImageRecords(message));
     const files = (message.files || []).map(file => `<div class="chat-file"><span>PDF</span><span class="chat-file-name">${escapeHtml(file.name)}</span></div>`).join('');
     const editAction = message.role === 'user' ? `<button class="message-action edit-message" data-message-id="${message.id}">修改</button>` : '';
-    const reasoning = message.reasoning ? `<details class="message-reasoning"${message.id === chatRuns.get(state.activeConversationId)?.messageId ? ' open' : ''}><summary>${message.id === chatRuns.get(state.activeConversationId)?.messageId && !message.content ? (chatRuns.get(state.activeConversationId)?.activity?.status || '正在思考') : '思考过程'}</summary><div class="message-reasoning-content markdown-body">${renderMarkdown(message.reasoning)}</div></details>` : '';
-    return `<article class="message ${message.role}${message.id === chatRuns.get(state.activeConversationId)?.messageId ? ' streaming' : ''}" data-message-id="${message.id}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div>${reasoning}<div class="message-text markdown-body">${renderMarkdown(message.content)}</div>${message.error ? `<div class="message-error" role="alert">请求失败: ${escapeHtml(message.error)}</div>` : ''}${files ? `<div class="chat-files">${files}</div>` : ''}${image}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
+    const steps = renderAgentSteps(message);
+    const reasoning = hasSteps ? '' : (message.reasoning ? `<details class="message-reasoning"${message.id === chatRuns.get(state.activeConversationId)?.messageId ? ' open' : ''}><summary>${message.id === chatRuns.get(state.activeConversationId)?.messageId && !message.content ? (chatRuns.get(state.activeConversationId)?.activity?.status || '正在思考') : '思考过程'}</summary><div class="message-reasoning-content markdown-body">${renderMarkdown(message.reasoning)}</div></details>` : '');
+    const text = hasSteps && message.steps.some((step) => step.type === 'summary') ? '' : `<div class="message-text markdown-body">${renderMarkdown(message.content)}</div>`;
+    return `<article class="message ${message.role}${message.id === chatRuns.get(state.activeConversationId)?.messageId ? ' streaming' : ''}" data-message-id="${message.id}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div>${steps || reasoning}${text}${message.error ? `<div class="message-error" role="alert">请求失败: ${escapeHtml(message.error)}</div>` : ''}${files ? `<div class="chat-files">${files}</div>` : ''}${!hasSteps && image ? `<div class="message-images">${image}</div>` : ''}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
   }).join('');
   hydrateDeferredImages(list, 'messages');
+  chatScrollProgrammatic = false;
   $$('.copy-message').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard?.writeText(decodeURIComponent(button.dataset.message));
     showToast('已复制到剪贴板');
   }));
   $$('.edit-message').forEach((button) => button.addEventListener('click', () => beginMessageEdit(button.dataset.messageId)));
   $$('.delete-message').forEach((button) => button.addEventListener('click', () => deleteMessage(button.dataset.messageId)));
-  $$('.message-image-button').forEach((button) => button.addEventListener('click', () => {
-    const buttons = [...button.parentElement.querySelectorAll('.message-image-button')];
-    const sources = buttons.map((item) => storedImages.get(item.dataset.imageId)?.src).filter(Boolean);
-    const image = storedImages.get(button.dataset.imageId) || storedImages.get(Number(button.dataset.imageId));
-    if (image?.src) openMessageImage(image, sources, buttons.indexOf(button));
-  }));
+  bindMessageImageButtons(list);
+  ensureAgentWaitTimer();
   $$('.markdown-inline-image').forEach((image) => image.addEventListener('click', () => {
     const images = [...image.closest('.message-content').querySelectorAll('.markdown-inline-image')];
     openChatImageViewer(image.src, images.map((item) => item.src), images.indexOf(image));
@@ -8189,8 +8671,8 @@ async function buildRequestMessages(conversationId, settings, contextMode) {
   };
   for (const message of source) {
     if (message.toolRounds?.length) messages.push(...agentMessages(message));
-    if (message.role === 'assistant' && !message.content.trim()) continue;
-    const imageRecords = getMessageImageRecords(message).filter(image => image.mediaType !== 'video');
+    if (message.role === 'assistant' && !message.content.trim() && !message.reasoning?.trim()) continue;
+    const imageRecords = messageExportImages(message).filter(image => image.mediaType !== 'video');
     const current = [...conversation.messages].reverse().find(item => item.role === 'user');
     const carryImages = settings.chatHistoryImages === 'all' || message.id === current?.id;
     if (message.role === 'assistant' && carryImages && imageRecords.length) {
@@ -8222,7 +8704,8 @@ function renderChatRunState() {
   button.setAttribute('aria-label', button.title);
   button.innerHTML = run ? '<span>■</span>' : '<span>↑</span>';
   button.disabled = false;
-  $('#agentActivity').hidden = !activity;
+  const streaming = run && findStreamingMessage(run);
+  $('#agentActivity').hidden = !activity || Boolean(streaming?.steps?.length);
   $('#agentActivityLabel').textContent = activity?.status || '';
   $('#agentActivityPrompt').textContent = activity?.prompt || '';
   $('#agentActivityPrompt').hidden = !activity?.prompt;
@@ -8322,7 +8805,24 @@ function updateStreamingMessage(run, content, immediate = false, reasoning = nul
     const article = document.querySelector(`.message[data-message-id="${selectorId}"]`);
     const text = article?.querySelector('.message-text');
     const reasoningText = article?.querySelector('.message-reasoning-content');
-    if (text && (reasoningText || !message.reasoning)) {
+    if (message.steps?.length) {
+      const stepsHtml = renderAgentSteps(message);
+      const stepsEl = article.querySelector('.message-steps');
+      if (stepsEl) {
+        stepsEl.outerHTML = stepsHtml;
+        hydrateDeferredImages(article);
+        bindMessageImageButtons(article);
+      } else {
+        renderMessages();
+        ensureAgentWaitTimer();
+        scrollChatStage(false);
+        return;
+      }
+      const hideText = message.steps.some((step) => step.type === 'summary');
+      if (hideText) text?.remove();
+      else if (text) text.innerHTML = renderMarkdown(message.content);
+      ensureAgentWaitTimer();
+    } else if (text && (reasoningText || !message.reasoning)) {
       text.innerHTML = renderMarkdown(message.content);
       if (reasoningText) {
         reasoningText.innerHTML = renderMarkdown(message.reasoning);
@@ -8357,7 +8857,7 @@ function finalizeStreamingMessage(run, content, reasoning = null) {
   if (!message) return;
   message.content = content;
   if (reasoning !== null) message.reasoning = reasoning;
-  if (!content.trim() && !message.reasoning?.trim() && !message.imageIds?.length && !message.toolRounds?.length) {
+  if (!content.trim() && !message.reasoning?.trim() && !message.imageIds?.length && !message.toolRounds?.length && !message.steps?.length) {
     const conversation = state.conversations.find((entry) => entry.messages.some((item) => item.id === messageId));
     const index = conversation ? conversation.messages.findIndex((entry) => entry.id === messageId) : -1;
     if (index >= 0) conversation.messages.splice(index, 1);
@@ -8527,15 +9027,24 @@ async function requestChatAgent(run, streamEnabled) {
       settings: { ...settings, chatBaseUrl: buildApiEndpoint(settings.chatBaseUrl, '/chat/completions') },
       messages: await buildRequestMessages(run.id, settings, run.contextMode),
       imageModels: modelCatalog.image,
-      imageIds: conversation.messages.flatMap((message) => message.imageIds || []).filter((id) => storedImages.get(id)?.mediaType !== 'video'),
+      imageIds: conversation.messages.flatMap((message) => [...(message.imageIds || []), ...messageBatchImages(message).map((image) => image.id)]).filter((id) => { const image = storedImages.get(id); return image?.type === 'image' && image.mediaType !== 'video'; }),
       signal,
       onChunk: streamEnabled ? (content, reasoning) => updateStreamingMessage(run, content, false, reasoning) : undefined,
+      onSteps: (steps) => {
+        if (signal.aborted) return;
+        const message = ensureStreamingMessage(run);
+        message.steps = steps;
+        const last = steps[steps.length - 1];
+        const immediate = last && !['thinking', 'summary'].includes(last.type);
+        updateStreamingMessage(run, message.content, immediate, message.reasoning);
+      },
       onStatus: (activity) => setAgentActivity(activity, run),
-      preview: (id) => imageStorage.previewDataUrl(storedImages.get(id).src),
+      preview: (id) => { const image = storedImages.get(id); if (!image?.src) throw new Error('图片已删除'); return imageStorage.previewDataUrl(image.src); },
       onUnsupportedSearch: () => { conversation.chatContext.settings.chatWebSearch = false; if (state.activeConversationId === run.id) state.settings.chatWebSearch = false; persist(); showWarningToast('当前接口不支持联网参数, 已关闭联网并重试'); },
       generate: async (prompt, ids, parameters) => {
         if (!settings.imageApiKey || !settings.imageBaseUrl) throw new Error('请先配置生图接口和 API Key');
-        return generateImage({ prompt, config: { ...config, ...parameters, size: parameters ? ratioToSize(parameters.ratio, parameters.resolution, parameters.width, parameters.height, parameters.sizeMode) : config.size, mediaType: 'image', requestType: ids.length ? 'edit' : 'generation' }, references: ids.map((id) => ({ imageId: id, data: storedImages.get(id).src })), signal, settings });
+        const references = (ids || []).flatMap((id) => { const image = storedImages.get(id); return image?.src ? [{ imageId: id, data: image.src }] : []; });
+        return generateImage({ prompt, config: { ...config, ...parameters, size: parameters ? ratioToSize(parameters.ratio, parameters.resolution, parameters.width, parameters.height, parameters.sizeMode) : config.size, mediaType: 'image', requestType: references.length ? 'edit' : 'generation' }, references, signal, settings });
       },
       onRound: (round) => {
         if (signal.aborted) return;
@@ -8543,7 +9052,6 @@ async function requestChatAgent(run, streamEnabled) {
         const rounds = message.toolRounds ||= [];
         const index = rounds.findIndex((item) => item.assistant.tool_calls[0]?.id === round.assistant.tool_calls[0]?.id);
         if (index >= 0) rounds[index] = round; else rounds.push(round);
-        message.imageIds = [...new Set(rounds.flatMap((item) => item.results.flatMap((result) => JSON.parse(result.content).imageIds || [])))];
         persist(); if (state.activeConversationId === run.id) renderMessages();
       }
     });
@@ -9018,7 +9526,7 @@ async function generateImage(options = {}) {
   }
   const completedTask = imageTasks.find((task) => task.id === taskId);
   const batch = imageHistory.find((item) => item.taskId === taskId);
-  return { taskId, status: completedTask?.status || 'error', imageIds: batch?.imageIds || [], error: completedTask?.error?.message };
+  return { taskId, status: completedTask?.status || 'error', imageIds: batch?.imageIds || [], batchId: batch?.id, error: completedTask?.error?.message };
 }
 
 async function editGeneratedImage(item, onlySelected = false) {
@@ -11864,8 +12372,96 @@ function syncModalViewport() {
   document.documentElement.style.setProperty('--modal-viewport-top', `${viewport?.offsetTop || 0}px`);
 }
 
+let composerExtrasWidth = 0;
+let composerAgentGroupWidth = 0;
+function closeComposerToolbarMore() {
+  const button = $('#toolbarMoreButton');
+  const menu = $('#toolbarMoreMenu');
+  if (!button || !menu) return;
+  button.setAttribute('aria-expanded', 'false');
+  menu.hidden = true;
+}
+function composerToolbarAgent() {
+  return $('#chatImageTools')?.closest('label');
+}
+function parkComposerToolbarTight(on) {
+  const extra = $('#toolbarMoreExtra');
+  const quick = $('#contextToolbar')?.querySelector('.chat-quick-settings');
+  const group = $('#contextToolbar')?.querySelector('.toolbar-agent-group') || quick?.querySelector('.toolbar-agent-group');
+  const agent = composerToolbarAgent();
+  const params = $('#agentImageSettings');
+  const model = $('#chatModelQuick')?.closest('label');
+  if (!extra || !quick) return;
+  if (on) {
+    if (group) extra.appendChild(group);
+    else {
+      if (agent) extra.appendChild(agent);
+      if (params) extra.appendChild(params);
+    }
+    extra.hidden = false;
+  } else {
+    if (group) quick.insertBefore(group, model || quick.firstChild);
+    else {
+      if (agent) quick.insertBefore(agent, model || quick.firstChild);
+      if (params) quick.insertBefore(params, model || quick.firstChild);
+    }
+    extra.hidden = true;
+  }
+}
+function layoutComposerToolbar() {
+  const toolbar = $('#contextToolbar');
+  const extras = $('#contextModeGroup');
+  const host = $('#toolbarMoreHost');
+  const button = $('#toolbarMoreButton');
+  const menu = $('#toolbarMoreMenu');
+  const quick = toolbar?.querySelector('.chat-quick-settings');
+  if (!toolbar || !extras || !host || !button || !menu || !quick || !toolbar.clientWidth) return;
+  if (toolbar.dataset.barWidth && Number(toolbar.dataset.barWidth) !== toolbar.clientWidth) closeComposerToolbarMore();
+  toolbar.dataset.barWidth = String(toolbar.clientWidth);
+  const inMenu = extras.parentElement === menu;
+  const contentWidth = (el) => Math.max(el.scrollWidth, [...el.children].reduce((sum, child) => sum + child.offsetWidth, 0));
+  if (!inMenu && extras.offsetWidth) composerExtrasWidth = contentWidth(extras);
+  toolbar.classList.add('toolbar-measuring');
+  const group = toolbar.querySelector('.toolbar-agent-group') || document.querySelector('.toolbar-agent-group');
+  if (group?.offsetWidth) composerAgentGroupWidth = group.offsetWidth;
+  const model = $('#chatModelQuick')?.closest('label');
+  const thinking = $('#reasoningEffortQuick')?.closest('label');
+  const preferredQuick = (composerAgentGroupWidth || 0) + (model?.offsetWidth || 0) + (thinking?.offsetWidth || 0) + 16;
+  toolbar.classList.remove('toolbar-measuring');
+  if (!composerExtrasWidth) return;
+  const compact = composerExtrasWidth + preferredQuick + 16 > toolbar.clientWidth;
+  if (!compact) {
+    if (inMenu) toolbar.insertBefore(extras, host);
+    parkComposerToolbarTight(false);
+    host.hidden = true;
+    toolbar.classList.remove('toolbar-is-compact', 'toolbar-is-tight');
+    closeComposerToolbarMore();
+    return;
+  }
+  if (!inMenu) menu.insertBefore(extras, $('#toolbarMoreExtra'));
+  host.hidden = false;
+  toolbar.classList.add('toolbar-is-compact');
+  const moreW = Math.max(52, button.offsetWidth || 0);
+  const tight = moreW + preferredQuick + 12 > toolbar.clientWidth;
+  toolbar.classList.toggle('toolbar-is-tight', tight);
+  parkComposerToolbarTight(tight);
+}
+
 function bindEvents() {
   if (!state.settings.persistInputContent) clearInputDrafts();
+  $('#toolbarMoreButton')?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const button = $('#toolbarMoreButton');
+    const menu = $('#toolbarMoreMenu');
+    const open = menu.hidden;
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menu.hidden = !open;
+  });
+  document.addEventListener('click', (event) => {
+    const host = $('#toolbarMoreHost');
+    if (host && !host.contains(event.target)) closeComposerToolbarMore();
+  });
+  window.addEventListener('resize', layoutComposerToolbar);
   document.addEventListener('contextmenu', openImageContextMenu);
   document.addEventListener('pointerdown', closeImageContextMenu);
   document.addEventListener('scroll', closeImageContextMenu, true);
@@ -11909,8 +12505,8 @@ function bindEvents() {
   $('#newChatButton').addEventListener('click', newConversation);
   $('#topbarSettings').addEventListener('click', openSettings);
   $('#openSettingsFromFootnote').addEventListener('click', openSettings);
-  $('#closeSettings').addEventListener('click', closeSettings);
-  $('#cancelSettings').addEventListener('click', closeSettings);
+  $('#closeSettings').addEventListener('click', () => closeSettings());
+  $('#cancelSettings').addEventListener('click', () => closeSettings());
   $('#saveSettings').addEventListener('click', saveSettings);
   $('#imageAgentPreview').addEventListener('change', updateAgentRetryControls);
   $('#themeSetting').addEventListener('change', (event) => applyTheme(event.target.value));
@@ -12179,6 +12775,7 @@ function bindEvents() {
     if (editingConversationId) { event.preventDefault(); cancelConversationRename(); return; }
     if ($('#proxyHistoryMenu') && !$('#proxyHistoryMenu').hidden) { event.preventDefault(); event.stopPropagation(); closeProxyHistoryMenu(); return; }
     if ($('.custom-select-menu:not([hidden])')) { event.preventDefault(); closeCustomSelects(); return; }
+    if ($('#toolbarMoreMenu') && !$('#toolbarMoreMenu').hidden) { event.preventDefault(); closeComposerToolbarMore(); return; }
     if (!$('#conversationRowMenu').hidden) { event.preventDefault(); event.stopPropagation(); closeConversationExportMenu(); return; }
     if (!$('#favoriteDeleteBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closeFavoriteDeleteDialog(); return; }
     if (!$('#favoriteFolderBackdrop').hidden) { event.preventDefault(); event.stopPropagation(); closeFavoriteFolderDialog(); return; }
