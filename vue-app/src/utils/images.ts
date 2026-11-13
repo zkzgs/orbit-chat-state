@@ -10,6 +10,7 @@ import { readDataUrl } from './files'
 import { findImageCompressionCandidate } from './image-compression'
 import { createId } from './id'
 import { downloadFile } from './files'
+import { imageStorage } from '../storage/database'
 
 export async function readReference(file: File): Promise<ReferenceImage> {
   return {
@@ -102,7 +103,9 @@ export async function prepareReferences(
       data:
         includeData && file !== original
           ? await readDataUrl(file)
-          : reference.data,
+          : includeData
+            ? await imageStorage.dataUrl(reference.data)
+            : reference.data,
       submissionMeta: {
         name: file.name,
         originalSize: original.size,
@@ -132,6 +135,10 @@ export async function prepareReferences(
 }
 export async function inspectImage(source: string) {
   const file = await sourceToFile(source)
+  if (file.type.startsWith('video/'))
+    return imageStorage.videoFrame(file) as Promise<
+      import('../types/image-worker').ImageInfo
+    >
   try {
     return await runImageWorker('inspectImage', { blob: file })
   } catch {
@@ -176,6 +183,7 @@ async function decodeImage(blob: Blob) {
 
 export async function copyImage(source: string) {
   const file = await sourceToFile(source)
+  if (file.type.startsWith('video/')) throw new Error('视频请使用下载功能')
   let blob: Blob = file
   if (file.type !== 'image/png') {
     try {

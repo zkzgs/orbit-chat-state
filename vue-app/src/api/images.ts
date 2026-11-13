@@ -8,13 +8,14 @@ import {
 } from './client'
 import { runImageWorker } from '../workers/client'
 import { parseImageResponse } from '../utils/image-response'
+import { requestNativeMedia } from './native-media.js'
 
 export interface GeneratedResponse {
   images: ParsedImageResponse['images']
   meta: Record<string, unknown>
   upstream: Record<string, unknown>
 }
-type ImageRequestPhase = 'uploading' | 'waiting' | 'parsing'
+type ImageRequestPhase = string
 
 function sendImageEditRequest(
   endpoint: string,
@@ -92,7 +93,7 @@ function sendImageEditRequest(
     }
     signal?.addEventListener('abort', abort, { once: true })
     if (signal?.aborted) {
-      request.abort()
+      fail(new DOMException('请求已中断', 'AbortError'))
       return
     }
     request.send(routed.options.body as XMLHttpRequestBodyInit)
@@ -107,6 +108,16 @@ export class ImageRequestError extends Error {
   ) {
     super(message)
   }
+}
+export function imageRequestPrompt(
+  prompt: string,
+  settings: Settings,
+  config: ImageConfig,
+) {
+  return settings.imagePreventPromptRewrite && config.mediaType !== 'video'
+    ? 'Treat everything after this line as one complete image-generation prompt, including the resolution instruction. Follow it exactly without rewriting or omitting anything:\n' +
+        prompt
+    : prompt
 }
 export function imageRequestBody(config: ImageConfig, prompt: string) {
   const body: Record<string, string | number> = {
@@ -135,7 +146,29 @@ export async function requestImages(
   signal: AbortSignal,
   onPhase?: (phase: ImageRequestPhase) => void,
   onSent?: () => void,
+  onRemote?: (value: Record<string, unknown>) => Promise<void>,
 ): Promise<GeneratedResponse> {
+  const requestPrompt = imageRequestPrompt(prompt, settings, config)
+  if (config.provider && config.provider !== 'openai') {
+    try {
+      return await requestNativeMedia(
+        apiFetch,
+        settings,
+        config,
+        requestPrompt,
+        references,
+        signal,
+        onPhase,
+        onSent,
+        onRemote,
+      )
+    } catch (error) {
+      const failure = error as Error & { upstream?: Record<string, unknown> }
+      if (failure.upstream)
+        throw new ImageRequestError(failure.message, failure.upstream)
+      throw error
+    }
+  }
   const isEdit = config.requestType
     ? config.requestType === 'edit'
     : references.length > 0
@@ -154,7 +187,7 @@ export async function requestImages(
     settings.imageBaseUrl,
     isEdit ? '/images/edits' : '/images/generations',
   )
-  const body = imageRequestBody(config, prompt)
+  const body = imageRequestBody(config, requestPrompt)
   const headers: Record<string, string> = {
     Authorization: `Bearer ${settings.imageApiKey}`,
   }

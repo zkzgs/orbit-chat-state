@@ -1,5 +1,6 @@
 import { apiFetch, buildApiEndpoint } from './client'
 import type { Settings } from '../types/models'
+import { chatReasoningMessages } from './image-agent.js'
 
 export interface TextPart {
   type: 'text'
@@ -9,9 +10,16 @@ export interface ImagePart {
   type: 'image_url'
   image_url: { url: string }
 }
+export interface FilePart {
+  type: 'file'
+  file: { filename: string; file_data: string }
+}
 export interface ChatRequestMessage {
   role: string
-  content: string | (TextPart | ImagePart)[]
+  content: string | null | (TextPart | ImagePart | FilePart)[]
+  tool_calls?: unknown[]
+  tool_call_id?: string
+  reasoning_content?: string
 }
 interface ChatDelta {
   content?: string | { text?: string; content?: string }[]
@@ -54,7 +62,7 @@ export async function requestChat(
     web_search_options?: object
   } = {
     model: settings.chatModel,
-    messages,
+    messages: chatReasoningMessages(messages, settings),
     temperature: 0.7,
     stream: Boolean(onChunk),
   }
@@ -62,15 +70,19 @@ export async function requestChat(
     body.reasoning_effort = settings.reasoningEffort
   if (settings.chatWebSearch) body.web_search_options = {}
   const send = () =>
-    apiFetch(buildApiEndpoint(settings.chatBaseUrl, '/chat/completions'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.chatApiKey}`,
+    apiFetch(
+      buildApiEndpoint(settings.chatBaseUrl, '/chat/completions'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.chatApiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal,
       },
-      body: JSON.stringify(body),
-      signal,
-    })
+      settings,
+    )
   let response = await send()
   if (
     !response.ok &&

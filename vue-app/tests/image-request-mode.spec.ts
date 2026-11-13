@@ -1,3 +1,4 @@
+import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 
@@ -238,9 +239,10 @@ for (const [version, url] of [
         .first()
         .click()
       await expect(page.locator('.generation-task-card.error')).toHaveCount(1)
-      expect(requests).toEqual(
+      await expect.poll(() => requests).toEqual(
         Array(2).fill('https://mode.test/v1/images/generations'),
       )
+      await expect(page.locator('.generation-task-card.running')).toHaveCount(0)
       await chooseMode(page, '生图')
       await page.locator('#topbarSettings').click()
       await page.locator('#settings-tab-data').click()
@@ -250,7 +252,7 @@ for (const [version, url] of [
         page.locator('[data-data-scope="workspace"]').click(),
       ])
       const buffer = await readFile((await download.path())!)
-      const payload = JSON.parse(buffer.toString())
+      const payload = readBackup(buffer)
       expect(payload.imageDraft.config.requestType).toBe('generation')
       expect(payload.imageDraft.referenceImageIds).toHaveLength(1)
       for (const task of payload.imageTasks) {

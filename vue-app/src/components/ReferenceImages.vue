@@ -93,7 +93,7 @@ function mention(event: MouseEvent, index: number) {
         @click="preview(index)"
       >
         <img
-          :src="image.data"
+          v-image-source="image.data"
           :alt="`${label} ${index + 1}`"
           draggable="false"
           decoding="async"
@@ -104,7 +104,7 @@ function mention(event: MouseEvent, index: number) {
       </button>
       <img
         v-else
-        :src="image.data"
+        v-image-source="image.data"
         :alt="`生图参考图 ${index + 1}`"
         draggable="false"
         decoding="async"

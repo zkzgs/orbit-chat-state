@@ -1,3 +1,5 @@
+import { imageStorage } from '../storage/database'
+
 // 只复制 JSON 数据的结构, 大图片字符串保持共享, 不经序列化复制整库。
 function snapshot(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(snapshot)
@@ -8,7 +10,10 @@ function snapshot(value: unknown): unknown {
   return value
 }
 
-function* jsonChunks(value: unknown): Generator<string> {
+async function* jsonChunks(value: unknown): AsyncGenerator<string> {
+  const image = value as { type?: string; src?: string } | null
+  if (image?.type === 'image' && imageStorage.isSource(image.src))
+    value = { ...image, src: await imageStorage.dataUrl(image.src) }
   if (typeof value === 'string') {
     yield '"'
     for (let start = 0; start < value.length; start += 256 * 1024)
@@ -41,7 +46,7 @@ export async function createJsonBlob(value: unknown): Promise<Blob> {
   let chunks: string[] = []
   let length = 0
   let lastYield = performance.now()
-  for (const chunk of jsonChunks(data)) {
+  for await (const chunk of jsonChunks(data)) {
     chunks.push(chunk)
     length += chunk.length
     if (length >= 1024 * 1024 || performance.now() - lastYield >= 8) {

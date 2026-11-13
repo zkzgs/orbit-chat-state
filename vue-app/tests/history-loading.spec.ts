@@ -30,7 +30,7 @@ async function seed(page: Page) {
       ]),
     )
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onupgradeneeded = () =>
         request.result.createObjectStore('generations', { keyPath: 'id' })
       request.onsuccess = () => resolve(request.result)
@@ -121,7 +121,7 @@ for (const [version, url] of [
       await expect(cards.first()).toContainText('图片 31')
       const image = cards.first().locator('img')
       await image.scrollIntoViewIfNeeded()
-      await expect(image).not.toHaveAttribute('data-image-id')
+      await expect(image).toHaveAttribute('data-image-id', 'batch-031-1')
       await expect(image).toHaveJSProperty('naturalWidth', 32)
       await page.evaluate(() => {
         ;(window as any).firstHistoryImage = document.querySelector(
@@ -133,7 +133,8 @@ for (const [version, url] of [
       await page.evaluate(() => {
         ;(window as any).historyReleased = true
       })
-      await expect(cards).toHaveCount(32)
+      await expect(page.locator('#imageHistoryTitle .history-count')).toHaveText('32')
+      expect(await cards.count()).toBeLessThan(32)
       expect(
         await page.evaluate(
           () =>
@@ -141,10 +142,11 @@ for (const [version, url] of [
             document.querySelector('#imageHistory > .history-item img'),
         ),
       ).toBe(true)
+      await page.locator('#imageHistory').evaluate((list) => { const scroller = innerWidth <= 780 ? list.closest('.content-stage')! : list; scroller.scrollTop = scroller.scrollHeight })
       const offscreen = cards.last().locator('img')
-      await expect(offscreen).toHaveAttribute('data-image-id', 'batch-000-1')
+      await expect(cards.last()).toContainText('图片 0')
       await offscreen.scrollIntoViewIfNeeded()
-      await expect(offscreen).not.toHaveAttribute('data-image-id')
+      await expect(offscreen).toHaveAttribute('data-image-id', 'batch-000-1')
       await expect(offscreen).toHaveJSProperty('naturalWidth', 32)
       const folders = await page.evaluate(() =>
         JSON.parse(localStorage.getItem('orbit-image-favorite-folders-v1')!),

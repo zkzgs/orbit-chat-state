@@ -30,16 +30,16 @@ for (const [version, url] of [
         page.locator('.image-generator-column .image-copy'),
       ).toHaveCount(0)
       await expect(page.locator('#imageHistory .image-copy')).toBeVisible()
-      mkdirSync('/workspace/screens', { recursive: true })
+      mkdirSync('.cache/screens', { recursive: true })
       await page.screenshot({
-        path: `/workspace/screens/image-empty-${version}-${width}.png`,
+        path: `.cache/screens/image-empty-${version}-${width}.png`,
         animations: 'disabled',
         fullPage: true,
       })
       if (width === 390) {
         await page.locator('#imageHistory .image-copy').scrollIntoViewIfNeeded()
         await page.screenshot({
-          path: `/workspace/screens/image-empty-${version}-${width}-history.png`,
+          path: `.cache/screens/image-empty-${version}-${width}-history.png`,
           animations: 'disabled',
         })
       }

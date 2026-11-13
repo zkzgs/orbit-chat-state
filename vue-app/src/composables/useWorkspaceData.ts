@@ -6,12 +6,12 @@ import { useSettingsStore } from '../stores/settings'
 import { usePromptTemplatesStore } from '../stores/prompt-templates'
 import { useHistoryStore } from '../stores/history'
 import { downloadFile } from '../utils/files'
-import { createJsonBlob } from '../utils/json-export'
+import { workspaceArchive } from '../storage/archive'
+import { outputImageIds } from '../storage/workspace-archive.js'
 import { errorMessage, formatExportTimestamp } from '../utils/format'
 import { createDefaultSettings } from '../constants/workspace'
 import { createInitialState, normalizeFavoriteFolders } from '../storage/state'
 import { clearProxyUrlHistory } from '../storage/proxy-url-history'
-import { readWorkspaceJson } from '../utils/json-import'
 import {
   collectImageIds,
   combineNamedRecords,
@@ -20,7 +20,14 @@ import {
   mergeImages,
 } from '../storage/transfer'
 import type { DataScope, WorkspaceExport } from '../types/models'
-import { reactive } from 'vue'
+import { remapAgentMessage } from '../api/image-agent.js'
+import { chatDocuments } from '../api/chat-files.js'
+import {
+  clearChatDrafts,
+  clearImagePromptDraft,
+  clearInputDrafts,
+} from '../storage/input-drafts.js'
+import { imageStorage } from '../storage/database'
 
 const scopeLabels: Record<DataScope, string> = {
   chat: '对话工作区',
@@ -42,12 +49,8 @@ export function useWorkspaceData() {
   const ui = useInterfaceStore()
   const image = useImageGenerationStore()
   const chat = useChatStore()
-  const importProgress = reactive({
-    active: false,
-    indeterminate: false,
-    label: '',
-    percent: 0,
-  })
+  const importProgress = ui.importProgress
+  const exportProgress = ui.exportProgress
   function setImportProgress(
     label: string,
     percent: number,
@@ -79,7 +82,15 @@ export function useWorkspaceData() {
     const includeImages = ['image', 'workspace', 'all'].includes(scope)
     const includeConfig = scope === 'all' || scope === 'config'
     ui.exporting = true
+    Object.assign(exportProgress, {
+      active: true,
+      label: '正在打包备份',
+      percent: 0,
+    })
     try {
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => setTimeout(resolve, 0)),
+      )
       await workspace.initialize()
       const conversations = includeChat ? workspace.state.conversations : []
       const imageHistory = includeImages ? workspace.batches : []
@@ -102,6 +113,11 @@ export function useWorkspaceData() {
         workspace.images
           .filter((item) => item.favoriteFolderIds?.length)
           .forEach((item) => ids.add(item.id))
+      const outputs = outputImageIds({
+        images: workspace.images,
+        conversations: workspace.state.conversations,
+        imageHistory: workspace.batches,
+      })
       const payload: WorkspaceExport = {
         version: 12,
         scope,
@@ -109,7 +125,12 @@ export function useWorkspaceData() {
         contextMode: workspace.state.contextMode,
         activeConversationId: workspace.state.activeConversationId,
         conversations,
-        images: workspace.images.filter((item) => ids.has(item.id)),
+        images: workspace.images
+          .filter((item) => ids.has(item.id))
+          .map((item) => ({
+            ...item,
+            origin: outputs.has(item.id) ? 'generated' : 'upload',
+          })),
         imageHistory,
         imageTasks,
       }
@@ -129,27 +150,38 @@ export function useWorkspaceData() {
           modelCatalog: workspace.modelCatalog,
         }
       downloadFile(
-        await createJsonBlob(payload),
-        'application/json',
-        `${exportFilePrefixes[scope]}-${formatExportTimestamp()}.json`,
+        await workspaceArchive.exportFile(payload, (progress: number) => {
+          exportProgress.percent = Math.max(
+            exportProgress.percent,
+            Math.min(100, Math.round(progress * 100)),
+          )
+        }),
+        'application/zip',
+        `${exportFilePrefixes[scope]}-${formatExportTimestamp()}.zip`,
       )
       ui.notify(`${scopeLabels[scope]}已导出`)
     } catch (error) {
       ui.notify(`导出失败: ${errorMessage(error)}`, 'error')
     } finally {
       ui.exporting = false
+      exportProgress.active = false
     }
   }
   async function importFile(file?: File) {
     if (!file) return
     if (importProgress.active) return
-    setImportProgress('正在读取并解析 JSON', 0)
+    setImportProgress('正在读取备份', 0)
+    let dispose = async () => {}
     try {
       await workspace.initialize()
       await new Promise((resolve) => requestAnimationFrame(resolve))
-      const incoming = (await readWorkspaceJson(file, (progress) =>
-        setImportProgress('正在读取并解析 JSON', Math.round(progress * 60)),
-      )) as unknown as WorkspaceExport
+      const archive = await workspaceArchive.importFile(
+        file,
+        (progress: number) =>
+          setImportProgress('正在读取备份', Math.round(progress * 60)),
+      )
+      dispose = archive.dispose
+      const incoming = archive.payload as unknown as WorkspaceExport
       setImportProgress('已读取备份, 等待确认', 60, true)
       const scope = ['chat', 'image', 'workspace', 'config', 'all'].includes(
         incoming.scope,
@@ -176,6 +208,8 @@ export function useWorkspaceData() {
       if (!['覆盖', '合并', 'overwrite', 'merge'].includes(mode))
         throw new Error('导入方式只能填写 "覆盖" 或 "合并"')
       const merge = ['合并', 'merge'].includes(mode)
+      if (includeChat)
+        await chatDocuments.restore(incoming.conversations, imageStorage)
       setImportProgress('正在匹配图片内容', 65)
       // 覆盖只移除所选工作区独占的图片, 保留其他工作区和模板的引用
       const preserved = collectImageIds(
@@ -233,6 +267,8 @@ export function useWorkspaceData() {
       incoming.conversations?.forEach((item) =>
         item.messages.forEach((message) => {
           message.imageIds = remap(message.imageIds)
+          message.mentionImageIds = remap(message.mentionImageIds)
+          remapAgentMessage(message, remap)
         }),
       )
       incoming.imageHistory?.forEach((item) => {
@@ -250,9 +286,9 @@ export function useWorkspaceData() {
         workspace.generation++
         image.dispose()
       }
-      if (includeChat && !merge) {
-        chat.stop()
-        chat.resetDraft()
+      if (includeChat) {
+        chat.stopAll()
+        if (!merge) chat.resetDraft()
       }
       workspace.images = combined.records
       if (includeChat) {
@@ -312,8 +348,8 @@ export function useWorkspaceData() {
           Object.assign(old, {
             ...(!merge
               ? {
-                  deleteRetriedRecordOnSuccess: true,
-                  clearInputAfterSubmit: true,
+                  deleteRetriedRecordOnSuccess: false,
+                  clearInputAfterSubmit: false,
                   alwaysShowRetryButton: false,
                 }
               : {}),
@@ -325,12 +361,22 @@ export function useWorkspaceData() {
               (item) => item.id === settings.activeImagePromptTemplateId,
             )
               ? settings.activeImagePromptTemplateId
-              : '',
+              : merge &&
+                  imagePromptTemplates.some(
+                    (item) => item.id === old.activeImagePromptTemplateId,
+                  )
+                ? old.activeImagePromptTemplateId
+                : '',
             activeImagePolishTemplateId: imagePolishTemplates.some(
               (item) => item.id === settings.activeImagePolishTemplateId,
             )
               ? settings.activeImagePolishTemplateId
-              : '',
+              : merge &&
+                  imagePolishTemplates.some(
+                    (item) => item.id === old.activeImagePolishTemplateId,
+                  )
+                ? old.activeImagePolishTemplateId
+                : '',
           })
         }
         for (const kind of ['chat', 'image'] as const) {
@@ -367,6 +413,7 @@ export function useWorkspaceData() {
     } catch (error) {
       ui.notify(errorMessage(error), 'error')
     } finally {
+      await dispose()
       if (importProgress.percent >= 100)
         await new Promise((resolve) => window.setTimeout(resolve, 600))
       Object.assign(importProgress, {
@@ -391,8 +438,9 @@ export function useWorkspaceData() {
     if (!window.confirm(`清除${scopeLabels[scope]}?\n\n${detail}`)) return
     await workspace.initialize()
     if (['chat', 'workspace', 'all'].includes(scope)) {
-      chat.stop()
+      chat.stopAll()
       chat.resetDraft()
+      clearChatDrafts()
       const state = createInitialState()
       workspace.state.conversations = state.conversations
       workspace.state.activeConversationId = state.activeConversationId
@@ -408,12 +456,14 @@ export function useWorkspaceData() {
       }))
       workspace.favoriteFolders = normalizeFavoriteFolders([])
       image.prompt = ''
+      clearImagePromptDraft()
       image.references = []
       image.requestType = 'generation'
       ui.details.open = false
       useHistoryStore().setLibrary('history')
     }
     if (scope === 'all' || scope === 'config') {
+      clearInputDrafts()
       clearProxyUrlHistory()
       usePromptTemplatesStore().dispose()
       Object.assign(workspace.state.settings, createDefaultSettings())
@@ -432,5 +482,5 @@ export function useWorkspaceData() {
     if (ui.dataScope.action === 'export') await exportScope(scope)
     else await clearScope(scope)
   }
-  return { open, choose, importFile, importProgress }
+  return { open, choose, importFile, importProgress, exportProgress }
 }

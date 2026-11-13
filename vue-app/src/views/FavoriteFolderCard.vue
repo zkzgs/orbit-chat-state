@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { imageStorage } from '../storage/database'
 import HistoryAction from '../components/HistoryAction.vue'
 
 defineProps<{
@@ -31,7 +32,7 @@ defineEmits<{ open: []; action: [action: string] }>()
           v-if="folder.coverId"
           :key="folder.coverId"
           class="favorite-folder-cover"
-          src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+          v-image-source="imageStorage.source(folder.coverId)"
           :data-image-id="folder.coverId"
           :data-cover-image-id="folder.coverId"
           alt="收藏夹封面"

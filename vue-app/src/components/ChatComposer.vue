@@ -1,22 +1,23 @@
 <script setup lang="ts">
-import { ref, toRef } from 'vue'
+import PromptEditor from './PromptEditor.vue'
+import { chatFileAccept } from '../api/chat-files.js'
+import { ref } from 'vue'
 import { useChatStore } from '../stores/chat'
 import { useSettingsStore } from '../stores/settings'
-import { useTextarea } from '../composables/useTextarea'
 import { inputFiles, pastedImages } from '../utils/events'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useInterfaceStore } from '../stores/interface'
 import CustomSelect from './CustomSelect.vue'
 import ModelInput from './ModelInput.vue'
+import AgentImageSettings from './AgentImageSettings.vue'
 const workspace = useWorkspaceStore()
 const ui = useInterfaceStore()
 const chat = useChatStore()
 const settings = useSettingsStore()
-const input = ref<HTMLTextAreaElement | null>(null)
 const dropping = ref(false)
 let dragDepth = 0
-useTextarea(input, toRef(chat, 'draft'), () => ui.activeView === 'chat')
 function keydown(event: KeyboardEvent) {
+  if (event.defaultPrevented) return
   if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
     event.preventDefault()
     if (!chat.generating) void chat.send()
@@ -49,10 +50,11 @@ function dragLeave(event: DragEvent) {
   if (!dragDepth) dropping.value = false
 }
 function drop(event: DragEvent) {
-  if (!hasFiles(event)) return
-  event.preventDefault()
+  const containsFiles = hasFiles(event)
   dragDepth = 0
   dropping.value = false
+  if (!containsFiles) return
+  event.preventDefault()
   const files = Array.from(event.dataTransfer!.files).filter((file) =>
     file.type.startsWith('image/'),
   )
@@ -83,11 +85,6 @@ function drop(event: DragEvent) {
         >
           单轮请求
         </button>
-        <span class="context-description" id="contextDescription">{{
-          workspace.state.contextMode === 'client'
-            ? '每次请求带上本会话历史'
-            : '每次仅发送当前消息'
-        }}</span>
         <label
           class="search-toggle"
           title="向对话接口发送 web_search_options；是否真正联网由接口和模型决定"
@@ -108,6 +105,14 @@ function drop(event: DragEvent) {
         >
       </div>
       <div class="chat-quick-settings" aria-label="当前对话模型设置">
+        <label class="search-toggle" title="允许对话模型按需调用独立生图接口"
+          ><input
+            id="chatImageTools"
+            type="checkbox"
+            v-model="workspace.state.settings.chatImageTools"
+          /><span>Agent 生图</span></label
+        >
+        <AgentImageSettings />
         <label class="quick-setting"
           ><span>模型</span
           ><ModelInput
@@ -115,6 +120,9 @@ function drop(event: DragEvent) {
             id="chatModelQuick"
             label="当前对话模型"
             :models="workspace.modelCatalog.chat"
+            refresh
+            :refreshing="settings.loadingModels.chat"
+            @refresh="settings.loadModels('chat', false)"
         /></label>
         <label class="quick-setting"
           ><span>思考</span
@@ -142,7 +150,7 @@ function drop(event: DragEvent) {
       @dragenter="dragEnter"
       @dragover="dragOver"
       @dragleave="dragLeave"
-      @drop="drop"
+      @drop.capture="drop"
     >
       <div :hidden="!chat.editingId" class="editing-banner" id="editingBanner">
         <span>正在修改一条消息</span
@@ -161,7 +169,7 @@ function drop(event: DragEvent) {
           class="attachment-item"
         >
           <img
-            :src="image.data"
+            v-image-source.full="image.data"
             alt="待发送的图片"
             @click="
               ui.openViewer(
@@ -179,16 +187,39 @@ function drop(event: DragEvent) {
           </button>
         </div>
       </div>
-      <textarea
-        ref="input"
+      <div
+        v-if="chat.files.length"
+        class="chat-files"
+        id="fileAttachmentPreview"
+      >
+        <div
+          v-for="(file, index) in chat.files"
+          :key="file.id"
+          class="chat-file"
+        >
+          <span>PDF</span><span class="chat-file-name">{{ file.name }}</span>
+          <button
+            type="button"
+            aria-label="移除文件"
+            @click="chat.files.splice(index, 1)"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+      <PromptEditor
+        class="chat-composer-prompt"
         v-model="chat.draft"
+        :images="chat.mentionImages"
         id="messageInput"
-        rows="1"
+        :rows="1"
         placeholder="给 Orbit Chat 发消息..."
         aria-label="消息输入框"
+        :auto-resize="true"
         @paste="paste($event)"
         @keydown="keydown($event)"
-      ></textarea>
+        @drop="chat.addImages($event)"
+      />
       <div class="composer-actions">
         <div class="composer-left-actions">
           <label
@@ -206,15 +237,16 @@ function drop(event: DragEvent) {
           /></label>
           <label
             class="icon-button composer-icon file-upload-button"
-            title="上传文本文件"
-            aria-label="上传文本文件"
+            title="上传文件"
+            aria-label="上传文件"
             ><span>▤</span
             ><input
               type="file"
               id="fileUpload"
-              accept=".txt,.md,.json,.csv,.log,text/plain,application/json,text/csv"
+              :accept="chatFileAccept"
+              multiple
               hidden
-              @change="chat.addTextFile(inputFiles($event)[0])"
+              @change="chat.addTextFiles(inputFiles($event))"
           /></label>
           <span class="composer-hint">Enter 发送 · Shift + Enter 换行</span>
         </div>

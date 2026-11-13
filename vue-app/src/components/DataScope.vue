@@ -9,7 +9,7 @@ const title = computed(() =>
 )
 const description = computed(() =>
   ui.dataScope.action === 'export'
-    ? '请选择要写入 JSON 文件的数据范围。'
+    ? '请选择要写入 ZIP 备份的数据范围。'
     : '请选择本次要清除的数据范围，确认后不可撤销。',
 )
 </script>

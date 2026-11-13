@@ -21,11 +21,13 @@ const importInput = ref<HTMLInputElement | null>(null)
 const settingsTabs = [
   { id: 'chat', label: '对话接口' },
   { id: 'image', label: '生图接口' },
-  { id: 'proxy', label: '本地请求代理' },
-  { id: 'images', label: '图片请求' },
+  { id: 'proxy', label: '请求代理' },
+  { id: 'chat-policy', label: '对话策略' },
+  { id: 'images', label: '图片策略' },
+  { id: 'agent', label: '生图 Agent' },
   { id: 'prompts', label: '提示词偏好' },
-  { id: 'habits', label: '习惯配置' },
-  { id: 'display', label: '显示偏好' },
+  { id: 'habits', label: '操作习惯' },
+  { id: 'display', label: '外观与隐私' },
   { id: 'data', label: '数据管理' },
 ] as const
 const activeTab = ref<string>('chat')
@@ -115,6 +117,12 @@ function removeProxyHistory(url: string, event: Event) {
   if (!proxyHistory.value.length) closeProxyHistory()
   else void nextTick(positionProxyHistory)
 }
+function importBackup(event: Event) {
+  const input = event.currentTarget as HTMLInputElement
+  const file = inputFiles(event)[0]
+  input.value = ''
+  void data.importFile(file)
+}
 function onProxyHistoryOutside(event: Event) {
   const target = event.target as Node
   if (proxyCombo.value?.contains(target) || proxyMenu.value?.contains(target))
@@ -182,7 +190,6 @@ function onTabKey(event: KeyboardEvent) {
         <button
           class="icon-button"
           id="closeSettings"
-          title="关闭设置"
           aria-label="关闭设置"
           @click="settings.close()"
         >
@@ -286,8 +293,10 @@ function onTabKey(event: KeyboardEvent) {
                 v-model="settings.draft.chatBaseUrl"
                 id="chatBaseUrl"
                 type="url"
-                placeholder="https://api.openai.com/v1/chat/completions"
-            /></label>
+                placeholder="https://api.openai.com/v1"
+            /><small class="field-help"
+                >填写 API 根地址, 系统会自动追加对话请求路径</small
+            ></label>
             <div class="field-grid">
               <label class="field-label"
                 >API Key
@@ -307,23 +316,15 @@ function onTabKey(event: KeyboardEvent) {
                   </button>
                 </div></label
               ><label class="field-label"
-                ><span class="field-label-heading"
-                  >模型
-                  <button
-                    class="field-action"
-                    id="loadChatModels"
-                    type="button"
-                    :disabled="settings.loadingModels.chat"
-                    @click="settings.loadModels('chat')"
-                  >
-                    {{ settings.loadingModels.chat ? '获取中...' : '获取模型' }}
-                  </button></span
-                ><ModelInput
+                >模型<ModelInput
                   v-model="settings.draft.chatModel"
                   id="chatModel"
-                  placeholder="gpt-4o-mini"
+                  placeholder="点击获取或手动输入模型"
                   label="对话模型"
                   :models="workspace.modelCatalog.chat"
+                  refresh
+                  :refreshing="settings.loadingModels.chat"
+                  @refresh="settings.loadModels('chat')"
               /></label>
             </div>
             <label class="field-label"
@@ -413,12 +414,24 @@ function onTabKey(event: KeyboardEvent) {
               >
             </div>
             <label class="field-label"
+              >接口协议<CustomSelect
+                id="imageProvider"
+                v-model="settings.draft.imageProvider"
+                :options="[
+                  { value: 'openai', label: 'OpenAI 兼容' },
+                  { value: 'xai', label: 'xAI / Grok 原生' },
+                  { value: 'gemini', label: 'Gemini 原生' },
+                ]"
+            /></label>
+            <label class="field-label"
               >接口地址<input
                 v-model="settings.draft.imageBaseUrl"
                 id="imageBaseUrl"
                 type="url"
-                placeholder="https://api.openai.com/v1/images/generations"
-            /></label>
+                placeholder="https://api.openai.com/v1"
+            /><small class="field-help"
+                >填写 API 根地址, 系统会自动追加生图或改图请求路径</small
+            ></label>
             <div class="field-grid">
               <label class="field-label"
                 >API Key
@@ -438,25 +451,15 @@ function onTabKey(event: KeyboardEvent) {
                   </button>
                 </div></label
               ><label class="field-label"
-                ><span class="field-label-heading"
-                  >模型
-                  <button
-                    class="field-action"
-                    id="loadImageModels"
-                    type="button"
-                    :disabled="settings.loadingModels.image"
-                    @click="settings.loadModels('image')"
-                  >
-                    {{
-                      settings.loadingModels.image ? '获取中...' : '获取模型'
-                    }}
-                  </button></span
-                ><ModelInput
+                >模型<ModelInput
                   v-model="settings.draft.imageModel"
                   id="imageModel"
-                  placeholder="gpt-image-1"
+                  placeholder="点击获取或手动输入模型"
                   label="生图模型"
                   :models="workspace.modelCatalog.image"
+                  refresh
+                  :refreshing="settings.loadingModels.image"
+                  @refresh="settings.loadModels('image')"
               /></label>
             </div>
             <div class="field-grid">
@@ -500,7 +503,7 @@ function onTabKey(event: KeyboardEvent) {
             <div class="section-title">
               <span class="section-number">03</span>
               <div>
-                <strong>本地请求代理</strong
+                <strong>请求代理</strong
                 ><small>用于访问不支持浏览器跨域的接口</small>
               </div>
             </div>
@@ -610,6 +613,63 @@ function onTabKey(event: KeyboardEvent) {
             </p>
           </div>
           <div
+            class="settings-section compact-section"
+            v-show="activeTab === 'chat-policy'"
+            id="settings-panel-chat-policy"
+            role="tabpanel"
+            aria-labelledby="settings-tab-chat-policy"
+            tabindex="0"
+          >
+            <div class="section-title">
+              <span class="section-number">04</span>
+              <div><strong>对话策略</strong></div>
+            </div>
+            <label class="field-label"
+              >历史图片
+              <CustomSelect
+                id="chatHistoryImages"
+                v-model="settings.draft.chatHistoryImages"
+                :options="[
+                  { value: 'id', label: '仅保留图片 ID' },
+                  { value: 'all', label: '每轮携带历史图片' },
+                ]"
+              />
+            </label>
+            <label class="field-label"
+              >对话排序方式
+              <CustomSelect
+                id="conversationSort"
+                v-model="settings.draft.conversationSort"
+                :options="[
+                  { value: 'updated', label: '更新时间' },
+                  { value: 'created', label: '创建时间' },
+                ]"
+              />
+            </label>
+            <label class="toggle-row"
+              ><span
+                ><strong>对话发图使用预览图</strong>
+                <small>关闭后按图片策略中的压缩设置提交原尺寸图片</small></span
+              >
+              <input
+                id="chatImagePreview"
+                type="checkbox"
+                v-model="settings.draft.chatImagePreview"
+              /><span class="toggle-ui"></span>
+            </label>
+            <label class="toggle-row"
+              ><span
+                ><strong>回传推理内容</strong>
+                <small>使用 reasoning_content, 需接口支持</small></span
+              >
+              <input
+                id="chatSendReasoning"
+                type="checkbox"
+                v-model="settings.draft.chatSendReasoning"
+              /><span class="toggle-ui"></span>
+            </label>
+          </div>
+          <div
             class="settings-section"
             v-show="activeTab === 'images'"
             id="settings-panel-images"
@@ -618,10 +678,9 @@ function onTabKey(event: KeyboardEvent) {
             tabindex="0"
           >
             <div class="section-title">
-              <span class="section-number">04</span>
+              <span class="section-number">05</span>
               <div>
-                <strong>图片请求</strong
-                ><small>统一处理发送到接口的图片副本</small>
+                <strong>图片策略</strong>
               </div>
             </div>
             <label class="toggle-row"
@@ -649,6 +708,98 @@ function onTabKey(event: KeyboardEvent) {
                 无法达到目标时会保留原尺寸并使用更小的提交副本</small
               ></label
             >
+            <label class="toggle-row">
+              <span
+                ><strong>防止上游优化提示词</strong>
+                <small
+                  >会在原文前添加保留提示词的指令,
+                  但供应商是否遵从由其实现决定</small
+                ></span
+              >
+              <input
+                id="imagePreventPromptRewrite"
+                type="checkbox"
+                v-model="settings.draft.imagePreventPromptRewrite"
+              /><span class="toggle-ui"></span>
+            </label>
+          </div>
+          <div
+            class="settings-section compact-section"
+            v-show="activeTab === 'agent'"
+            id="settings-panel-agent"
+            role="tabpanel"
+            aria-labelledby="settings-tab-agent"
+            tabindex="0"
+          >
+            <div class="section-title">
+              <span class="section-number">06</span>
+              <div><strong>生图 Agent</strong></div>
+            </div>
+            <label class="field-label">
+              Agent 生图补充提示词
+              <textarea
+                v-model="settings.draft.imageAgentInstruction"
+                id="imageAgentInstruction"
+                rows="4"
+                placeholder="给对话模型的额外生图要求"
+              ></textarea>
+            </label>
+            <label class="toggle-row"
+              ><span><strong>由 AI 决定生图参数</strong></span>
+              <input
+                id="imageAgentAutoParameters"
+                type="checkbox"
+                v-model="settings.draft.imageAgentAutoParameters"
+              /><span class="toggle-ui"></span>
+            </label>
+            <label class="toggle-row"
+              ><span
+                ><strong>将生成图预览回传给对话模型</strong>
+                <small>用于检查生成效果, 会额外消耗图片 token</small></span
+              >
+              <input
+                id="imageAgentPreview"
+                type="checkbox"
+                v-model="settings.draft.imageAgentPreview"
+              /><span class="toggle-ui"></span>
+            </label>
+            <label
+              class="toggle-row"
+              :class="{ 'is-disabled': !settings.draft.imageAgentPreview }"
+            >
+              <span
+                ><strong>允许 AI 在效果不符时重试</strong
+                ><small>需要开启生成图预览回传</small></span
+              >
+              <input
+                id="imageAgentRetryMismatch"
+                type="checkbox"
+                v-model="settings.draft.imageAgentRetryMismatch"
+                :disabled="!settings.draft.imageAgentPreview"
+              /><span class="toggle-ui"></span>
+            </label>
+            <label class="toggle-row"
+              ><span><strong>允许 AI 在生图失败后重试</strong></span>
+              <input
+                id="imageAgentRetryErrors"
+                type="checkbox"
+                v-model="settings.draft.imageAgentRetryErrors"
+              /><span class="toggle-ui"></span>
+            </label>
+            <label class="field-label"
+              >每轮生图重试上限
+              <input
+                id="imageAgentRetryLimit"
+                type="number"
+                min="0"
+                max="5"
+                step="1"
+                v-model.number="settings.draft.imageAgentRetryLimit"
+              />
+              <small class="field-help"
+                >由 AI 判断是否重试, 失败和效果检查共用次数</small
+              >
+            </label>
           </div>
           <div
             class="settings-section compact-section"
@@ -659,7 +810,7 @@ function onTabKey(event: KeyboardEvent) {
             tabindex="0"
           >
             <div class="section-title">
-              <span class="section-number">05</span>
+              <span class="section-number">07</span>
               <div>
                 <strong>提示词偏好</strong
                 ><small>系统提示词会随对应请求发送</small>
@@ -698,10 +849,9 @@ function onTabKey(event: KeyboardEvent) {
             tabindex="0"
           >
             <div class="section-title">
-              <span class="section-number">06</span>
+              <span class="section-number">08</span>
               <div>
-                <strong>习惯配置</strong
-                ><small>仅影响生图任务，不改变对话消息的重试方式</small>
+                <strong>操作习惯</strong><small>重试与输入保存习惯设置</small>
               </div>
             </div>
             <label class="toggle-row"
@@ -733,6 +883,19 @@ function onTabKey(event: KeyboardEvent) {
             ></label>
             <label class="toggle-row"
               ><span
+                ><strong>输入内容持久化</strong>
+                <small
+                  >开启后, 生图关键词和对话草稿保存到本机, 刷新后仍保留;
+                  关闭后仅在当前页面保留</small
+                ></span
+              ><input
+                id="persistInputContent"
+                type="checkbox"
+                v-model="settings.draft.persistInputContent"
+              /><span class="toggle-ui"></span>
+            </label>
+            <label class="toggle-row"
+              ><span
                 ><strong>成功请求也显示重试按钮</strong
                 ><small>在已完成的生图记录上也提供重试操作。</small></span
               ><input
@@ -752,9 +915,19 @@ function onTabKey(event: KeyboardEvent) {
             tabindex="0"
           >
             <div class="section-title">
-              <span class="section-number">07</span>
-              <div><strong>显示偏好</strong></div>
+              <span class="section-number">09</span>
+              <div><strong>外观与隐私</strong></div>
             </div>
+            <label class="field-label"
+              >主题<CustomSelect
+                id="themeSetting"
+                v-model="settings.draft.theme"
+                :options="[
+                  { value: 'dark', label: '深色' },
+                  { value: 'light', label: '浅色' },
+                  { value: 'system', label: '跟随系统' },
+                ]"
+            /></label>
             <label class="toggle-row"
               ><span><strong>图片隐私遮罩</strong></span
               ><input
@@ -762,10 +935,15 @@ function onTabKey(event: KeyboardEvent) {
                 type="checkbox"
                 id="imagePrivacyEnabled" /><span class="toggle-ui"></span
             ></label>
-            <label class="field-label"
+            <label
+              class="field-label"
+              :class="{
+                'is-disabled': !settings.draft.imagePrivacyEnabled,
+              }"
               >遮罩范围<CustomSelect
                 v-model="settings.draft.imagePrivacyMode"
                 id="imagePrivacyMode"
+                :disabled="!settings.draft.imagePrivacyEnabled"
                 :options="[
                   { value: 'single', label: '单张图片' },
                   { value: 'list', label: '生图列表' },
@@ -790,10 +968,10 @@ function onTabKey(event: KeyboardEvent) {
             tabindex="0"
           >
             <div class="section-title">
-              <span class="section-number">08</span>
+              <span class="section-number">10</span>
               <div>
                 <strong>数据管理</strong
-                ><small>操作时选择需要导出或清除的范围</small>
+                ><small>所有数据保存在本机浏览器中</small>
               </div>
             </div>
             <div class="data-management-actions">
@@ -824,27 +1002,10 @@ function onTabKey(event: KeyboardEvent) {
                 ref="importInput"
                 type="file"
                 id="workspaceImportFile"
-                accept="application/json,.json"
+                accept="application/json,application/zip,.json,.zip"
                 hidden
-                @change="data.importFile(inputFiles($event)[0])"
+                @change="importBackup"
               />
-            </div>
-            <div
-              v-if="data.importProgress.active"
-              class="import-progress"
-              role="status"
-              aria-live="polite"
-              :class="{ indeterminate: data.importProgress.indeterminate }"
-            >
-              <div class="import-progress-label">
-                <span>{{ data.importProgress.label }}</span>
-                <span>{{ data.importProgress.percent }}%</span>
-              </div>
-              <div class="import-progress-track">
-                <span
-                  :style="{ width: `${data.importProgress.percent}%` }"
-                ></span>
-              </div>
             </div>
           </div>
         </div>

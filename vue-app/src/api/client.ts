@@ -1,5 +1,6 @@
 import { useWorkspaceStore } from '../stores/workspace'
 import { joinProxyPath } from '../utils/proxy-url'
+import { imageStorage } from '../storage/database'
 
 interface ProxyConfig {
   proxyEnabled: boolean
@@ -82,6 +83,10 @@ export async function apiFetch(
 }
 
 export function resourceFetch(source: string, options: RequestInit = {}) {
+  if (imageStorage.isSource(source))
+    return imageStorage
+      .readBlob(source)
+      .then((blob: Blob) => new Response(blob))
   return useWorkspaceStore().state.settings.proxyEnabled &&
     /^https?:\/\//i.test(source)
     ? apiFetch(source, options)

@@ -34,11 +34,15 @@ const batch = computed(() =>
 const task = computed(() =>
   workspace.tasks.find((item) => item.id === ui.details.taskId),
 )
-const images = computed(() =>
-  batch.value
+const images = computed(() => {
+  if (!batch.value)
+    return workspace.messageImages(
+      ui.details.imageId ? [ui.details.imageId] : [],
+    )
+  return ui.activeView === 'image'
     ? history.viewImages(batch.value)
-    : workspace.messageImages(ui.details.imageId ? [ui.details.imageId] : []),
-)
+    : workspace.batchImages(batch.value)
+})
 const image = computed(() => images.value[ui.details.index])
 const config = computed(
   () => image.value?.config || batch.value?.config || task.value?.config,
@@ -61,6 +65,7 @@ type MetadataRow = {
   }
 }
 const requestTypes: Record<string, string> = {
+  video: '视频生成',
   generation: '生图',
   edit: '改图',
 }
@@ -140,11 +145,11 @@ const metadata = computed<MetadataRow[]>(() => {
         ? 'b64_json（同时返回 URL）'
         : 'b64_json'
       : result.delivery === 'url'
-        ? source.startsWith('data:')
-          ? '接口 URL（已保存为本地 Base64）'
+        ? current.hasBlob || source.startsWith('data:')
+          ? '接口 URL（已缓存原图）'
           : '接口 URL'
-        : source.startsWith('data:')
-          ? '本地 Base64 数据'
+        : current.hasBlob || source.startsWith('data:')
+          ? '本地图片文件'
           : '本地对象'
   const compare = (
     label: string,
@@ -295,6 +300,13 @@ function reuse() {
 async function action(kind: 'copy' | 'download' | 'all' | 'chat' | 'edit') {
   const current = image.value
   if (!current) return
+  if (
+    current.mediaType === 'video' &&
+    ['copy', 'chat', 'edit'].includes(kind)
+  ) {
+    ui.notify('视频请下载后使用, 不能作为图片参考', 'error')
+    return
+  }
   try {
     if (kind === 'copy') {
       await copyImage(current.src)
@@ -363,9 +375,18 @@ async function action(kind: 'copy' | 'download' | 'all' | 'chat' | 'edit') {
           :class="{ 'is-error': !image }"
         >
           <template v-if="image"
+            ><video
+              v-if="image.mediaType === 'video'"
+              id="lightboxVideo"
+              v-image-source.full="ui.details.open ? image.src : undefined"
+              controls
+              playsinline
+              preload="metadata"
+            ></video
             ><img
+              v-else
               id="lightboxImage"
-              :src="image.src"
+              v-image-source.full="ui.details.open ? image.src : undefined"
               alt="生成图片全图"
               draggable="false"
               @click="
@@ -426,7 +447,10 @@ async function action(kind: 'copy' | 'download' | 'all' | 'chat' | 'edit') {
                   )
                 "
               >
-                <img :src="item.src" :alt="`参考图 ${index + 1}`" />
+                <img
+                  v-image-source="ui.details.open ? item.src : undefined"
+                  :alt="`参考图 ${index + 1}`"
+                />
               </button>
             </div>
           </div>
@@ -440,7 +464,7 @@ async function action(kind: 'copy' | 'download' | 'all' | 'chat' | 'edit') {
               @click="ui.details.index = index"
             >
               <img
-                :src="item.src"
+                v-image-source="ui.details.open ? item.src : undefined"
                 :alt="`第 ${index + 1} 张图片`"
                 loading="lazy"
               />
@@ -480,7 +504,9 @@ async function action(kind: 'copy' | 'download' | 'all' | 'chat' | 'edit') {
         </aside>
       </div>
       <div class="lightbox-footer">
-        <span id="lightboxPrompt">{{ batch?.prompt || task?.prompt }}</span>
+        <span id="lightboxPrompt">{{
+          batch?.prompt || task?.prompt || image?.prompt
+        }}</span>
         <div class="lightbox-actions">
           <button
             id="lightboxFavorite"

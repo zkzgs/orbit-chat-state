@@ -16,6 +16,12 @@ export function useTooltips() {
     const text =
       title || target.dataset.tooltip || target.getAttribute('aria-label')
     if (!text || !node || target.closest('[hidden]')) return
+    if (/^关闭/.test(text)) {
+      target.removeAttribute('title')
+      delete target.dataset.tooltip
+      hide()
+      return
+    }
     if (title) {
       target.dataset.tooltip = title
       target.removeAttribute('title')

@@ -147,27 +147,35 @@ export function useImageMentions(
     const marker = mirror.value?.querySelector<HTMLElement>(
       '.image-mention-caret',
     )
-    const container = wrap.value
-    const bounds = container.getBoundingClientRect()
     const position =
       marker?.getBoundingClientRect() || input.value?.getBoundingClientRect()
     const popup = menu.value
     if (!position) return
-    const left = Math.max(
-      0,
-      Math.min(position.left - bounds.left, bounds.width - popup.offsetWidth),
-    )
-    const boundary = container.closest('.image-generator-column, .polish-modal')
-    const visibleBottom = Math.min(
-      window.innerHeight,
-      boundary?.getBoundingClientRect().bottom || window.innerHeight,
-    )
-    const below = position.bottom - bounds.top + 6
-    const top =
-      position.bottom + 6 + popup.offsetHeight > visibleBottom
-        ? Math.max(0, position.top - bounds.top - popup.offsetHeight - 6)
-        : below
-    menuStyle.value = { left: `${left}px`, top: `${top}px` }
+    const viewport = window.visualViewport
+    const leftEdge = (viewport?.offsetLeft || 0) + 8
+    const topEdge = (viewport?.offsetTop || 0) + 8
+    const rightEdge = leftEdge + (viewport?.width || window.innerWidth) - 16
+    const bottomEdge = topEdge + (viewport?.height || window.innerHeight) - 16
+    const below = bottomEdge - position.bottom - 6
+    const above = position.top - topEdge - 6
+    const openAbove = below < Math.min(215, popup.scrollHeight) && above > below
+    const height = Math.max(0, Math.min(215, openAbove ? above : below))
+    menuStyle.value = {
+      position: 'fixed',
+      left:
+        Math.max(
+          leftEdge,
+          Math.min(position.left, rightEdge - popup.offsetWidth),
+        ) + 'px',
+      top:
+        (openAbove
+          ? Math.max(
+              topEdge,
+              position.top - Math.min(height, popup.scrollHeight) - 6,
+            )
+          : Math.max(topEdge, position.bottom + 6)) + 'px',
+      maxHeight: height + 'px',
+    }
   }
 
   function updateCaret() {
@@ -269,8 +277,16 @@ export function useImageMentions(
 
   watch(model, (value) => (displayText.value = value))
   watch([showMenu, suggestions], () => void positionMenu(), { flush: 'post' })
-  onMounted(() => window.addEventListener('resize', onResize))
-  onBeforeUnmount(() => window.removeEventListener('resize', onResize))
+  onMounted(() => {
+    window.addEventListener('resize', onResize)
+    window.addEventListener('scroll', onResize, true)
+    window.visualViewport?.addEventListener('resize', onResize)
+  })
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', onResize)
+    window.removeEventListener('scroll', onResize, true)
+    window.visualViewport?.removeEventListener('resize', onResize)
+  })
 
   return {
     focused,

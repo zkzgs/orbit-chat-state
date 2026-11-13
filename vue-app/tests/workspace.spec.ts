@@ -1,3 +1,4 @@
+import { readBackup } from './helpers/backup'
 import { test, expect, type Dialog, type Page } from '@playwright/test'
 import { pathToFileURL } from 'node:url'
 import path from 'node:path'
@@ -40,6 +41,18 @@ async function chooseCustomSelect(page: Page, id: string, label: string) {
     .click()
 }
 
+async function imageBytes(page: Page, selector: string) {
+  return page.locator(selector).evaluate(async (image: HTMLImageElement) => {
+    if (!image.naturalWidth) return ''
+    const blob = await (await fetch(image.src)).blob()
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result).split(',')[1])
+      reader.readAsDataURL(blob)
+    })
+  })
+}
+
 test('单 HTML 可通过 file:// 打开, 不请求外部前端资源', async ({ page }) => {
   const errors: string[] = []
   const requests: string[] = []
@@ -66,6 +79,7 @@ test('聊天支持演示回复、修改、切换会话和刷新恢复', async ({
   await page.locator('#messageInput').fill('第一条消息')
   await page.locator('#sendButton').click()
   await expect(page.locator('.message.assistant')).toContainText('第一条消息')
+  await expect(page.locator('#sendButton')).toHaveAttribute('data-mode', 'send')
   await page
     .locator('.message.user .message-action', { hasText: '修改' })
     .click()
@@ -73,6 +87,7 @@ test('聊天支持演示回复、修改、切换会话和刷新恢复', async ({
   await page.locator('#messageInput').fill('修改后的消息')
   await page.locator('#sendButton').click()
   await expect(page.locator('.message.assistant')).toContainText('修改后的消息')
+  await expect(page.locator('#sendButton')).toHaveAttribute('data-mode', 'send')
   await expect(page.locator('.message')).toHaveCount(2)
   await page.locator('#newChatButton').click()
   await expect(page.locator('.message')).toHaveCount(0)
@@ -143,6 +158,50 @@ test('模型候选列表统一使用应用样式, 支持过滤和键盘选择', 
     page.locator('#chatModel-options').getByRole('option'),
   ).toHaveText(['codex-auto-review', 'gpt-5.6-sol', 'gpt-6-sol', 'gpt-6.1-sol'])
 })
+
+for (const [version, url] of [
+  ['HTML', '/index.html'],
+  ['Vue', '/vue-app/dist/index.html'],
+])
+  test(version + ' 获取模型按钮固定在下拉列表底部', async ({ page }) => {
+    await page.route('https://models.test/v1/models', (route) =>
+      route.fulfill({
+        json: {
+          data: Array.from({ length: 24 }, (_, index) => ({
+            id: `model-${String(index).padStart(2, '0')}`,
+          })),
+        },
+      }),
+    )
+    await openWorkspace(
+      page,
+      { chatBaseUrl: 'https://models.test/v1', chatApiKey: 'test-key' },
+      url,
+    )
+    await page.locator('[data-view="chat"]').click()
+    await page.locator('#chatModelQuick').click()
+    const dropdown =
+      version === 'HTML'
+        ? page.locator(
+            '[data-model-dropdown="chat"][data-model-input="chatModelQuick"]',
+          )
+        : page.locator('#chatModelQuick-options')
+    const refresh = dropdown.locator('.model-refresh')
+    await refresh.click()
+    const list = dropdown.locator('.model-options')
+    await expect(list.locator('.model-option')).toHaveCount(24)
+    const before = await refresh.boundingBox()
+    await list.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+    })
+    const after = await refresh.boundingBox()
+    expect(before).not.toBeNull()
+    expect(after).not.toBeNull()
+    expect(Math.abs(after!.y - before!.y)).toBeLessThan(1)
+    expect(await list.evaluate((element) => element.scrollTop)).toBeGreaterThan(
+      0,
+    )
+  })
 
 test('根目录单文件模型菜单、聊天请求状态和手机弹窗正常', async ({ page }) => {
   const errors: string[] = []
@@ -358,7 +417,7 @@ test('移动端两个工作区及设置不出现横向溢出', async ({ page }) 
   await page.locator('[data-view="chat"]').click()
   await page.locator('#openSidebar').click()
   await expect(page.locator('#sidebar')).toHaveClass(/open/)
-  await page.locator('#openSettings').click()
+  await page.locator('#topbarSettings').click()
   await expect(page.locator('#settingsBackdrop')).toBeVisible()
   await expect
     .poll(() =>
@@ -446,7 +505,7 @@ test('图片 Worker 保留原始像素, 压缩提交副本并解析生图响应'
   expect(upload.byteLength).toBeLessThan(Buffer.from(png, 'base64').byteLength)
   const stored = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
@@ -466,8 +525,7 @@ test('图片 Worker 保留原始像素, 压缩提交副本并解析生图响应'
   expect(
     stored.some(
       (record) =>
-        record.type === 'image' &&
-        record.src === `data:image/png;base64,${png}`,
+        record.type === 'image' && record.hasBlob && record.src === '',
     ),
   ).toBe(true)
   expect(errors).toEqual([])
@@ -660,9 +718,9 @@ test('工作区导出和导入保留对话及图片历史', async ({ page }) => 
   const downloadPromise = page.waitForEvent('download')
   await page.locator('[data-data-scope="workspace"]').click()
   const download = await downloadPromise
-  const file = test.info().outputPath('workspace.json')
+  const file = test.info().outputPath('workspace.zip')
   await download.saveAs(file)
-  const exported = JSON.parse(await readFile(file, 'utf8'))
+  const exported = readBackup(await readFile(file))
   expect(exported.imageHistory).toHaveLength(1)
   expect(exported.conversations[0].messages).toHaveLength(2)
   page.on('dialog', (dialog) =>
@@ -706,10 +764,9 @@ test('聊天附件和 Markdown 图片支持预览与切换', async ({ page }) =>
   )
   await page.locator('.message.user .message-image-button').click()
   await expect(page.locator('#chatImageViewer')).toBeVisible()
-  await expect(page.locator('#viewerImage')).toHaveAttribute(
-    'src',
-    /^data:image\/png/,
-  )
+  await expect
+    .poll(() => imageBytes(page, '#viewerImage'))
+    .toBe(png.toString('base64'))
   await page.locator('#closeImageViewer').click()
   await page.locator('.message.user .markdown-inline-image').first().click()
   await expect(page.locator('#viewerImage')).toHaveAttribute(
@@ -847,16 +904,18 @@ test('三张图片的键盘导航每次只切换一张, Escape 只关闭顶层�
   await page.locator('#imageCount').fill('3')
   await page.locator('#generateImage').click()
   await page.locator('.history-image-button').click()
-  const sources = await page
-    .locator('#lightboxThumbnails img')
-    .evaluateAll((images) =>
-      images.map((image) => (image as HTMLImageElement).src),
-    )
   await page.locator('#lightboxImage').click()
+  await expect(page.locator('#viewerImage')).toHaveJSProperty(
+    'naturalWidth',
+    1024,
+  )
+  const first = await imageBytes(page, '#viewerImage')
   await page.keyboard.press('ArrowRight')
-  await expect(page.locator('#viewerImage')).toHaveAttribute('src', sources[1])
+  await expect(page.locator('#viewerMeta')).toContainText('2 / 3')
+  await expect.poll(() => imageBytes(page, '#viewerImage')).not.toBe(first)
   await page.keyboard.press('ArrowLeft')
-  await expect(page.locator('#viewerImage')).toHaveAttribute('src', sources[0])
+  await expect(page.locator('#viewerMeta')).toContainText('1 / 3')
+  await expect.poll(() => imageBytes(page, '#viewerImage')).toBe(first)
   await page.keyboard.press('Escape')
   await expect(page.locator('#chatImageViewer')).toBeHidden()
   await expect(page.locator('#imageLightbox')).toBeVisible()
@@ -1074,6 +1133,7 @@ test('配置合并处理同名模板和图片 ID 冲突, 保留对话原图', as
     ),
   })
   await expect(page.locator('#toast')).toContainText('合并导入')
+  await expect(page.locator('#importProgress')).toBeHidden()
   await page.locator('#settings-tab-data').click()
   await page.locator('#workspaceImportFile').setInputFiles({
     name: 'config.json',
@@ -1096,18 +1156,23 @@ test('配置合并处理同名模板和图片 ID 冲突, 保留对话原图', as
     ),
   })
   await expect(page.locator('#toast')).toContainText('合并导入')
+  await expect(page.locator('#importProgress')).toBeHidden()
   await page.locator('#cancelSettings').click()
   await page.reload()
   await expect(page.locator('#imagePromptTemplateSelect option')).toHaveCount(2)
   await expect(
     page.locator('#imagePromptTemplateSelect option:checked'),
   ).toHaveText('template')
-  await expect(page.locator('#imageReferencePreview img')).toHaveAttribute(
-    'src',
-    blue,
-  )
+  await page.locator('#imageReferencePreview img').click()
+  await expect
+    .poll(() => imageBytes(page, '#viewerImage'))
+    .toBe(blue.split(',')[1])
+  await page.locator('#closeImageViewer').click()
   await page.locator('[data-view="chat"]').click()
-  await expect(page.locator('.message.user img')).toHaveAttribute('src', red)
+  await page.locator('.message.user .message-image-button').click()
+  await expect
+    .poll(() => imageBytes(page, '#viewerImage'))
+    .toBe(red.split(',')[1])
 })
 
 test('并发生图保留部分成功和请求审计, 远程结果保存后离线可用', async ({
@@ -1155,10 +1220,9 @@ test('并发生图保留部分成功和请求审计, 远程结果保存后离线
   expect(calls).toBe(2)
   expect(prompts.every((prompt) => prompt.includes('[image 1]'))).toBe(true)
   await page.locator('.history-image-button').click()
-  await expect(page.locator('#lightboxImage')).toHaveAttribute(
-    'src',
-    /^data:image\/png/,
-  )
+  await expect
+    .poll(() => imageBytes(page, '#lightboxImage'))
+    .toBe(png.buffer.toString('base64'))
   await expect(page.locator('#imageMetadata')).toContainText(
     'response-image-model',
   )
@@ -1180,7 +1244,7 @@ test('并发生图保留部分成功和请求审计, 远程结果保存后离线
   // 单图详情沿用原版展示该图的上游响应, 整个任务仍保存所有并发结果。
   const taskResponses = await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onsuccess = () => resolve(request.result)
     })
     const records = await new Promise<any[]>((resolve) => {
@@ -1385,18 +1449,16 @@ test('数据范围导出使用原版文案、敏感确认、文件名和结果�
   await page.locator('#exportWorkspace').click()
   await expect(page.locator('#dataScopeTitle')).toHaveText('选择导出范围')
   await expect(page.locator('#dataScopeDescription')).toHaveText(
-    '请选择要写入 JSON 文件的数据范围。',
+    '请选择要写入 ZIP 备份的数据范围。',
   )
   const [chatDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.locator('[data-data-scope="chat"]').click(),
   ])
   expect(chatDownload.suggestedFilename()).toMatch(
-    /^orbit-chat-workspace-\d{4}-\d{2}-\d{2}\.json$/,
+    /^orbit-chat-workspace-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.zip$/,
   )
-  const chatExport = JSON.parse(
-    await readFile((await chatDownload.path())!, 'utf8'),
-  )
+  const chatExport = readBackup(await readFile((await chatDownload.path())!))
   expect(chatExport.scope).toBe('chat')
   await expect(page.locator('#toast')).toContainText('对话工作区已导出')
 
@@ -1413,16 +1475,19 @@ test('数据范围导出使用原版文案、敏感确认、文件名和结果�
   ])
   expect(confirmation).toContain('API Key、接口地址和模板')
   expect(configDownload.suggestedFilename()).toMatch(
-    /^orbit-config-\d{4}-\d{2}-\d{2}\.json$/,
+    /^orbit-config-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.zip$/,
   )
-  const configExport = JSON.parse(
-    await readFile((await configDownload.path())!, 'utf8'),
+  const configExport = readBackup(
+    await readFile((await configDownload.path())!),
   )
   expect(configExport.apiConfig).toBeTruthy()
   await expect(page.locator('#toast')).toContainText('配置已导出')
 })
 
 test('清除范围的说明、取消和对话清除行为保持原版规则', async ({ page }) => {
+  await page.route('https://chat.test/v1/models', (route) =>
+    route.fulfill({ json: { data: [] } }),
+  )
   await openWorkspace(page, {
     chatBaseUrl: 'https://chat.test/v1',
     chatApiKey: 'test-key',
@@ -1469,7 +1534,8 @@ test('接口模板校验、自动命名、同名覆盖、临时配置和删除�
   await page.locator('#chatBaseUrl').fill('https://api.orbit.test/v1')
   await page.locator('#chatApiKey').fill('local-test-key')
   await page.locator('#chatModel').fill('model-one')
-  await page.locator('#loadChatModels').click()
+  await page.locator('#chatModel').click()
+  await page.locator('#chatModel-options .model-refresh').click()
   await expect(page.locator('#toast')).toContainText('已获取 1 个模型')
   page.once('dialog', (dialog) => {
     expect(dialog.defaultValue()).toBe('orbit.test')
@@ -1536,19 +1602,16 @@ test('获取模型时按钮显示请求中状态并禁止重复点击', async ({
   })
   await openWorkspace(page)
   await page.locator('#topbarSettings').click()
-  for (const [tab, baseUrl, apiKey, buttonId] of [
-    ['#settings-tab-chat', '#chatBaseUrl', '#chatApiKey', '#loadChatModels'],
-    [
-      '#settings-tab-image',
-      '#imageBaseUrl',
-      '#imageApiKey',
-      '#loadImageModels',
-    ],
+  for (const [tab, baseUrl, apiKey, modelInput] of [
+    ['#settings-tab-chat', '#chatBaseUrl', '#chatApiKey', '#chatModel'],
+    ['#settings-tab-image', '#imageBaseUrl', '#imageApiKey', '#imageModel'],
   ]) {
     await page.locator(tab).click()
     await page.locator(baseUrl).fill('https://models.test/v1')
     await page.locator(apiKey).fill('test-key')
-    const button = page.locator(buttonId)
+    const input = page.locator(modelInput)
+    await input.click()
+    const button = page.locator(`${modelInput}-options .model-refresh`)
     await button.click()
     await expect(button).toHaveText('获取中...')
     await expect(button).toBeDisabled()
@@ -1592,8 +1655,16 @@ test('对话重命名、删除提示、菜单关闭和 Markdown/HTML 导出保�
 }) => {
   await openWorkspace(page, { demoMode: true })
   await page.locator('[data-view="chat"]').click()
-  const exportButton = page.locator('#toggleConversationExportMenu')
-  await expect(exportButton).toBeDisabled()
+  const exportButton = page.locator('.conversation-more')
+  const openExportMenu = async () => {
+    await page.locator('.conversation-row').hover()
+    await exportButton.click()
+  }
+  await openExportMenu()
+  await expect(
+    page.getByRole('menuitem', { name: '导出 Markdown' }),
+  ).toBeDisabled()
+  await page.keyboard.press('Escape')
 
   await page
     .locator('#messageInput')
@@ -1604,8 +1675,10 @@ test('对话重命名、删除提示、菜单关闭和 Markdown/HTML 导出保�
   )
   await page.locator('#sendButton').click()
   await expect(page.locator('.message.assistant')).toBeVisible()
-  page.once('dialog', (dialog) => void dialog.accept('危险<script>'))
-  await page.locator('.conversation-action[aria-label="重命名对话"]').click()
+  await openExportMenu()
+  await page.getByRole('menuitem', { name: '重命名对话' }).click()
+  await page.locator('.conversation-title-input').fill('危险<script>')
+  await page.locator('.conversation-title-input').press('Enter')
   await expect(page.locator('.workspace-title')).toHaveText('危险<script>')
 
   page.once('dialog', (dialog) => void dialog.accept())
@@ -1613,20 +1686,20 @@ test('对话重命名、删除提示、菜单关闭和 Markdown/HTML 导出保�
   await expect(page.locator('#toast')).toContainText('消息已删除')
   await expect(page.locator('.message')).toHaveCount(1)
 
-  await exportButton.click()
-  await expect(page.locator('#conversationExportMenu')).toBeVisible()
+  await openExportMenu()
+  await expect(page.locator('.conversation-row-menu')).toBeVisible()
   await page.locator('#topbarSettings').click()
-  await expect(page.locator('#conversationExportMenu')).toBeHidden()
+  await expect(page.locator('.conversation-row-menu')).toBeHidden()
   await page.locator('#cancelSettings').click()
-  await exportButton.click()
+  await openExportMenu()
   await page.keyboard.press('Escape')
-  await expect(page.locator('#conversationExportMenu')).toBeHidden()
+  await expect(page.locator('.conversation-row-menu')).toBeHidden()
   await expect(exportButton).toHaveAttribute('aria-expanded', 'false')
 
-  await exportButton.click()
+  await openExportMenu()
   const [markdownDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.locator('#conversationExportMenu button').first().click(),
+    page.getByRole('menuitem', { name: '导出 Markdown' }).click(),
   ])
   expect(markdownDownload.suggestedFilename()).toBe('危险_script_.md')
   const markdown = await readFile((await markdownDownload.path())!, 'utf8')
@@ -1637,10 +1710,10 @@ test('对话重命名、删除提示、菜单关闭和 Markdown/HTML 导出保�
     '当前对话已导出为 Markdown',
   )
 
-  await exportButton.click()
+  await openExportMenu()
   const [htmlDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.locator('#conversationExportMenu button').nth(1).click(),
+    page.getByRole('menuitem', { name: '导出 HTML' }).click(),
   ])
   expect(htmlDownload.suggestedFilename()).toBe('危险_script_.html')
   const html = await readFile((await htmlDownload.path())!, 'utf8')
@@ -1661,7 +1734,7 @@ test('图片引用菜单按光标筛选定位, 支持键盘、输入法、预览
     ])
   const input = page.locator('#imagePrompt')
   const wrap = page.locator('#imagePrompt').locator('..')
-  const menu = wrap.locator('.image-mention-menu')
+  const menu = page.locator('.image-mention-menu:visible')
   await input.fill('@')
   await expect(menu).toBeVisible()
   await expect(menu.locator('.image-mention-option')).toHaveCount(2)
@@ -1691,7 +1764,7 @@ test('图片引用菜单按光标筛选定位, 支持键盘、输入法、预览
   await input.fill('查看 @图1')
   const token = page.locator('#imagePromptMirror .image-mention-token')
   await token.hover()
-  const tooltip = wrap.locator('.image-mention-tooltip')
+  const tooltip = page.locator('.image-mention-tooltip')
   await expect(tooltip).toBeVisible()
   await expect(tooltip.locator('img')).toHaveAttribute(
     'src',
@@ -1731,10 +1804,7 @@ test('润色引用建议按两组图片和开关限制, 不会在已完成的引
     .locator('#polishGenerationReferenceUpload')
     .setInputFiles(await pngFile(page, 'generation.png', 'red'))
   const source = page.locator('#polishSourcePrompt')
-  const sourceMenu = page
-    .locator('#polishSourcePromptMirror')
-    .locator('..')
-    .locator('.image-mention-menu')
+  const sourceMenu = page.locator('.image-mention-menu:visible')
   await source.fill('@')
   await expect(sourceMenu).toBeHidden()
   await page.locator('#polishUseGenerationReferences').check()
@@ -1746,7 +1816,7 @@ test('润色引用建议按两组图片和开关限制, 不会在已完成的引
     .setInputFiles(await pngFile(page, 'style.png', 'blue'))
   const instruction = page.locator('#polishInstruction')
   const instructionWrap = instruction.locator('..')
-  const instructionMenu = instructionWrap.locator('.image-mention-menu')
+  const instructionMenu = page.locator('.image-mention-menu:visible')
   await instruction.fill('@')
   await expect(instructionMenu.locator('.image-mention-option')).toHaveCount(2)
   await page.locator('#polishUseGenerationReferences').uncheck()
@@ -1757,5 +1827,5 @@ test('润色引用建议按两组图片和开关限制, 不会在已完成的引
   const token = page.locator('#polishInstructionMirror .image-mention-token')
   await expect(token).not.toHaveClass(/invalid/)
   await token.hover()
-  await expect(instructionWrap.locator('.image-mention-tooltip')).toBeVisible()
+  await expect(page.locator('.image-mention-tooltip')).toBeVisible()
 })

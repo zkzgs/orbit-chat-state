@@ -1,11 +1,13 @@
+import { pathToFileURL } from 'node:url'
+import path from 'node:path'
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 for (const [version, host, file] of [
-  ['HTML', '/index.html', 'file:///workspace/orbit-chat-state/index.html'],
+  ['HTML', '/index.html', pathToFileURL(path.resolve('../index.html')).href],
   [
     'Vue',
     '/vue-app/dist/index.html',
-    'file:///workspace/orbit-chat-state/vue-app-packaged.html',
+    pathToFileURL(path.resolve('dist/index.html')).href,
   ],
 ])
   for (const [transport, url] of [

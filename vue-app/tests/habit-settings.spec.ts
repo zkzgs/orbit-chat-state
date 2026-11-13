@@ -1,3 +1,4 @@
+import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
@@ -96,7 +97,7 @@ async function seed(
         ]),
       )
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('orbit-chat-images-v1', 1)
+        const request = indexedDB.open('orbit-chat-images-v1')
         request.onupgradeneeded = () =>
           request.result.createObjectStore('generations', { keyPath: 'id' })
         request.onsuccess = () => resolve(request.result)
@@ -183,7 +184,7 @@ async function seed(
       canvas.getContext('2d')!.fillRect(0, 0, 8, 8)
       if (mode === 'failed-reference') {
         const db = await new Promise<IDBDatabase>((resolve, reject) => {
-          const request = indexedDB.open('orbit-chat-images-v1', 1)
+          const request = indexedDB.open('orbit-chat-images-v1')
           request.onsuccess = () => resolve(request.result)
           request.onerror = () => reject(request.error)
         })
@@ -213,7 +214,7 @@ async function seed(
 async function records(page: Page) {
   return page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
@@ -244,7 +245,7 @@ for (const [version, url] of [
     await expect(
       page.locator('#imageHistory [data-generation-action="retry-task"]'),
     ).toHaveCount(0)
-    mkdirSync('/workspace/screens', { recursive: true })
+    mkdirSync('.cache/screens', { recursive: true })
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 })
       await page.reload()
@@ -258,10 +259,10 @@ for (const [version, url] of [
         'data-tooltip',
       )
       await page.locator('#closeSettings').hover()
-      await expect(page.locator('.custom-tooltip.show')).toHaveText('关闭设置')
+      await expect(page.locator('.custom-tooltip.show')).toHaveCount(0)
       await page.mouse.move(1, 1)
       await page.screenshot({
-        path: `/workspace/screens/settings-habits-${version}-${width}.png`,
+        path: `.cache/screens/settings-habits-${version}-${width}.png`,
         animations: 'disabled',
       })
       const save = await page.locator('#saveSettings').boundingBox()
@@ -288,7 +289,7 @@ for (const [version, url] of [
       await page.locator('#openSidebar').blur()
       await page.mouse.move(width - 2, 50)
       await page.screenshot({
-        path: `/workspace/screens/settings-sidebar-${version}-${width}.png`,
+        path: `.cache/screens/settings-sidebar-${version}-${width}.png`,
         animations: 'disabled',
       })
       if (width === 390) await page.locator('#closeSidebar').click()
@@ -329,8 +330,8 @@ for (const [version, url] of [
     await page.locator('#exportWorkspace').click()
     const downloadPromise = page.waitForEvent('download')
     await page.locator('[data-data-scope="config"]').click()
-    const payload = JSON.parse(
-      await readFile((await (await downloadPromise).path())!, 'utf8'),
+    const payload = readBackup(
+      await readFile((await (await downloadPromise).path())!),
     )
     expect(payload.apiConfig.settings).toMatchObject({
       deleteRetriedRecordOnSuccess: false,
@@ -357,6 +358,7 @@ for (const [version, url] of [
         ),
       )
       .toBe(false)
+    await expect(page.locator('#importProgress')).toBeHidden()
     await page.locator('#cancelSettings').click()
     await openHabits(page)
     for (const id of preferenceIds)
@@ -602,7 +604,7 @@ for (const [version, url] of [
     await seed(page, url, 'failed', { deleteRetriedRecordOnSuccess: true })
     await page.evaluate(async () => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('orbit-chat-images-v1', 1)
+        const request = indexedDB.open('orbit-chat-images-v1')
         request.onsuccess = () => resolve(request.result)
         request.onerror = () => reject(request.error)
       })

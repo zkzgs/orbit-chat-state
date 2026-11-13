@@ -7,8 +7,11 @@ import { inputFiles, pastedImages } from '../utils/events'
 import ReferenceImages from '../components/ReferenceImages.vue'
 import PromptEditor from '../components/PromptEditor.vue'
 import CustomSelect from '../components/CustomSelect.vue'
+import ModelInput from '../components/ModelInput.vue'
+import { useSettingsStore } from '../stores/settings'
 import { useWorkspaceStore } from '../stores/workspace'
 const workspace = useWorkspaceStore()
+const settings = useSettingsStore()
 const image = useImageGenerationStore()
 const templates = usePromptTemplatesStore()
 const size = useImageSizeStore()
@@ -131,6 +134,7 @@ function drop(event: DragEvent) {
           </span>
           <div
             id="imageRequestType"
+            v-show="workspace.state.settings.imageProvider === 'openai'"
             class="image-request-toggle"
             role="radiogroup"
             aria-label="请求接口"
@@ -162,7 +166,128 @@ function drop(event: DragEvent) {
         @move="image.moveReference"
         @mention="promptEditor?.insertReference($event)"
       />
-      <div class="image-controls">
+      <div class="image-model-quick">
+        <label class="quick-setting"
+          ><span>模型</span
+          ><ModelInput
+            id="imageModelQuick"
+            v-model="workspace.state.settings.imageModel"
+            :models="workspace.modelCatalog.image"
+            label="当前生图模型"
+            refresh
+            :refreshing="settings.loadingModels.image"
+            @refresh="settings.loadModels('image', false)"
+        /></label>
+      </div>
+      <div
+        v-if="workspace.state.settings.imageProvider !== 'openai'"
+        class="image-controls native-media-controls"
+      >
+        <label
+          v-if="workspace.state.settings.imageProvider === 'xai'"
+          class="select-control"
+          ><span>类型</span
+          ><CustomSelect
+            id="mediaType"
+            :model-value="
+              workspace.state.settings.imageOptions.mediaType || 'image'
+            "
+            @update:model-value="
+              workspace.state.settings.imageOptions.mediaType = $event as
+                'image' | 'video'
+            "
+            :options="[
+              { value: 'image', label: '图片' },
+              { value: 'video', label: '视频' },
+            ]"
+        /></label>
+        <label class="select-control"
+          ><span>比例</span
+          ><CustomSelect
+            id="nativeRatio"
+            v-model="workspace.state.settings.imageOptions.ratio"
+            :options="
+              [
+                'auto',
+                '1:1',
+                '16:9',
+                '9:16',
+                '4:3',
+                '3:4',
+                '3:2',
+                '2:3',
+                '21:9',
+              ].map((value) => ({
+                value,
+                label: value === 'auto' ? '自动' : value,
+              }))
+            "
+        /></label>
+        <template
+          v-if="
+            workspace.state.settings.imageProvider === 'xai' &&
+            workspace.state.settings.imageOptions.mediaType === 'video'
+          "
+        >
+          <label class="select-control"
+            ><span>时长 (秒)</span
+            ><input
+              id="videoDuration"
+              type="number"
+              min="1"
+              max="15"
+              v-model.number="
+                workspace.state.settings.imageOptions.videoDuration
+              "
+          /></label>
+          <label class="select-control"
+            ><span>分辨率</span
+            ><CustomSelect
+              id="videoResolution"
+              :model-value="
+                workspace.state.settings.imageOptions.videoResolution || '720p'
+              "
+              @update:model-value="
+                workspace.state.settings.imageOptions.videoResolution = $event
+              "
+              :options="
+                ['480p', '720p', '1080p'].map((value) => ({
+                  value,
+                  label: value,
+                }))
+              "
+          /></label>
+        </template>
+        <template v-else
+          ><label class="select-control"
+            ><span>分辨率</span
+            ><CustomSelect
+              id="nativeResolution"
+              v-model="workspace.state.settings.imageOptions.resolution"
+              :options="
+                (workspace.state.settings.imageProvider === 'xai'
+                  ? ['1K', '1.5K', '2K']
+                  : ['1K', '2K', '4K']
+                ).map((value) => ({ value, label: value }))
+              "
+              @change="
+                workspace.state.settings.imageOptions.sizeMode = 'ratio'
+              " /></label
+        ></template>
+        <label class="select-control"
+          ><span>数量</span
+          ><input
+            id="nativeCount"
+            type="number"
+            min="1"
+            max="10"
+            v-model.number="workspace.state.settings.imageOptions.count"
+        /></label>
+      </div>
+      <div
+        class="image-controls"
+        v-show="workspace.state.settings.imageProvider === 'openai'"
+      >
         <label class="select-control image-size-control"
           ><span>尺寸</span
           ><button
@@ -278,7 +403,13 @@ function drop(event: DragEvent) {
           :disabled="!workspace.ready"
           @click="image.generate()"
         >
-          <span>✦</span> 生成图片
+          <span>✦</span>
+          {{
+            workspace.state.settings.imageProvider === 'xai' &&
+            workspace.state.settings.imageOptions.mediaType === 'video'
+              ? '生成视频'
+              : '生成图片'
+          }}
         </button>
       </div>
     </div>

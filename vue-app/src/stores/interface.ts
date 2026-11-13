@@ -9,11 +9,27 @@ import type {
 export const useInterfaceStore = defineStore('interface', () => {
   const activeView = ref<WorkspaceView>('image')
   const sidebarOpen = ref(false)
+  const sidebarCollapsed = ref(false)
+  function toggleSidebar() {
+    if (window.innerWidth <= 780) sidebarOpen.value = !sidebarOpen.value
+    else sidebarCollapsed.value = !sidebarCollapsed.value
+  }
   const settingsOpen = ref(false)
   const sizeOpen = ref(false)
+  const agentImageSettingsOpen = ref(false)
   const polishOpen = ref(false)
-  const exportMenuOpen = ref(false)
   const exporting = ref(false)
+  const exportProgress = reactive({
+    active: false,
+    label: '正在打包备份',
+    percent: 0,
+  })
+  const importProgress = reactive({
+    active: false,
+    indeterminate: false,
+    label: '',
+    percent: 0,
+  })
   const toast = reactive({
     open: false,
     message: '',
@@ -81,11 +97,11 @@ export const useInterfaceStore = defineStore('interface', () => {
     else if (details.open) details.open = false
     else if (polishOpen.value) polishOpen.value = false
     else if (sizeOpen.value) sizeOpen.value = false
+    else if (agentImageSettingsOpen.value) agentImageSettingsOpen.value = false
     else if (dataScope.open) dataScope.open = false
     else if (settingsOpen.value) settingsOpen.value = false
     else {
       toast.open = false
-      exportMenuOpen.value = false
       sidebarOpen.value = false
     }
   }
@@ -95,11 +111,15 @@ export const useInterfaceStore = defineStore('interface', () => {
   return {
     activeView,
     sidebarOpen,
+    sidebarCollapsed,
+    toggleSidebar,
     settingsOpen,
     sizeOpen,
+    agentImageSettingsOpen,
     polishOpen,
-    exportMenuOpen,
     exporting,
+    exportProgress,
+    importProgress,
     toast,
     viewer,
     details,

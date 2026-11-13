@@ -6,6 +6,7 @@ import { copyText } from '../utils/files'
 import { useChatStore } from '../stores/chat'
 import { useInterfaceStore } from '../stores/interface'
 import { useViewerStore } from '../stores/viewer'
+import { useWorkspaceStore } from '../stores/workspace'
 const props = defineProps<{
   message: Message
   images: StoredImage[]
@@ -14,6 +15,7 @@ const props = defineProps<{
 const chat = useChatStore()
 const ui = useInterfaceStore()
 const viewer = useViewerStore()
+const workspace = useWorkspaceStore()
 function previewMarkdownImage(event: MouseEvent) {
   const target = event.target
   if (
@@ -33,6 +35,23 @@ function previewMarkdownImage(event: MouseEvent) {
 async function copy() {
   await copyText(props.message.content)
   ui.notify('已复制到剪贴板')
+}
+function openImage(image: StoredImage, index: number) {
+  const batch = workspace.batches.find(
+    (item) => item.id === image.batchId || item.imageIds.includes(image.id),
+  )
+  if (batch || image.batchId || image.taskId) {
+    const task = workspace.tasks.find(
+      (item) => item.id === image.taskId || item.batchId === batch?.id,
+    )
+    const batchIndex = batch?.imageIds.indexOf(image.id) ?? index
+    ui.openDetails(batch, task, Math.max(0, batchIndex), image.id)
+    return
+  }
+  viewer.open(
+    props.images.map((item) => item.src),
+    index,
+  )
 }
 </script>
 <template>
@@ -57,7 +76,11 @@ async function copy() {
         :open="streaming"
       >
         <summary>
-          {{ streaming && !message.content ? '正在思考' : '思考过程' }}
+          {{
+            streaming && !message.content
+              ? chat.agentActivity?.status || '正在思考'
+              : '思考过程'
+          }}
         </summary>
         <div
           class="message-reasoning-content markdown-body"
@@ -68,23 +91,28 @@ async function copy() {
         class="message-text markdown-body"
         v-html="renderMarkdown(message.content)"
       ></div>
+      <div v-if="message.error" class="message-error" role="alert">
+        请求失败: {{ message.error }}
+      </div>
+      <div v-if="message.files?.length" class="chat-files">
+        <div v-for="file in message.files" :key="file.id" class="chat-file">
+          <span>PDF</span><span class="chat-file-name">{{ file.name }}</span>
+        </div>
+      </div>
       <div class="message-images" v-if="images.length">
         <button
           v-for="(image, index) in images"
           :key="image.id"
           class="message-image-button"
           aria-label="预览消息图片"
-          @click.stop="
-            viewer.open(
-              images.map((item) => item.src),
-              index,
-            )
-          "
+          @click.stop="openImage(image, index)"
         >
           <img
             class="message-image"
-            :src="image.src"
+            v-image-source.full="image.src"
             alt=""
+            :data-image-id="image.id"
+            draggable="false"
             decoding="async"
             loading="lazy"
           />

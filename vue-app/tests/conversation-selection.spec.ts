@@ -33,7 +33,7 @@ async function seed(page: Page, url: string) {
       }),
     )
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const r = indexedDB.open('orbit-chat-images-v1', 1)
+      const r = indexedDB.open('orbit-chat-images-v1')
       r.onupgradeneeded = () =>
         r.result.createObjectStore('generations', { keyPath: 'id' })
       r.onsuccess = () => resolve(r.result)
@@ -69,7 +69,7 @@ async function seed(page: Page, url: string) {
 async function imageIds(page: Page) {
   return page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve) => {
-      const r = indexedDB.open('orbit-chat-images-v1', 1)
+      const r = indexedDB.open('orbit-chat-images-v1')
       r.onsuccess = () => resolve(r.result)
     })
     try {
@@ -128,9 +128,9 @@ for (const [version, url] of [
       await page.locator('#toggleConversationSelection').click()
       await page.getByRole('checkbox', { name: '会话A', exact: true }).check()
       await page.getByRole('checkbox', { name: '会话C', exact: true }).check()
-      mkdirSync('/workspace/screens', { recursive: true })
+      mkdirSync('.cache/screens', { recursive: true })
       await page.screenshot({
-        path: `/workspace/screens/conversation-selection-${version}-${width}.png`,
+        path: `.cache/screens/conversation-selection-${version}-${width}.png`,
         animations: 'disabled',
       })
       const bar = await page.locator('#conversationSelectionBar').boundingBox()

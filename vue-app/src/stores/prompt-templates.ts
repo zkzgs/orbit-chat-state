@@ -1,3 +1,4 @@
+import { imageStorage } from '../storage/database'
 import { defineStore } from 'pinia'
 import { nextTick, reactive, watch } from 'vue'
 import { useWorkspaceStore } from './workspace'
@@ -32,13 +33,33 @@ export const usePromptTemplatesStore = defineStore('prompt-templates', () => {
     references: [] as ReferenceImage[],
   })
   let controller: AbortController | null = null
+  watch(
+    () =>
+      [...polish.references, ...polish.generationReferences]
+        .map(
+          (item) =>
+            item.imageId ||
+            (imageStorage.isSource(item.data)
+              ? item.data.slice('orbit-image:'.length)
+              : ''),
+        )
+        .filter(Boolean),
+    (ids) => {
+      workspace.polishDraftIds = ids
+    },
+    { immediate: true, flush: 'sync' },
+  )
   async function referenceIds(references: ReferenceImage[]) {
     const ids: string[] = []
-    for (const reference of references)
+    for (const reference of references) {
       ids.push(
         reference.imageId ||
           (await workspace.saveImage(reference.data, reference.name)),
       )
+      reference.imageId = ids[ids.length - 1]
+      reference.data = workspace.imageMap.get(reference.imageId)!.src
+      reference.file = undefined
+    }
     return ids
   }
   function referencesFromIds(ids: string[]) {
@@ -280,7 +301,7 @@ export const usePromptTemplatesStore = defineStore('prompt-templates', () => {
     for (const file of files.filter((file) => file.type.startsWith('image/'))) {
       if (target.length >= 16) break
       const reference = await readReference(file)
-      if (!target.some((item) => item.data === reference.data))
+      if (!(await imageStorage.includesSource(target, reference.data)))
         target.push(reference)
     }
   }

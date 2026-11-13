@@ -178,7 +178,23 @@ for (const [version, url] of [
       await expect(page.locator('#toast')).toContainText(
         'GIF/SVG 改图仅支持 PNG、JPEG 或 WebP 参考图',
       )
-      await expect(page.locator('.generation-task-card.error')).toHaveCount(5)
+      const tasks = await page.evaluate(async () => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open('orbit-chat-images-v1')
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        })
+        const records = await new Promise<any[]>((resolve, reject) => {
+          const request = db.transaction('generations').objectStore('generations').getAll()
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        })
+        db.close()
+        return records.filter((record) => record.type === 'generation-task').map(({ id, status, detail }) => ({ id, status, detail }))
+      })
+      expect(tasks).toHaveLength(5)
+      expect(tasks.every((task) => task.status === 'error')).toBe(true)
+      expect(tasks.some((task) => task.detail.startsWith('GIF/SVG 改图仅支持 PNG、JPEG 或 WebP 参考图'))).toBe(true)
       expect(uploads).toHaveLength(4)
       expect(errors).toEqual([])
     },

@@ -5,7 +5,9 @@ const tabs = [
   'chat',
   'image',
   'proxy',
+  'chat-policy',
   'images',
+  'agent',
   'prompts',
   'habits',
   'display',
@@ -40,7 +42,10 @@ for (const [version, url] of [
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     await open(page, url)
-    mkdirSync('/workspace/screens', { recursive: true })
+    mkdirSync('.cache/screens', { recursive: true })
+    await expect(
+      page.getByRole('tablist', { name: '设置模块' }).getByRole('tab'),
+    ).toHaveCount(tabs.length)
     await expect(
       page.getByRole('tablist', { name: '设置模块' }),
     ).toHaveAttribute('aria-orientation', 'vertical')
@@ -72,6 +77,33 @@ for (const [version, url] of [
     await expect(page.locator('#proxyUrl')).toBeVisible()
     await page.locator('#settings-tab-images').click()
     await expect(page.locator('#compressRequestImages')).toBeAttached()
+    await expect(page.locator('#imagePreventPromptRewrite')).toBeAttached()
+    await page.locator('#settings-tab-agent').click()
+    expect(
+      await page
+        .locator('#settings-panel-agent input, #settings-panel-agent textarea')
+        .evaluateAll((elements) => elements.map((element) => element.id)),
+    ).toEqual([
+      'imageAgentInstruction',
+      'imageAgentAutoParameters',
+      'imageAgentPreview',
+      'imageAgentRetryMismatch',
+      'imageAgentRetryErrors',
+      'imageAgentRetryLimit',
+    ])
+    await expect(page.locator('#settingsBackdrop')).not.toContainText(
+      'DeepSeek 官方 Agent',
+    )
+    for (const row of await page
+      .locator('#settings-panel-agent .toggle-row')
+      .all()) {
+      const box = await row.boundingBox()
+      expect(box!.height).toBeGreaterThanOrEqual(45)
+    }
+    await page.screenshot({
+      path: `.cache/screens/settings-${version}-desktop-agent.png`,
+      animations: 'disabled',
+    })
     await page.locator('#settings-tab-prompts').click()
     const originalPrompt = await page.locator('#systemPrompt').inputValue()
     await page.locator('#systemPrompt').fill('settings-prompt-draft')
@@ -94,7 +126,7 @@ for (const [version, url] of [
     await page.mouse.move(5, 5)
     await page.locator('#settings-tab-chat').blur()
     await page.screenshot({
-      path: `/workspace/screens/settings-${version}-desktop.png`,
+      path: `.cache/screens/settings-${version}-desktop.png`,
       animations: 'disabled',
     })
     await page.locator('#settings-tab-prompts').click()
@@ -140,12 +172,24 @@ for (const [version, url] of [
     await page.locator('#settings-tab-chat').blur()
     await page.mouse.move(1, 1)
     await page.screenshot({
-      path: `/workspace/screens/settings-${version}-mobile.png`,
+      path: `.cache/screens/settings-${version}-mobile.png`,
       animations: 'disabled',
     })
     for (const id of tabs) {
       await page.locator(`#settings-tab-${id}`).click()
       await expect(page.getByRole('tabpanel')).toHaveCount(1)
+      if (id === 'agent') {
+        for (const row of await page
+          .locator('#settings-panel-agent .toggle-row')
+          .all()) {
+          const box = await row.boundingBox()
+          expect(box!.height).toBeGreaterThanOrEqual(45)
+        }
+        await page.screenshot({
+          path: `.cache/screens/settings-${version}-mobile-agent.png`,
+          animations: 'disabled',
+        })
+      }
       await page
         .locator('#settingsBackdrop .settings-scroll')
         .evaluate((el) => {
@@ -157,7 +201,7 @@ for (const [version, url] of [
       expect(box!.x + box!.width).toBeLessThanOrEqual(390)
     }
     await page.screenshot({
-      path: `/workspace/screens/settings-${version}-mobile-data.png`,
+      path: `.cache/screens/settings-${version}-mobile-data.png`,
       animations: 'disabled',
     })
     await page.setViewportSize({ width: 390, height: 568 })

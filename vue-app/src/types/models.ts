@@ -3,6 +3,9 @@ export type ApiKind = 'chat' | 'image'
 export type DataScope = 'chat' | 'image' | 'workspace' | 'config' | 'all'
 export type TaskStatus = 'running' | 'success' | 'partial' | 'error'
 export interface ImageOptions {
+  mediaType?: 'image' | 'video'
+  videoDuration?: number
+  videoResolution?: string
   sizeMode: 'auto' | 'ratio' | 'custom'
   resolution: string
   ratio: string
@@ -17,6 +20,7 @@ export interface ImageOptions {
   count: number
 }
 export interface ImageConfig extends ImageOptions {
+  provider?: ImageProvider
   requestType?: string
   model: string
   size: string
@@ -42,7 +46,21 @@ export interface PolishTemplate {
   createdAt: number
   updatedAt: number
 }
+export type ImageProvider = 'openai' | 'xai' | 'gemini'
 export interface Settings {
+  theme: 'dark' | 'light' | 'system'
+  imageProvider: ImageProvider
+  chatImageTools: boolean
+  imageAgentInstruction: string
+  imageAgentPreview: boolean
+  imageAgentAutoParameters: boolean
+  chatHistoryImages: 'id' | 'all'
+  conversationSort: 'updated' | 'created'
+  chatImagePreview: boolean
+  chatSendReasoning: boolean
+  imageAgentRetryErrors: boolean
+  imageAgentRetryMismatch: boolean
+  imageAgentRetryLimit: number
   chatBaseUrl: string
   chatApiKey: string
   chatModel: string
@@ -52,6 +70,8 @@ export interface Settings {
   imageOptions: ImageOptions
   imageCountMode: string
   imageBackgroundMode: string
+  imagePreventPromptRewrite: boolean
+  persistInputContent: boolean
   compressRequestImages: boolean
   requestImageCompressionLimitMb: number
   systemPrompt: string
@@ -74,6 +94,7 @@ export interface Settings {
   demoMode: boolean
 }
 export interface ConnectionProfile {
+  imageProvider?: ImageProvider
   id: string
   name: string
   baseUrl: string
@@ -86,12 +107,34 @@ export interface ConnectionProfile {
   countMode?: string
   backgroundMode?: string
 }
+export interface ChatFile {
+  id: string
+  name: string
+  size: number
+  file?: File
+}
 export interface Message {
+  files?: ChatFile[]
+  error?: string
+  toolRounds?: {
+    assistant: {
+      role: string
+      content: string | null
+      reasoning_content?: string
+      tool_calls: {
+        id: string
+        type: string
+        function: { name: string; arguments: string }
+      }[]
+    }
+    results: { role: string; tool_call_id: string; content: string }[]
+  }[]
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
   reasoning?: string
   imageIds: string[]
+  mentionImageIds?: string[]
   createdAt: number
 }
 export interface ConversationChatContext {
@@ -102,6 +145,7 @@ export interface ConversationChatContext {
     | 'reasoningEffort'
     | 'chatStream'
     | 'chatWebSearch'
+    | 'chatImageTools'
   >
   contextMode: 'client' | 'single'
 }
@@ -110,6 +154,7 @@ export interface Conversation {
   id: string
   title: string
   createdAt: number
+  updatedAt?: number
   messages: Message[]
 }
 export interface WorkspaceState {
@@ -129,9 +174,13 @@ export interface FavoriteFolder {
   isDefault: boolean
 }
 export interface StoredImage {
+  origin?: 'upload' | 'generated'
+  mediaType?: 'image' | 'video'
   id: string
   type: 'image'
   src: string
+  hasBlob?: boolean
+  fingerprint?: string
   name?: string
   createdAt: number
   favoriteFolderIds?: string[]
@@ -186,6 +235,7 @@ export interface GenerationTask {
 }
 export type ImageRecord = StoredImage | GenerationBatch | GenerationTask
 export interface ReferenceImage {
+  origin?: string
   id: string
   data: string
   name: string

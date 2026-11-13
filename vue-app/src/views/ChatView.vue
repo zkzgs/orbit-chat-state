@@ -2,11 +2,9 @@
 import { computed, nextTick } from 'vue'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useChatStore } from '../stores/chat'
-import { useInterfaceStore } from '../stores/interface'
 import ChatMessage from '../components/ChatMessage.vue'
 const workspace = useWorkspaceStore()
 const chat = useChatStore()
-const ui = useInterfaceStore()
 const messages = computed(() => workspace.activeConversation?.messages || [])
 async function quickPrompt(text: string) {
   chat.draft = text
@@ -16,30 +14,6 @@ async function quickPrompt(text: string) {
 </script>
 <template>
   <div class="chat-view" id="chatView">
-    <div class="chat-conversation-tools">
-      <div class="conversation-export-menu">
-        <button
-          id="toggleConversationExportMenu"
-          class="conversation-export-toggle"
-          :disabled="!messages.length"
-          :aria-expanded="ui.exportMenuOpen"
-          @click="ui.exportMenuOpen = !ui.exportMenuOpen"
-        >
-          导出当前对话
-        </button>
-        <div
-          id="conversationExportMenu"
-          class="conversation-export-options"
-          :hidden="!ui.exportMenuOpen"
-        >
-          <button type="button" @click="chat.exportConversation('markdown')">
-            Markdown（.md）</button
-          ><button type="button" @click="chat.exportConversation('html')">
-            HTML（.html）
-          </button>
-        </div>
-      </div>
-    </div>
     <div class="welcome-panel" id="welcomePanel" v-show="!messages.length">
       <div class="welcome-kicker">
         <span class="sparkle">✦</span> Personal AI workspace
@@ -84,10 +58,29 @@ async function quickPrompt(text: string) {
         chat.generating &&
         chat.generatingConversationId ===
           workspace.state.activeConversationId &&
-        !chat.streamingId
+        !chat.streamingId &&
+        !chat.agentActivity
       "
     >
       <span></span><span></span><span></span><em>正在思考</em>
+    </div>
+    <div
+      v-if="
+        chat.agentActivity &&
+        chat.generatingConversationId === workspace.state.activeConversationId
+      "
+      class="agent-activity"
+      role="status"
+      aria-live="polite"
+    >
+      <span class="agent-activity-spinner" aria-hidden="true"></span>
+      <span>{{ chat.agentActivity.status }}</span>
+      <span
+        v-if="chat.agentActivity.prompt"
+        class="agent-activity-prompt"
+        :title="chat.agentActivity.prompt"
+        >{{ chat.agentActivity.prompt }}</span
+      >
     </div>
   </div>
 </template>

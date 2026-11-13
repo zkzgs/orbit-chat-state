@@ -18,6 +18,7 @@ import ImageSize from './components/ImageSize.vue'
 import WorkspaceSettings from './components/WorkspaceSettings.vue'
 import DataScope from './components/DataScope.vue'
 import WorkspaceToast from './components/WorkspaceToast.vue'
+import ImageContextMenu from './components/ImageContextMenu.vue'
 import { useEventListener } from './composables/useEventListener'
 
 const { ui, workspace } = useWorkspace()
@@ -32,10 +33,8 @@ useEventListener(document, 'click', (event) => {
     target.id !== 'openSidebar'
   )
     ui.sidebarOpen = false
-  if (ui.exportMenuOpen && !target.closest('.conversation-export-menu'))
-    ui.exportMenuOpen = false
 })
-useChatScroll(
+const { follow, stickToBottom } = useChatScroll(
   stage,
   () => workspace.activeConversation.messages,
   () => workspace.state.activeConversationId,
@@ -45,7 +44,13 @@ useChatScroll(
 
 <template>
   <WorkspaceHeader />
-  <div class="app-shell" :class="{ 'image-mode': ui.activeView === 'image' }">
+  <div
+    class="app-shell"
+    :class="{
+      'image-mode': ui.activeView === 'image',
+      'sidebar-collapsed': ui.sidebarCollapsed,
+    }"
+  >
     <ConversationSidebar />
     <main class="main-panel">
       <section ref="stage" class="content-stage">
@@ -53,6 +58,18 @@ useChatScroll(
           v-show="ui.activeView === 'image'"
         />
       </section>
+      <div class="chat-scroll-anchor" v-show="ui.activeView === 'chat'">
+        <button
+          v-show="!follow"
+          id="scrollChatBottom"
+          class="chat-scroll-bottom"
+          type="button"
+          aria-label="回到底部"
+          @click="stickToBottom"
+        >
+          ↓
+        </button>
+      </div>
       <ChatComposer v-show="ui.activeView === 'chat'" />
     </main>
   </div>
@@ -66,4 +83,56 @@ useChatScroll(
   <WorkspaceSettings />
   <DataScope />
   <WorkspaceToast />
+  <ImageContextMenu />
+  <div class="data-transfer-progress">
+    <div
+      v-if="ui.importProgress.active"
+      id="importProgress"
+      class="import-progress transfer-progress-panel"
+      :class="{ indeterminate: ui.importProgress.indeterminate }"
+      role="status"
+      aria-live="polite"
+    >
+      <div class="import-progress-label">
+        <span>{{ ui.importProgress.label }}</span>
+        <span>{{ ui.importProgress.percent }}%</span>
+      </div>
+      <div
+        class="import-progress-track"
+        role="progressbar"
+        aria-label="导入进度"
+        :aria-valuenow="
+          ui.importProgress.indeterminate
+            ? undefined
+            : ui.importProgress.percent
+        "
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <span :style="{ width: ui.importProgress.percent + '%' }"></span>
+      </div>
+    </div>
+    <div
+      v-if="ui.exportProgress.active"
+      id="exportProgress"
+      class="import-progress transfer-progress-panel"
+      role="status"
+      aria-live="polite"
+    >
+      <div class="import-progress-label">
+        <span>{{ ui.exportProgress.label }}</span>
+        <span>{{ ui.exportProgress.percent }}%</span>
+      </div>
+      <div
+        class="import-progress-track"
+        role="progressbar"
+        aria-label="导出进度"
+        :aria-valuenow="ui.exportProgress.percent"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <span :style="{ width: ui.exportProgress.percent + '%' }"></span>
+      </div>
+    </div>
+  </div>
 </template>

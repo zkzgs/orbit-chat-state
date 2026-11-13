@@ -1,4 +1,4 @@
-import { nextTick, onScopeDispose, ref, watch, type Ref } from 'vue'
+import { nextTick, onMounted, onScopeDispose, ref, watch, type Ref } from 'vue'
 import { useChatStore } from '../stores/chat'
 
 const BOTTOM_THRESHOLD = 80
@@ -33,15 +33,27 @@ export function useChatScroll(
     if (event.deltaY < 0) follow.value = false
   }
 
+  function onImageLoad(event: Event) {
+    if (
+      event.target instanceof HTMLImageElement &&
+      event.target.closest('.chat-view')
+    )
+      scroll()
+  }
+
   watch(
     container,
     (element, _previous, onCleanup) => {
       if (!element) return
-      element.addEventListener('scroll', syncFollowFromScroll, { passive: true })
+      element.addEventListener('scroll', syncFollowFromScroll, {
+        passive: true,
+      })
       element.addEventListener('wheel', onWheel, { passive: true })
+      element.addEventListener('load', onImageLoad, true)
       onCleanup(() => {
         element.removeEventListener('scroll', syncFollowFromScroll)
         element.removeEventListener('wheel', onWheel)
+        element.removeEventListener('load', onImageLoad, true)
       })
     },
     { immediate: true },
@@ -75,6 +87,8 @@ export function useChatScroll(
     follow.value = true
     scroll(true)
   }
+
+  onMounted(stickToBottom)
 
   watch(content, () => scroll(), { deep: true, flush: 'post' })
   watch(

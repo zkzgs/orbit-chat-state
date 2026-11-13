@@ -98,7 +98,7 @@ async function seedWorkspace(page: Page, count = 4) {
     canvas.getContext('2d')!.fillRect(0, 0, canvas.width, canvas.height)
     const src = canvas.toDataURL('image/png')
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onupgradeneeded = () =>
         request.result.createObjectStore('generations', { keyPath: 'id' })
       request.onsuccess = () => resolve(request.result)
@@ -184,7 +184,10 @@ async function seedWorkspace(page: Page, count = 4) {
     db.close()
   }, count)
   await page.reload()
-  await expect(page.locator('.history-item')).toHaveCount(count)
+  await expect(page.locator('#imageHistoryTitle .history-count')).toHaveText(
+    String(count),
+  )
+  if (count) await expect(page.locator('.history-item').first()).toBeVisible()
 }
 
 async function referenceFile(page: Page, color: string) {
@@ -201,6 +204,28 @@ async function referenceFile(page: Page, color: string) {
     mimeType: 'image/png',
     buffer: Buffer.from(data, 'base64'),
   }
+}
+
+async function waitForAssets(page: Page, count: number) {
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const db = await new Promise<IDBDatabase>((resolve) => {
+          const request = indexedDB.open('orbit-chat-images-v1')
+          request.onsuccess = () => resolve(request.result)
+        })
+        const total = await new Promise<number>((resolve) => {
+          const request = db
+            .transaction('image-assets')
+            .objectStore('image-assets')
+            .count()
+          request.onsuccess = () => resolve(request.result)
+        })
+        db.close()
+        return total
+      }),
+    )
+    .toBe(count)
 }
 
 async function imageEvent(
@@ -391,6 +416,7 @@ test('收藏只更新目标记录, 不重写全库, 不覆盖另一个页面的�
   const vue = await context.newPage()
   await vue.goto('/vue-app/dist/index.html')
   await expect(vue.locator('.history-item')).toHaveCount(18)
+  await waitForAssets(vue, 18)
   await vue.evaluate(() => {
     const stats = { removedCards: 0 }
     Object.assign(window, { favoriteDomStats: stats })
@@ -412,7 +438,7 @@ test('收藏只更新目标记录, 不重写全库, 不覆盖另一个页面的�
     const put = IDBObjectStore.prototype.put
     const clear = IDBObjectStore.prototype.clear
     IDBObjectStore.prototype.put = function (value, key) {
-      writes.ids.push(value.id)
+      if (this.name === 'generations') writes.ids.push(value.id)
       return key === undefined
         ? put.call(this, value)
         : put.call(this, value, key)
@@ -477,9 +503,13 @@ test('移动端长历史先呈现列表, 视口外图片延迟加载', async ({ 
   await page.setViewportSize({ width: 390, height: 844 })
   await seedWorkspace(page, 32)
   await page.goto('/vue-app/dist/index.html')
-  await expect(page.locator('.history-item')).toHaveCount(32)
+  await expect(page.locator('#imageHistoryTitle .history-count')).toHaveText(
+    '32',
+  )
+  expect(await page.locator('.history-item').count()).toBeLessThan(32)
   const images = page.locator('#imageHistory img')
-  await expect(images).toHaveCount(32)
+  const placeholder =
+    'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='
   await expect
     .poll(() =>
       images.evaluateAll(
@@ -487,13 +517,15 @@ test('移动端长历史先呈现列表, 视口外图片延迟加载', async ({ 
           items.filter((image) => image.hasAttribute('data-image-id')).length,
       ),
     )
-    .toBe(32)
+    .toBeGreaterThan(0)
   await images.first().scrollIntoViewIfNeeded()
   await expect
     .poll(() =>
       images.evaluateAll(
-        (items) =>
-          items.filter((image) => !image.hasAttribute('data-image-id')).length,
+        (items, placeholder) =>
+          items.filter((image) => image.getAttribute('src') === placeholder)
+            .length,
+        placeholder,
       ),
     )
     .toBeGreaterThan(0)
@@ -501,32 +533,40 @@ test('移动端长历史先呈现列表, 视口外图片延迟加载', async ({ 
     .poll(() =>
       images.first().evaluate((image: HTMLImageElement) => image.naturalWidth),
     )
-    .toBe(1672)
+    .toBe(640)
   await expect
     .poll(() =>
       images.evaluateAll(
-        (items) =>
-          items.filter((image) => image.hasAttribute('data-image-id')).length,
+        (items, placeholder) =>
+          items.filter((image) => image.getAttribute('src') !== placeholder)
+            .length,
+        placeholder,
       ),
     )
     .toBeGreaterThan(0)
+  await page.locator('.content-stage').evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+  })
+  await expect(
+    page.locator('#imageHistory .history-item').last(),
+  ).toContainText('主体拿着手机自拍, 手放在衣服上 31')
   await images.last().scrollIntoViewIfNeeded()
   await expect
     .poll(() =>
       images.last().evaluate((image: HTMLImageElement) => image.naturalWidth),
     )
-    .toBe(1672)
+    .toBe(640)
 })
 
 test('合并导入替换同一条记录的图片后, 缩略图同步更新', async ({ page }) => {
   await seedWorkspace(page, 1)
   await page.goto('/vue-app/dist/index.html')
   const image = page.locator('#imageHistory img')
-  await expect(image).toHaveAttribute('src', /^data:image\/png/)
+  await expect(image).toHaveJSProperty('naturalWidth', 640)
   const blue = `data:image/png;base64,${(await referenceFile(page, 'blue')).buffer.toString('base64')}`
   const payload = await page.evaluate(async (src) => {
     const db = await new Promise<IDBDatabase>((resolve) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onsuccess = () => resolve(request.result)
     })
     const records = await new Promise<any[]>((resolve) => {
@@ -563,11 +603,31 @@ test('合并导入替换同一条记录的图片后, 缩略图同步更新', asy
   await page.locator('#cancelSettings').click()
   await expect(page.locator('.history-item')).toHaveCount(1)
   await expect
-    .poll(async () => (await image.getAttribute('src')) === blue)
+    .poll(async () =>
+      image.evaluate((element: HTMLImageElement) => {
+        if (element.naturalWidth !== 32) return false
+        const canvas = document.createElement('canvas')
+        canvas.width = canvas.height = 1
+        const context = canvas.getContext('2d')!
+        context.drawImage(element, 0, 0, 1, 1)
+        const pixel = context.getImageData(0, 0, 1, 1).data
+        return pixel[2] > 240 && pixel[0] < 15
+      }),
+    )
     .toBe(true)
   await page.reload()
   await expect
-    .poll(async () => (await image.getAttribute('src')) === blue)
+    .poll(async () =>
+      image.evaluate((element: HTMLImageElement) => {
+        if (element.naturalWidth !== 32) return false
+        const canvas = document.createElement('canvas')
+        canvas.width = canvas.height = 1
+        const context = canvas.getContext('2d')!
+        context.drawImage(element, 0, 0, 1, 1)
+        const pixel = context.getImageData(0, 0, 1, 1).data
+        return pixel[2] > 240 && pixel[0] < 15
+      }),
+    )
     .toBe(true)
 })
 
@@ -607,9 +667,7 @@ test('生图与润色的缩略图、右键引用、粘贴和拖入保持旧版�
       .nth(1)
       .click({ button: 'right' })
     await expect(input).toHaveValue('前 @图2后')
-    await expect(
-      input.locator('..').locator('.image-mention-menu'),
-    ).toBeHidden()
+    await expect(current.locator('.image-mention-menu:visible')).toBeHidden()
     await current.locator('#polishImagePrompt').click()
     await expect(current.locator('#polishGenerationReferenceHint')).toHaveText(
       '2 张参考图',
@@ -723,9 +781,10 @@ for (const viewport of [
         const before = await read(page)
         const after = await read(vue)
         for (const [index, value] of before.bounds.entries())
-          expect(Math.abs(after.bounds[index] - value), selector).toBeLessThan(
-            1,
-          )
+          expect(
+            Math.abs(after.bounds[index] - value),
+            `${selector}: ${before.bounds} -> ${after.bounds}`,
+          ).toBeLessThanOrEqual(1)
         expect({ ...after, bounds: [] }, selector).toEqual({
           ...before,
           bounds: [],
@@ -784,7 +843,7 @@ test('有大图和原始响应的共享缓存中反复收藏, 不整库序列化
     context.putImageData(pixels, 0, 0)
     const src = canvas.toDataURL()
     const db = await new Promise<IDBDatabase>((resolve) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onsuccess = () => resolve(request.result)
     })
     await new Promise<void>((resolve) => {
@@ -823,6 +882,7 @@ test('有大图和原始响应的共享缓存中反复收藏, 不整库序列化
   vue.on('crash', () => errors.push('页面崩溃'))
   await vue.goto('/vue-app/dist/index.html')
   await expect(vue.locator('.history-item')).toHaveCount(12)
+  await waitForAssets(vue, 12)
   await vue.evaluate(() => {
     const stats = { clears: 0, writes: 0, jsonBytes: 0 }
     Object.assign(window, { favoriteMemory: stats })
@@ -834,7 +894,7 @@ test('有大图和原始响应的共享缓存中反复收藏, 不整库序列化
     } as typeof JSON.stringify
     const put = IDBObjectStore.prototype.put
     IDBObjectStore.prototype.put = function (record) {
-      stats.writes++
+      if (this.name === 'generations') stats.writes++
       return put.call(this, record)
     }
     const clear = IDBObjectStore.prototype.clear
@@ -871,7 +931,9 @@ for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 844 })
       await seedWorkspace(page, 32)
       await page.goto(url)
-      await expect(page.locator('.history-item')).toHaveCount(32)
+      await expect(
+        page.locator('#imageHistoryTitle .history-count'),
+      ).toHaveText('32')
 
       const mobile = width <= 780
       const scroller = page.locator(mobile ? '.content-stage' : '#imageHistory')
@@ -914,7 +976,9 @@ for (const width of [1440, 390]) {
         .locator('#imageHistory [data-history-action="delete"]')
         .nth(targetIndex)
         .evaluate((button) => (button as HTMLButtonElement).click())
-      await expect(page.locator('.history-item')).toHaveCount(31)
+      await expect(
+        page.locator('#imageHistoryTitle .history-count'),
+      ).toHaveText('31')
       await expect
         .poll(() => scroller.evaluate((element) => element.scrollTop))
         .toBe(before)

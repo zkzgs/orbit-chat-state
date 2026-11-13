@@ -1,3 +1,4 @@
+import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 
@@ -17,12 +18,12 @@ const png = Buffer.from(
 async function records(page: Page) {
   return page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
     try {
-      return await new Promise<Record<string, any>[]>((resolve, reject) => {
+      const items = await new Promise<Record<string, any>[]>((resolve, reject) => {
         const request = db
           .transaction('generations')
           .objectStore('generations')
@@ -30,6 +31,17 @@ async function records(page: Page) {
         request.onsuccess = () => resolve(request.result)
         request.onerror = () => reject(request.error)
       })
+      for (const item of items) {
+        if (item.type !== 'image' || item.src) continue;
+        const asset = await new Promise<any>((resolve, reject) => {
+          const request = db.transaction('image-assets').objectStore('image-assets').get(item.id);
+          request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+        });
+        if (asset) item.src = await new Promise((resolve) => {
+          const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(asset.blob);
+        });
+      }
+      return items;
     } finally {
       db.close()
     }
@@ -290,18 +302,18 @@ for (const [version, url] of [
             page.locator('[data-data-scope="workspace"]').click(),
           ])
           const exported = await readFile((await exportDownload.path())!)
-          expect(exported.toString()).toContain(generated.src)
+          expect(readBackup(exported).images.find((image: any) => image.id === generated.id)?.src).toBe(generated.src)
           if (!hasReferences)
             expect(
-              JSON.parse(exported.toString()).imageDraft.config.requestType,
+              readBackup(exported).imageDraft.config.requestType,
             ).toBe(requestType)
           page.on('dialog', (dialog) =>
             dialog.accept(dialog.type() === 'prompt' ? '覆盖' : undefined),
           )
           await page.locator('#settings-tab-data').click()
           await page.locator('#workspaceImportFile').setInputFiles({
-            name: 'workspace.json',
-            mimeType: 'application/json',
+            name: 'workspace.zip',
+            mimeType: 'application/zip',
             buffer: exported,
           })
           await expect(page.locator('#toast')).toContainText('覆盖导入')

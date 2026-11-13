@@ -1,3 +1,4 @@
+import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
@@ -63,7 +64,7 @@ async function seed(page: Page, url: string) {
       }),
     )
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const q = indexedDB.open('orbit-chat-images-v1', 1)
+      const q = indexedDB.open('orbit-chat-images-v1')
       q.onupgradeneeded = () =>
         q.result.createObjectStore('generations', { keyPath: 'id' })
       q.onsuccess = () => resolve(q.result)
@@ -106,7 +107,8 @@ for (const [version, url] of [
       has: page.locator('.conversation-title', { hasText: '原始对话' }),
     })
     await source.hover()
-    await source.getByRole('button', { name: '复制对话', exact: true }).click()
+    await source.getByRole('button', { name: '对话操作' }).click()
+    await page.getByRole('menuitem', { name: '复制对话', exact: true }).click()
     await expect(page.locator('.conversation-item.active')).toContainText(
       '原始对话（副本）',
     )
@@ -139,7 +141,7 @@ for (const [version, url] of [
       page.locator('[data-data-scope="chat"]').click(),
     ])
     const buffer = await readFile((await download.path())!)
-    const payload = JSON.parse(buffer.toString())
+    const payload = readBackup(buffer)
     expect(
       payload.conversations.find((c: any) => c.id === copy.id).chatContext,
     ).toEqual(copy.chatContext)
@@ -175,9 +177,9 @@ for (const [version, url] of [
         .filter({ hasText: /^原始对话$/ }),
     })
     page.once('dialog', (d) => d.accept())
-    await originalRow
-      .getByRole('button', { name: '删除对话', exact: true })
-      .click()
+    await originalRow.hover()
+    await originalRow.getByRole('button', { name: '对话操作' }).click()
+    await page.getByRole('menuitem', { name: '删除对话', exact: true }).click()
     await expect(page.locator('.conversation-item')).toHaveCount(2)
     await page.reload()
     await page.locator('[data-view="chat"]').click()
@@ -222,14 +224,19 @@ for (const [version, url] of [
     const row = page
       .locator('.conversation-row')
       .filter({ has: page.locator('.conversation-item.active') })
+    await row.hover()
+    await row.getByRole('button', { name: '对话操作' }).click()
     await expect(
-      row.getByRole('button', { name: '复制对话', exact: true }),
+      page.getByRole('menuitem', { name: '复制对话', exact: true }),
     ).toBeDisabled()
+    await page.keyboard.press('Escape')
     await page.locator('#sendButton').click()
+    await row.hover()
+    await row.getByRole('button', { name: '对话操作' }).click()
     await expect(
-      row.getByRole('button', { name: '复制对话', exact: true }),
+      page.getByRole('menuitem', { name: '复制对话', exact: true }),
     ).toBeEnabled()
-    await row.getByRole('button', { name: '复制对话', exact: true }).click()
+    await page.getByRole('menuitem', { name: '复制对话', exact: true }).click()
     await expect(page.locator('.conversation-item.active')).toContainText(
       '（副本）',
     )

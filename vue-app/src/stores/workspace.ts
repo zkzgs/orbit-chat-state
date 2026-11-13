@@ -14,9 +14,11 @@ import {
   saveFavoriteFolders,
   saveState,
 } from '../storage/state'
-import { readImages, updateImages } from '../storage/database'
+import { imageStorage, readImages, updateImages } from '../storage/database'
 import { createId } from '../utils/id'
 import { imageSize } from '../utils/image-options'
+import { agentImageIds } from '../api/image-agent.js'
+import { chatDocuments } from '../api/chat-files.js'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const state = reactive(loadState())
@@ -26,6 +28,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const batches = ref<GenerationBatch[]>([])
   const tasks = ref<GenerationTask[]>([])
   const imageDraftIds = ref<string[]>([])
+  const chatDraftIds = ref<string[]>([])
+  const chatFileDraftIds = ref<string[]>([])
+  const polishDraftIds = ref<string[]>([])
   const modelCatalog = reactive<Record<ApiKind, string[]>>({
     chat:
       state.connectionProfiles.chat.find(
@@ -61,6 +66,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const imageConfig = computed<ImageConfig>(() => ({
     ...state.settings.imageOptions,
     model: state.settings.imageModel,
+    provider: state.settings.imageProvider,
     size: imageSize(state.settings.imageOptions),
     countMode: state.settings.imageCountMode,
     backgroundMode: state.settings.imageBackgroundMode,
@@ -92,7 +98,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     replace = false,
   ) {
     try {
-      await updateImages(records, deleted, replace)
+      const saved = await updateImages(records, deleted, replace)
+      const sources = new Map(
+        saved
+          .filter((record) => record.type === 'image')
+          .map((record) => [record.id, record]),
+      )
+      for (const image of images.value) {
+        const record = sources.get(image.id)
+        if (record) Object.assign(image, record)
+      }
       return true
     } catch {
       /* IndexedDB 禁用时继续使用页面内数据；清理重试旧记录须确认新结果已落盘。 */
@@ -127,11 +142,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
           if (newImages.length) images.value = [...images.value, ...newImages]
           if (newBatches.length)
             batches.value = [...batches.value, ...newBatches].sort(
-              (a, b) => b.createdAt - a.createdAt,
+              (a, b) =>
+                b.createdAt - a.createdAt ||
+                String(a.id).localeCompare(String(b.id)),
             )
           if (newTasks.length)
             tasks.value = [...tasks.value, ...newTasks].sort(
-              (a, b) => b.startedAt - a.startedAt,
+              (a, b) =>
+                b.startedAt - a.startedAt ||
+                String(a.id).localeCompare(String(b.id)),
             )
         })
       } catch {
@@ -148,32 +167,45 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     metadata: Partial<StoredImage> = {},
   ) {
     if (!ready.value) await initialize()
-    const identity = (source: string) =>
-      source.startsWith('data:')
-        ? source.slice(source.indexOf(',') + 1)
-        : source
-    const existing = images.value.find(
-      (item) => identity(item.src) === identity(src),
-    )
-    if (existing) return existing.id
+    if (imageStorage.isSource(src)) return src.slice('orbit-image:'.length)
+    const current = generation.value
+    const fingerprint = await imageStorage.fingerprint(src)
+    for (const item of images.value) {
+      const key = item.fingerprint || (await imageStorage.fingerprint(item.src))
+      item.fingerprint = key
+      if (key !== fingerprint) continue
+      if (await imageStorage.sameSource(item.src, src)) return item.id
+    }
+    if (current !== generation.value) return ''
     const image: StoredImage = {
       id: createId(),
       type: 'image',
       src,
       name,
       createdAt: Date.now(),
+      fingerprint,
       ...metadata,
     }
     images.value = [...images.value, image]
-    await persistRecords([image])
+    if (!(await persistRecords([image])) && current === generation.value)
+      imageStorage.retain(image)
     return image.id
   }
   async function collectUnusedImages() {
     if (!ready.value) await initialize()
-    const used = new Set<string>(imageDraftIds.value)
+    await chatDocuments.collect(state.conversations, chatFileDraftIds.value)
+    const used = new Set<string>([
+      ...imageDraftIds.value,
+      ...chatDraftIds.value,
+      ...polishDraftIds.value,
+    ])
     state.conversations.forEach((item) =>
       item.messages.forEach((message) =>
-        message.imageIds.forEach((id) => used.add(id)),
+        [
+          ...message.imageIds,
+          ...(message.mentionImageIds || []),
+          ...agentImageIds(message),
+        ].forEach((id) => used.add(id)),
       ),
     )
     batches.value.forEach((item) =>
@@ -212,6 +244,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     batches,
     tasks,
     imageDraftIds,
+    chatDraftIds,
+    chatFileDraftIds,
+    polishDraftIds,
     modelCatalog,
     ready,
     generation,

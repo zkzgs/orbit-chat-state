@@ -28,7 +28,7 @@ async function seed(page: Page, url: string) {
       }),
     )
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onupgradeneeded = () =>
         request.result.createObjectStore('generations', { keyPath: 'id' })
       request.onsuccess = () => resolve(request.result)
@@ -204,7 +204,7 @@ for (const [version, url] of [
     await page.mouse.move(0, 0)
     await expect(chatImage).toHaveCSS('filter', 'blur(18px)')
     await chatImage.click()
-    const preview = page.locator('#viewerImage')
+    const preview = page.locator('#lightboxImage')
     await expect(preview).toBeVisible()
     await page.mouse.move(0, 0)
     await expect(preview).toHaveCSS('filter', 'blur(18px)')
@@ -230,7 +230,8 @@ for (const [version, url] of [
     await page.locator('[data-view="chat"]').click()
     await expect(page.locator('.message-image')).toHaveCSS('filter', 'none')
     await page.locator('.message-image').click()
-    await expect(page.locator('#viewerImage')).toHaveCSS('filter', 'none')
+    await expect(page.locator('#lightboxImage')).toBeVisible()
+    await expect(page.locator('#lightboxImage')).toHaveCSS('filter', 'none')
     await page.keyboard.press('Escape')
     await page.locator('[data-view="image"]').click()
     await expect(list).toHaveCSS('filter', 'blur(18px)')

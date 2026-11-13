@@ -534,7 +534,11 @@ export const useHistoryStore = defineStore('history', () => {
     await workspace.persistRecords(changed, deleted)
     await workspace.collectUnusedImages()
   }
-  async function action(action: string, card: HistoryCard) {
+  async function action(
+    action: string,
+    card: HistoryCard,
+    selectedImage?: StoredImage,
+  ) {
     await workspace.initialize()
     const batch = workspace.batches.find((item) => item.id === card.batchId)
     const task = workspace.tasks.find((item) => item.id === card.taskId)
@@ -552,12 +556,12 @@ export const useHistoryStore = defineStore('history', () => {
     else if (action === 'config' && batch)
       generator.applyConfig(batch.config, batch.prompt, batch.referenceImageIds)
     else if (action === 'edit' && batch) {
-      await generator.editOutput(card.images)
+      await generator.editOutput(selectedImage ? [selectedImage] : card.images)
     } else if (action === 'download' || action === 'download-all') {
       for (const image of action === 'download-all'
         ? card.images
-        : card.image
-          ? [card.image]
+        : selectedImage || card.image
+          ? [selectedImage || card.image!]
           : [])
         await downloadImage(image.src)
     } else if (action === 'delete' || action === 'delete-task')

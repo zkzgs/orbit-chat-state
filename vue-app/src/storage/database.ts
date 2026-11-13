@@ -1,8 +1,20 @@
 import type { ImageRecord } from '../types/models'
 import { IMAGE_DB_NAME, IMAGE_STORE_NAME } from '../constants/workspace'
 import { toRaw } from 'vue'
+import { createImageStorage } from './image-assets.js'
+import { runImageWorker } from '../workers/client'
+import { resourceFetch } from '../api/client'
 
-// 递归解除记录中的 Vue 代理, 保留原图字符串, 避免 JSON 序列化复制整张图片。
+export const imageStorage = createImageStorage({
+  dbName: IMAGE_DB_NAME,
+  storeName: IMAGE_STORE_NAME,
+  fetch: (source: string) => resourceFetch(source),
+  decode: (source: string) =>
+    runImageWorker('dataUrlToBlob', { dataUrl: source }),
+  thumbnail: (blob: Blob) => runImageWorker('createThumbnail', { blob }),
+})
+
+// 递归解除记录中的 Vue 代理, 不序列化或复制整张图片。
 function toStorageValue<T>(value: T): T {
   const raw = toRaw(value)
   if (Array.isArray(raw)) return raw.map(toStorageValue) as T
@@ -12,75 +24,18 @@ function toStorageValue<T>(value: T): T {
   ) as T
 }
 
-function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(IMAGE_DB_NAME, 1)
-    request.onupgradeneeded = () =>
-      request.result.createObjectStore(IMAGE_STORE_NAME, { keyPath: 'id' })
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
+export function readImages(onRecords: (records: ImageRecord[]) => void) {
+  return imageStorage.readRecords(onRecords)
 }
-export async function readImages(
-  onRecords: (records: ImageRecord[]) => void,
-): Promise<void> {
-  const db = await openDatabase()
-  try {
-    return await new Promise((resolve, reject) => {
-      let pending: ImageRecord[] = []
-      let lastPublish = performance.now()
-      let firstPublish = true
-      function publish() {
-        if (!pending.length) return
-        onRecords(pending)
-        pending = []
-        lastPublish = performance.now()
-        firstPublish = false
-      }
-      const request = db
-        .transaction(IMAGE_STORE_NAME)
-        .objectStore(IMAGE_STORE_NAME)
-        .openCursor(null, 'prev')
-      request.onsuccess = () => {
-        const cursor = request.result
-        if (!cursor) {
-          publish()
-          resolve()
-          return
-        }
-        pending.push(cursor.value as ImageRecord)
-        // 新记录优先展示, 不等全部原图读取完才生成列表。
-        if (
-          pending.length >= (firstPublish ? 4 : 16) ||
-          performance.now() - lastPublish >= 32
-        )
-          publish()
-        cursor.continue()
-      }
-      request.onerror = () => reject(request.error)
-    })
-  } finally {
-    db.close()
-  }
-}
+
 export async function updateImages(
   records: ImageRecord[] = [],
   deletedIds: string[] = [],
   replace = false,
-) {
-  const db = await openDatabase()
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction(IMAGE_STORE_NAME, 'readwrite')
-      const store = transaction.objectStore(IMAGE_STORE_NAME)
-      if (replace) store.clear()
-      deletedIds.forEach((id) => store.delete(id))
-      records.forEach((record) => store.put(toStorageValue(record)))
-      transaction.oncomplete = () => resolve()
-      transaction.onerror = () => reject(transaction.error)
-      transaction.onabort = () => reject(transaction.error)
-    })
-  } finally {
-    db.close()
-  }
+): Promise<ImageRecord[]> {
+  return imageStorage.writeRecords(
+    records.map(toStorageValue),
+    deletedIds,
+    replace,
+  )
 }

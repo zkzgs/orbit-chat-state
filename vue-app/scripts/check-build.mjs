@@ -16,6 +16,15 @@ assert.doesNotMatch(
 )
 assert.doesNotMatch(source, /cdn\.jsdelivr\.net/, '不能依赖 CDN')
 assert.doesNotMatch(source, /sourceMappingURL=/, '不能携带 sourcemap')
+const legacy = await readFile(new URL('../../index.html', import.meta.url), 'utf8')
+const storage = (await readFile(new URL('../src/storage/image-assets.js', import.meta.url), 'utf8'))
+  .replace('export function createImageStorage', 'function createImageStorage')
+  .trim()
+assert.equal(
+  legacy.split('// BEGIN SHARED IMAGE STORAGE\n')[1]?.split('\n// END SHARED IMAGE STORAGE')[0],
+  storage,
+  'HTML 和 Vue 必须使用相同的图片存储实现',
+)
 console.log(
   `Single HTML: ${(html.length / 1024).toFixed(1)} KiB, gzip ${(gzipSync(html).length / 1024).toFixed(1)} KiB, Brotli ${(brotliCompressSync(html).length / 1024).toFixed(1)} KiB`,
 )

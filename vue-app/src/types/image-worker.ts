@@ -58,6 +58,7 @@ export interface WorkerPayloads {
   inspectImage: { blob: Blob }
   compressImage: { file: File; targetBytes: number }
   convertToPng: { blob: Blob }
+  createThumbnail: { blob: Blob }
   parseImageResponse: { raw: string; endpoint: string; isEdit: boolean }
 }
 
@@ -68,6 +69,7 @@ export interface WorkerResults {
   inspectImage: ImageInfo
   compressImage: CompressedImage
   convertToPng: Blob
+  createThumbnail: Blob
   parseImageResponse: ParsedImageResponse
 }
 

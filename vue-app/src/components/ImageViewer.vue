@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useWorkspaceStore } from '../stores/workspace'
-import { useHistoryStore } from '../stores/history'
 import { useInterfaceStore } from '../stores/interface'
 import { useViewerStore } from '../stores/viewer'
 import { usePanzoom } from '../composables/usePanzoom'
@@ -11,10 +10,10 @@ import { formatBytes } from '../utils/format'
 const ui = useInterfaceStore()
 const viewer = useViewerStore()
 const workspace = useWorkspaceStore()
-const history = useHistoryStore()
 const image = ref<HTMLImageElement | null>(null)
 const wrap = ref<HTMLElement | null>(null)
 const source = computed(() => ui.viewer.sources[ui.viewer.index] || '')
+const isVideo = computed(() => storedImage.value?.mediaType === 'video')
 const storedImage = computed(() =>
   workspace.images.find((image) => image.src === source.value),
 )
@@ -48,7 +47,7 @@ const centered = computed(
     class="image-viewer"
     :hidden="!ui.viewer.open"
     @click.self="viewer.close"
-    @wheel="zoom.wheel"
+    @wheel="!isVideo && zoom.wheel($event)"
   >
     <div
       id="viewerImageWrap"
@@ -58,13 +57,22 @@ const centered = computed(
       @dblclick="zoom.reset"
     >
       <img
+        v-show="!isVideo"
         id="viewerImage"
         ref="image"
-        :src="source"
+        v-image-source.full="ui.viewer.open && !isVideo ? source : undefined"
         alt="图片预览"
         draggable="false"
         @load="zoom.initialize"
-      /><button
+      /><video
+        v-if="ui.viewer.open && isVideo"
+        id="viewerVideo"
+        v-image-source.full="source"
+        controls
+        playsinline
+        preload="metadata"
+      ></video
+      ><button
         v-if="ui.viewer.sources.length > 1"
         id="viewerPrevious"
         class="viewer-nav viewer-nav-prev panzoom-exclude"
@@ -87,18 +95,8 @@ const centered = computed(
       </button>
       <div class="viewer-actions panzoom-exclude">
         <button
-          v-if="storedImage"
-          id="viewerFavorite"
-          class="viewer-action"
-          type="button"
-          aria-label="收藏图片"
-          data-tooltip="收藏图片"
-          @click="history.openFavorite([storedImage.id])"
-        >
-          ☆
-        </button>
-        <button
           id="viewerCopy"
+          v-show="!isVideo"
           class="viewer-action"
           type="button"
           aria-label="复制图片"

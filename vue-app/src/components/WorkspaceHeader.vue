@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useEventListener } from '../composables/useEventListener'
 import { useChatStore } from '../stores/chat'
 import { useSettingsStore } from '../stores/settings'
 import { useWorkspaceStore } from '../stores/workspace'
@@ -8,6 +9,14 @@ const workspace = useWorkspaceStore()
 const ui = useInterfaceStore()
 const chat = useChatStore()
 const settings = useSettingsStore()
+const mobileQuery = matchMedia('(max-width: 780px)')
+const mobile = ref(mobileQuery.matches)
+useEventListener(mobileQuery, 'change', (event) => {
+  mobile.value = (event as MediaQueryListEvent).matches
+})
+const sidebarExpanded = computed(() =>
+  mobile.value ? ui.sidebarOpen : !ui.sidebarCollapsed,
+)
 const connection = computed(() => {
   const state = workspace.state.settings
   if (chat.generating) return 'loading'
@@ -26,6 +35,17 @@ const activeTitle = computed(
 
 <template>
   <header class="topbar">
+    <button
+      class="icon-button sidebar-toggle"
+      id="openSidebar"
+      :hidden="ui.activeView === 'image'"
+      :aria-label="sidebarExpanded ? '收起侧栏' : '展开侧栏'"
+      :aria-expanded="sidebarExpanded"
+      aria-controls="sidebar"
+      @click="ui.toggleSidebar"
+    >
+      ☰
+    </button>
     <div class="topbar-brand">
       <div class="brand-mark">O</div>
       <div>
@@ -34,16 +54,6 @@ const activeTitle = computed(
       </div>
     </div>
     <div class="mobile-brand-row">
-      <button
-        class="icon-button"
-        id="openSidebar"
-        :hidden="ui.activeView === 'image'"
-        title="打开侧栏"
-        aria-label="打开侧栏"
-        @click="ui.sidebarOpen = !ui.sidebarOpen"
-      >
-        ☰
-      </button>
       <div class="mobile-title">Orbit Chat</div>
     </div>
     <div class="mode-switcher" role="tablist" aria-label="工作模式">

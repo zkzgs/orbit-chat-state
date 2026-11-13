@@ -1,3 +1,4 @@
+import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { transpileModule, ModuleKind, ScriptTarget } from 'typescript'
@@ -45,7 +46,7 @@ async function seed(page: Page, url: string, count = 3, large = false) {
         }),
       )
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('orbit-chat-images-v1', 1)
+        const request = indexedDB.open('orbit-chat-images-v1')
         request.onupgradeneeded = () =>
           request.result.createObjectStore('generations', { keyPath: 'id' })
         request.onsuccess = () => resolve(request.result)
@@ -58,7 +59,7 @@ async function seed(page: Page, url: string, count = 3, large = false) {
           store.clear()
           for (let i = 0; i < count; i++) {
             const src =
-              png + (large ? 'A'.repeat(2 * 1024 * 1024) : '') + 'A'.repeat(i)
+              'data:image/png;base64,' + btoa(atob(png.split(',')[1]) + (large ? 'A'.repeat(2 * 1024 * 1024) : '') + 'A'.repeat(i))
             const config = {
               model: 'test-image',
               format: 'png',
@@ -135,8 +136,8 @@ async function exportScope(page: Page, scope: string) {
     page.waitForEvent('download'),
     page.locator(`[data-data-scope="${scope}"]`).click(),
   ])
-  const contents = await readFile((await download.path())!, 'utf8')
-  return { download, contents, payload: JSON.parse(contents) }
+  const contents = await readFile((await download.path())!)
+  return { download, contents, payload: readBackup(contents) }
 }
 
 for (const [version, url] of [
@@ -150,7 +151,7 @@ for (const [version, url] of [
     const images = Array.from({ length: 4 }, (_, index) => ({
       id: `large-import-image-${index}`,
       type: 'image',
-      src: `data:image/png;base64,${'A'.repeat(1024 * 1024)}${index}`,
+      src: 'data:image/png;base64,' + Buffer.concat([Buffer.from(png.split(',')[1], 'base64'), Buffer.alloc(1024 * 1024, index)]).toString('base64'),
       createdAt: index + 1,
     }))
     const payload = {
@@ -217,11 +218,11 @@ for (const [version, url] of [
       dialog.accept(dialog.type() === 'prompt' ? '覆盖' : undefined),
     )
     await page.locator('#topbarSettings').click()
-    let workspaceFile = ''
+    let workspaceFile = Buffer.alloc(0)
     for (const scope of ['chat', 'image', 'workspace', 'config', 'all']) {
       const { download, contents, payload } = await exportScope(page, scope)
       expect(payload.scope).toBe(scope)
-      expect(download.suggestedFilename()).toMatch(/\.json$/)
+      expect(download.suggestedFilename()).toMatch(/\.zip$/)
       const ids = payload.images.map((image: any) => image.id).sort()
       expect(ids).toEqual(
         scope === 'config'
@@ -233,7 +234,7 @@ for (const [version, url] of [
       expect(new Set(ids).size).toBe(ids.length)
       for (const image of payload.images)
         expect(image.src).toBe(
-          png + 'A'.repeat(Number(image.id.split('-').at(-1))),
+          'data:image/png;base64,' + Buffer.concat([Buffer.from(png.split(',')[1], 'base64'), Buffer.alloc(Number(image.id.split('-').at(-1)), 'A')]).toString('base64'),
         )
       if (['chat', 'workspace', 'all'].includes(scope))
         expect(payload.conversations[0].messages[0].content).toBe(
@@ -260,8 +261,8 @@ for (const [version, url] of [
     }
     await page.locator('#settings-tab-data').click()
     await page.locator('#workspaceImportFile').setInputFiles({
-      name: 'workspace.json',
-      mimeType: 'application/json',
+      name: 'workspace.zip',
+      mimeType: 'application/zip',
       buffer: Buffer.from(workspaceFile),
     })
     await expect(page.locator('#toast')).toContainText('覆盖导入')
@@ -308,15 +309,15 @@ for (const [version, url] of [
       .locator('#exportWorkspace')
       .evaluate((button: HTMLButtonElement) => button.click())
     const download = await downloaded
-    const contents = await readFile((await download.path())!, 'utf8')
-    expect(contents.length).toBeGreaterThan(48 * 1024 * 1024)
-    const payload = JSON.parse(contents)
+    const contents = await readFile((await download.path())!)
+    expect(contents.length).toBeGreaterThan(24 * 1024 * 1024)
+    const payload = readBackup(contents)
     expect(payload.images).toHaveLength(12)
     expect(payload.imageHistory).toHaveLength(12)
     expect(payload.imageTasks).toHaveLength(12)
     for (const image of payload.images) {
       const i = Number(image.id.split('-').at(-1))
-      expect(image.src).toBe(png + 'A'.repeat(2 * 1024 * 1024 + i))
+      expect(image.src).toBe('data:image/png;base64,' + Buffer.concat([Buffer.from(png.split(',')[1], 'base64'), Buffer.alloc(2 * 1024 * 1024 + i, 'A')]).toString('base64'))
       const task = payload.imageTasks.find(
         (task: any) => task.id === `export-task-${i}`,
       )
@@ -341,7 +342,7 @@ for (const [version, url] of [
   }) => {
     test.setTimeout(90_000)
     await page.goto(url)
-    const source = await readFile('src/utils/json-export.ts', 'utf8')
+    const source = (await readFile('src/utils/json-export.ts', 'utf8')).replace(/import \{ imageStorage \} from '[^']+'/u, 'const imageStorage = { isSource: () => false }')
     const module = transpileModule(source, {
       compilerOptions: {
         module: ModuleKind.ESNext,
@@ -401,7 +402,7 @@ for (const [version, url] of [
       const create = URL.createObjectURL
       let fail = true
       URL.createObjectURL = (blob: Blob | MediaSource) => {
-        if (fail && blob instanceof Blob && blob.type === 'application/json') {
+        if (fail && blob instanceof Blob && blob.type === 'application/zip') {
           fail = false
           throw new Error('模拟下载失败')
         }

@@ -158,6 +158,23 @@ async function convertToPng(blob: Blob) {
   }
 }
 
+async function createThumbnail(blob: Blob) {
+  const bitmap = await createImageBitmap(blob)
+  try {
+    const scale = Math.min(1, 640 / Math.max(bitmap.width, bitmap.height))
+    const canvas = new OffscreenCanvas(
+      Math.max(1, Math.round(bitmap.width * scale)),
+      Math.max(1, Math.round(bitmap.height * scale)),
+    )
+    canvas
+      .getContext('2d')!
+      .drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    return await canvas.convertToBlob({ type: 'image/webp', quality: 0.8 })
+  } finally {
+    bitmap.close()
+  }
+}
+
 const handlers: {
   [K in keyof WorkerPayloads]: (
     payload: WorkerPayloads[K],
@@ -169,6 +186,7 @@ const handlers: {
   inspectImage: ({ blob }) => inspectImage(blob),
   compressImage: ({ file, targetBytes }) => compressImage(file, targetBytes),
   convertToPng: ({ blob }) => convertToPng(blob),
+  createThumbnail: ({ blob }) => createThumbnail(blob),
   parseImageResponse: ({ raw, endpoint, isEdit }) =>
     parseImageResponse(raw, endpoint, isEdit),
 }

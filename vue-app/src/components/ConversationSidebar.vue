@@ -1,20 +1,101 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref } from 'vue'
+import { useEventListener } from '../composables/useEventListener'
+import {
+  bindSidebarResize,
+  bindSidebarTitles,
+} from '../utils/sidebar-resize.js'
 import { useChatStore } from '../stores/chat'
-import { useSettingsStore } from '../stores/settings'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useInterfaceStore } from '../stores/interface'
 const workspace = useWorkspaceStore()
 const ui = useInterfaceStore()
 const chat = useChatStore()
-const settings = useSettingsStore()
-const conversations = computed(() =>
-  [...workspace.state.conversations].sort((a, b) => b.createdAt - a.createdAt),
-)
+const conversations = computed(() => {
+  const updatedAt = (item: (typeof workspace.state.conversations)[number]) =>
+    Math.max(
+      item.createdAt,
+      item.updatedAt || 0,
+      item.messages?.[item.messages.length - 1]?.createdAt || item.createdAt,
+    )
+  const time =
+    workspace.state.settings.conversationSort === 'created'
+      ? (item: (typeof workspace.state.conversations)[number]) => item.createdAt
+      : updatedAt
+  return [...workspace.state.conversations].sort(
+    (first, second) => time(second) - time(first),
+  )
+})
 const editingId = ref('')
 const editingTitle = ref('')
 const titleInput = ref<HTMLInputElement | null>(null)
 let ignoreBlur = false
+const menuId = ref('')
+const menuPosition = ref({ left: '0px', top: '0px' })
+const menuConversation = computed(() =>
+  conversations.value.find((item) => item.id === menuId.value),
+)
+const menu = ref<HTMLElement | null>(null)
+let disposeResize: (() => void) | undefined
+let disposeTitles: (() => void) | undefined
+onMounted(() => {
+  disposeResize = bindSidebarResize(
+    document.getElementById('sidebar'),
+    document.getElementById('sidebarResize'),
+    () => {
+      ui.sidebarCollapsed = true
+    },
+  )
+  disposeTitles = bindSidebarTitles(document.getElementById('conversationList'))
+})
+onBeforeUnmount(() => {
+  disposeResize?.()
+  disposeTitles?.()
+})
+function closeMenu() {
+  menuId.value = ''
+}
+async function openMenu(id: string, event: MouseEvent) {
+  if (menuId.value === id) {
+    closeMenu()
+    return
+  }
+  menuId.value = id
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  await nextTick()
+  menuPosition.value = {
+    left: Math.max(8, Math.min(rect.right + 6, window.innerWidth - 180)) + 'px',
+    top:
+      Math.max(
+        8,
+        Math.min(
+          rect.bottom + 4,
+          window.innerHeight - (menu.value?.offsetHeight || 190) - 8,
+        ),
+      ) + 'px',
+  }
+}
+useEventListener(document, 'click', (event) => {
+  if (
+    !(event.target as Element).closest(
+      '.conversation-row-menu, .conversation-more',
+    )
+  )
+    closeMenu()
+})
+useEventListener(window, 'resize', closeMenu)
+useEventListener(
+  document,
+  'scroll',
+  (event) => {
+    if (!(event.target as Element).closest?.('.conversation-row-menu'))
+      closeMenu()
+  },
+  { capture: true },
+)
+useEventListener(window, 'keydown', (event) => {
+  if (event.key === 'Escape') closeMenu()
+})
 
 function setTitleInput(el: unknown) {
   titleInput.value = el instanceof HTMLInputElement ? el : null
@@ -72,10 +153,20 @@ function onRenameKeydown(event: KeyboardEvent) {
     id="sidebar"
     aria-label="会话侧栏"
   >
+    <div
+      id="sidebarResize"
+      class="sidebar-resize"
+      role="separator"
+      aria-label="调整对话侧栏宽度"
+      aria-orientation="vertical"
+      aria-valuemin="160"
+      aria-valuemax="520"
+      aria-valuenow="274"
+      tabindex="0"
+    ></div>
     <button
       class="icon-button mobile-only"
       id="closeSidebar"
-      title="关闭侧栏"
       aria-label="关闭侧栏"
       @click="ui.sidebarOpen = false"
     >
@@ -154,10 +245,7 @@ function onRenameKeydown(event: KeyboardEvent) {
           <input
             type="checkbox"
             :checked="chat.selectedConversations.has(conversation.id)"
-            :disabled="
-              chat.generating &&
-              conversation.id === chat.generatingConversationId
-            "
+            :disabled="chat.isGenerating(conversation.id)"
             @change="chat.toggleSelectedConversation(conversation.id)"
           />
           <span class="conversation-title">{{ conversation.title }}</span>
@@ -179,23 +267,17 @@ function onRenameKeydown(event: KeyboardEvent) {
             :class="{
               active: conversation.id === workspace.state.activeConversationId,
             }"
-            :aria-busy="
-              chat.generating &&
-              conversation.id === chat.generatingConversationId
-            "
+            :aria-busy="chat.isGenerating(conversation.id)"
             @click="chat.selectConversation(conversation.id)"
             @dblclick.stop="startRename(conversation.id, conversation.title)"
           >
             <span
               class="conversation-icon"
               :class="{
-                'is-generating':
-                  chat.generating &&
-                  conversation.id === chat.generatingConversationId,
+                'is-generating': chat.isGenerating(conversation.id),
               }"
               >{{
-                chat.generating &&
-                conversation.id === chat.generatingConversationId
+                chat.isGenerating(conversation.id)
                   ? ''
                   : conversation.id === workspace.state.activeConversationId
                     ? '●'
@@ -206,43 +288,64 @@ function onRenameKeydown(event: KeyboardEvent) {
           </button>
           <div class="conversation-actions">
             <button
-              class="conversation-action"
-              title="重命名对话"
-              aria-label="重命名对话"
-              @click.stop="startRename(conversation.id, conversation.title)"
+              class="conversation-action conversation-more"
+              aria-label="对话操作"
+              aria-haspopup="menu"
+              :aria-expanded="menuId === conversation.id"
+              @click.stop="openMenu(conversation.id, $event)"
             >
-              ✎</button
-            ><button
-              class="conversation-action"
-              aria-label="复制对话"
-              data-tooltip="复制对话"
-              :disabled="
-                chat.generating &&
-                conversation.id === chat.generatingConversationId
-              "
-              @click.stop="chat.duplicateConversation(conversation.id)"
-            >
-              ⧉</button
-            ><button
-              class="conversation-action"
-              title="删除对话"
-              aria-label="删除对话"
-              @click="chat.deleteConversation(conversation.id)"
-            >
-              ×
+              ⋯
             </button>
           </div>
         </template>
       </div>
     </div>
-
-    <div class="sidebar-footer">
-      <div class="privacy-note">
-        <span class="status-dot"></span><span>数据仅保存在本机</span>
-      </div>
-      <button class="settings-link" id="openSettings" @click="settings.open()">
-        <span class="settings-symbol">⚙</span> 接口与偏好设置
+  </aside>
+  <Teleport to="body">
+    <div
+      v-if="menuConversation"
+      ref="menu"
+      class="conversation-row-menu"
+      :style="menuPosition"
+      role="menu"
+      @click="closeMenu"
+    >
+      <button
+        class="rename-conversation"
+        role="menuitem"
+        @click="startRename(menuConversation.id, menuConversation.title)"
+      >
+        重命名对话
+      </button>
+      <button
+        class="duplicate-conversation"
+        role="menuitem"
+        :disabled="chat.isGenerating(menuId)"
+        @click="chat.duplicateConversation(menuConversation.id)"
+      >
+        复制对话
+      </button>
+      <button
+        role="menuitem"
+        :disabled="!menuConversation.messages.length || ui.exporting"
+        @click="chat.exportConversation('markdown', menuConversation.id)"
+      >
+        导出 Markdown
+      </button>
+      <button
+        role="menuitem"
+        :disabled="!menuConversation.messages.length || ui.exporting"
+        @click="chat.exportConversation('html', menuConversation.id)"
+      >
+        导出 HTML
+      </button>
+      <button
+        class="delete-conversation danger-action"
+        role="menuitem"
+        @click="chat.deleteConversation(menuConversation.id)"
+      >
+        删除对话
       </button>
     </div>
-  </aside>
+  </Teleport>
 </template>

@@ -1,3 +1,4 @@
+import { imageStorage } from '../storage/database'
 import { defineStore } from 'pinia'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useWorkspaceStore } from './workspace'
@@ -5,6 +6,7 @@ import { useInterfaceStore } from './interface'
 import {
   requestImages,
   imageRequestBody,
+  imageRequestPrompt,
   ImageRequestError,
   type GeneratedResponse,
 } from '../api/images'
@@ -13,6 +15,7 @@ import type {
   GenerationTask,
   ImageConfig,
   ReferenceImage,
+  Settings,
   StoredImage,
 } from '../types/models'
 import { cloneData } from '../utils/clone'
@@ -26,11 +29,18 @@ import {
 } from '../utils/references'
 import { buildApiEndpoint, resourceFetch } from '../api/client'
 import { readDataUrl } from '../utils/files'
+import { nativeMediaRequest, mediaAudit } from '../api/native-media.js'
+import {
+  readImagePromptDraft,
+  saveImagePromptDraft,
+} from '../storage/input-drafts.js'
 
 export const useImageGenerationStore = defineStore('image-generation', () => {
   const workspace = useWorkspaceStore()
   const ui = useInterfaceStore()
-  const prompt = ref('')
+  const prompt = ref(
+    workspace.state.settings.persistInputContent ? readImagePromptDraft() : '',
+  )
   const references = ref<ReferenceImage[]>([])
   const requestType = ref('generation')
   const draftConfig = computed<ImageConfig>(() => ({
@@ -62,6 +72,19 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     done: '已完成',
     error: '失败',
   }
+  watch(
+    prompt,
+    (value) => {
+      if (workspace.state.settings.persistInputContent)
+        saveImagePromptDraft(value)
+    },
+    { flush: 'sync' },
+  )
+  watch(
+    () => workspace.state.settings.persistInputContent,
+    (enabled) => saveImagePromptDraft(enabled ? prompt.value : ''),
+    { immediate: true, flush: 'sync' },
+  )
 
   function updateRequestPhase(
     task: GenerationTask,
@@ -70,7 +93,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
   ) {
     task.requestPhases[requestIndex] = phase
     if (task.requestPhases.length === 1) {
-      task.detail = requestPhaseLabels[phase]
+      task.detail = requestPhaseLabels[phase] || phase
       return
     }
     const details = [
@@ -95,7 +118,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     for (const file of files.filter((file) => file.type.startsWith('image/'))) {
       if (references.value.length >= 16) break
       const image = await readReference(file)
-      if (!references.value.some((item) => item.data === image.data))
+      if (!(await imageStorage.includesSource(references.value, image.data)))
         references.value.push(image)
       if (references.value.length >= 16) break
     }
@@ -134,11 +157,14 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       referenceCompressionLimitMb: _limit,
       submittedPrompt: _submitted,
       requestType: _requestType,
+      provider: _provider,
       ...options
     } = config
     Object.assign(workspace.state.settings.imageOptions, options, {
       reasoningEffort: config.reasoningEffort || 'auto',
     })
+    workspace.state.settings.imageProvider = config.provider || 'openai'
+    if (config.model) workspace.state.settings.imageModel = config.model
     prompt.value = text
     references.value = workspace.messageImages(ids).map((image) => ({
       id: createId(),
@@ -154,13 +180,18 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     ui.notify(message)
   }
   async function editOutput(images: StoredImage[]) {
+    if (images.some((image) => image.mediaType === 'video')) {
+      ui.notify('视频不能作为图片参考', 'error')
+      return
+    }
     const available = images.slice(0, Math.max(0, 16 - references.value.length))
     if (!available.length) {
       ui.notify('参考图已经达到 16 张上限', 'error')
       return
     }
     for (const image of available) {
-      if (references.value.some((item) => item.data === image.src)) continue
+      if (await imageStorage.includesSource(references.value, image.src))
+        continue
       references.value.push({
         id: createId(),
         data: image.src,
@@ -179,6 +210,8 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     config: ImageConfig
     references: ReferenceImage[]
     retryOf?: string
+    signal?: AbortSignal
+    settings?: Settings
   }) {
     if (!workspace.ready) return
     const text = (override?.prompt || prompt.value).trim()
@@ -187,6 +220,20 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       return
     }
     const config = cloneData(override?.config || draftConfig.value)
+    const settings = cloneData(override?.settings || workspace.state.settings)
+    config.provider ||= 'openai'
+    if (
+      config.provider === 'gemini' ||
+      (config.provider === 'xai' && config.mediaType === 'video')
+    )
+      config.countMode = 'parallel'
+    if (config.provider !== 'openai')
+      config.requestType =
+        config.mediaType === 'video'
+          ? 'video'
+          : (override?.references || references.value).length
+            ? 'edit'
+            : 'generation'
     config.requestType ||= (override?.references || references.value).length
       ? 'edit'
       : 'generation'
@@ -195,7 +242,11 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       100,
       Math.max(0, Number(config.compression) || 0),
     )
-    if (config.background === 'transparent' && config.format === 'jpeg') {
+    if (
+      config.provider === 'openai' &&
+      config.background === 'transparent' &&
+      config.format === 'jpeg'
+    ) {
       ui.notify('透明背景只支持 PNG 或 WebP 格式', 'error')
       return
     }
@@ -222,7 +273,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     const originals = [...(override?.references || references.value)]
     const submitted = text.replace(
       /@图(\d+)/g,
-      (_, number: string) => `[image ${number}]`,
+      (_token: string, number: string) => `[image ${number}]`,
     )
     config.submittedPrompt =
       config.backgroundMode === 'prompt' && config.background === 'transparent'
@@ -247,9 +298,18 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       prompt.value = ''
     const task = workspace.tasks.find((item) => item.id === id)!
     const controller = new AbortController()
+    const abort = () => controller.abort()
+    override?.signal?.addEventListener('abort', abort, { once: true })
+    if (override?.signal?.aborted) controller.abort()
     controllers.set(id, controller)
-    const timeout = setTimeout(() => controller.abort(), 300000)
-    const persist = () => workspace.persistRecords([task])
+    const timeout = setTimeout(
+      () => controller.abort(),
+      config.mediaType === 'video' ? 600000 : 300000,
+    )
+    const persist = () =>
+      generation === workspace.generation
+        ? workspace.persistRecords([task])
+        : Promise.resolve(false)
     let retryCleanup: Promise<void> | undefined
     const onRequestSent = () => {
       if (removeOldRetry && !retryCleanup)
@@ -258,13 +318,15 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     try {
       for (const reference of originals) {
         if (generation !== workspace.generation) return
-        task.referenceImageIds.push(
+        const imageId =
           reference.imageId ||
-            (await workspace.saveImage(reference.data, reference.name)),
-        )
+          (await workspace.saveImage(reference.data, reference.name))
+        task.referenceImageIds.push(imageId)
+        reference.imageId = imageId
+        reference.data = workspace.imageMap.get(imageId)!.src
+        reference.file = undefined
       }
       if (generation !== workspace.generation) return
-      const settings = cloneData(workspace.state.settings)
       let images: GeneratedResponse['images']
       let meta: Record<string, unknown> = {}
       let failed = 0
@@ -291,7 +353,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
             compressRequestImages: config.compressReferences,
             requestImageCompressionLimitMb: config.referenceCompressionLimitMb,
           },
-          config.requestType !== 'edit',
+          config.provider !== 'openai' || config.requestType !== 'edit',
         )
         if (generation !== workspace.generation) return
         task.requestLog = {
@@ -308,11 +370,31 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
               ? 'multipart/form-data'
               : 'application/json',
           body: {
-            ...imageRequestBody(config, config.submittedPrompt!),
+            ...imageRequestBody(
+              config,
+              imageRequestPrompt(config.submittedPrompt!, settings, config),
+            ),
             image: prepared.map((image) => image.submissionMeta),
           },
           parallelRequests: requestTotal,
           createdAt: Date.now(),
+        }
+        if (config.provider !== 'openai') {
+          const native = nativeMediaRequest(
+            settings,
+            config,
+            imageRequestPrompt(config.submittedPrompt!, settings, config),
+            prepared,
+          )
+          task.requestLog = {
+            config,
+            endpoint: native.endpoint,
+            method: 'POST',
+            contentType: 'application/json',
+            body: mediaAudit(native.body),
+            parallelRequests: requestTotal,
+            createdAt: Date.now(),
+          }
         }
         await persist()
         const results = await Promise.allSettled(
@@ -326,6 +408,13 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
                 controller.signal,
                 (phase) => updateRequestPhase(task, index, phase),
                 onRequestSent,
+                async (remote) => {
+                  task.requestLog!.remoteRequests = [
+                    ...((task.requestLog!.remoteRequests as unknown[]) || []),
+                    remote,
+                  ]
+                  await persist()
+                },
               )
               task.responses.push({
                 requestIndex: index + 1,
@@ -391,6 +480,8 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
             prompt: text,
             config,
             responseMeta: { ...meta, ...image.responseMeta },
+            mediaType:
+              image.responseMeta.mediaType === 'video' ? 'video' : 'image',
           }),
         )
       }
@@ -423,6 +514,12 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
           `并发请求完成 ${requestTotal - failed}/${requestTotal} 个`,
           'warning',
         )
+      return {
+        taskId: id,
+        status: task.status,
+        imageIds,
+        error: failed ? '部分请求失败' : undefined,
+      }
     } catch (error) {
       await retryCleanup
       if (generation !== workspace.generation) return
@@ -432,9 +529,11 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
       task.error = { message: task.detail, occurredAt: Date.now() }
       await persist()
       ui.notify(task.detail, 'error')
+      return { taskId: id, status: 'error', imageIds: [], error: task.detail }
     } finally {
       clearTimeout(timeout)
       controllers.delete(id)
+      override?.signal?.removeEventListener('abort', abort)
       await retryCleanup
     }
   }

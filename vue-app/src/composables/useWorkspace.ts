@@ -8,6 +8,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useEventListener } from './useEventListener'
 import { useHashRoute } from './useHashRoute'
 import { disposeImageWorker } from '../workers/client'
+import { applyTheme } from '../utils/theme'
 
 export function useWorkspace() {
   const workspace = useWorkspaceStore()
@@ -17,6 +18,10 @@ export function useWorkspace() {
   const templates = usePromptTemplatesStore()
   const settings = useSettingsStore()
   useHashRoute()
+  watch(() => workspace.state.settings.theme, applyTheme, { immediate: true })
+  useEventListener(matchMedia('(prefers-color-scheme: light)'), 'change', () =>
+    applyTheme(workspace.state.settings.theme),
+  )
   watch(
     () =>
       workspace.state.settings.imagePrivacyEnabled
@@ -31,6 +36,7 @@ export function useWorkspace() {
     () =>
       ui.settingsOpen ||
       ui.sizeOpen ||
+      ui.agentImageSettingsOpen ||
       ui.polishOpen ||
       ui.details.open ||
       ui.audit.open ||
@@ -61,7 +67,6 @@ export function useWorkspace() {
     (view) => {
       ui.sidebarOpen = false
       if (view === 'image') {
-        chat.resetDraft()
         chat.exitConversationSelection()
       }
     },
@@ -76,7 +81,20 @@ export function useWorkspace() {
       if (chat.conversationSelectionMode && !modalOpen.value) {
         event.preventDefault()
         chat.exitConversationSelection()
-      } else ui.closeTopDialog()
+      } else if (
+        ui.settingsOpen &&
+        !ui.sizeOpen &&
+        !ui.agentImageSettingsOpen &&
+        !ui.polishOpen &&
+        !ui.details.open &&
+        !ui.audit.open &&
+        !ui.favorite.open &&
+        !ui.favoriteDelete.open &&
+        !ui.viewer.open &&
+        !ui.dataScope.open
+      )
+        settings.close()
+      else ui.closeTopDialog()
     }
     if (
       ui.viewer.open &&
@@ -108,8 +126,16 @@ export function useWorkspace() {
       /* IndexedDB 禁用时仍可使用页面 */
     }
     templates.selectPrompt(workspace.state.settings.activeImagePromptTemplateId)
-    void settings.loadModels('chat', false)
-    void settings.loadModels('image', false)
+    if (
+      workspace.state.settings.chatBaseUrl &&
+      workspace.state.settings.chatApiKey
+    )
+      void settings.loadModels('chat', false)
+    if (
+      workspace.state.settings.imageBaseUrl &&
+      workspace.state.settings.imageApiKey
+    )
+      void settings.loadModels('image', false)
   })
   onScopeDispose(() => {
     chat.dispose()

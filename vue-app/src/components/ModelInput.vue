@@ -8,11 +8,15 @@ const props = withDefaults(
     id: string
     label: string
     placeholder?: string
+    refresh?: boolean
+    refreshing?: boolean
+    disabled?: boolean
   }>(),
-  { placeholder: '' },
+  { placeholder: '', refresh: false, refreshing: false, disabled: false },
 )
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  refresh: []
 }>()
 
 const host = ref<HTMLDivElement | null>(null)
@@ -148,6 +152,7 @@ onBeforeUnmount(() => {
       autocomplete="off"
       role="combobox"
       type="text"
+      :disabled="disabled"
       @focus="showAll"
       @click="showAll"
       @input="filterOptions"
@@ -161,22 +166,35 @@ onBeforeUnmount(() => {
         class="model-dropdown"
         role="listbox"
       >
-        <button
-          v-for="(model, index) in options"
-          :key="model"
-          type="button"
-          class="model-option"
-          role="option"
-          :aria-selected="index === activeIndex"
-          :title="model"
-          @mousedown.prevent
-          @click="choose(model)"
-        >
-          {{ model }}
-        </button>
-        <div v-if="!options.length" class="model-option">
-          暂无匹配模型，可直接输入模型名
+        <div class="model-options">
+          <button
+            v-for="(model, index) in options"
+            :key="model"
+            type="button"
+            class="model-option"
+            role="option"
+            :aria-selected="index === activeIndex"
+            :title="model"
+            @mousedown.prevent
+            @click="choose(model)"
+          >
+            {{ model }}
+          </button>
+          <div v-if="!options.length" class="model-option">
+            暂无匹配模型，可直接输入模型名
+          </div>
         </div>
+        <button
+          v-if="refresh"
+          type="button"
+          class="model-refresh"
+          :disabled="refreshing"
+          :aria-busy="refreshing"
+          @mousedown.prevent
+          @click="emit('refresh')"
+        >
+          {{ refreshing ? '获取中...' : '获取模型' }}
+        </button>
       </div>
     </Teleport>
   </div>

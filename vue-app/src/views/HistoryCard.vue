@@ -5,7 +5,6 @@ import { formatDuration, formatTime } from '../utils/format'
 import HistoryAction from '../components/HistoryAction.vue'
 import { useElapsed } from '../composables/useElapsed'
 import { useWorkspaceStore } from '../stores/workspace'
-const placeholder = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='
 const props = defineProps<{ card: HistoryCard; selected: boolean }>()
 const workspace = useWorkspaceStore()
 const history = useHistoryStore()
@@ -113,7 +112,7 @@ const elapsedText = computed(() => {
         <img
           v-for="image in card.images.slice(0, 4)"
           :key="image.id"
-          :src="placeholder"
+          v-image-source="image.src"
           :data-image-id="image.id"
           alt=""
           draggable="false"
@@ -124,7 +123,7 @@ const elapsedText = computed(() => {
       <img
         v-else
         :key="card.image?.id"
-        :src="placeholder"
+        v-image-source="card.image?.src"
         :data-image-id="card.image?.id"
         alt=""
         draggable="false"

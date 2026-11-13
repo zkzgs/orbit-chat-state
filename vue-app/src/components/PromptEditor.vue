@@ -2,6 +2,7 @@
 import { computed, ref, useTemplateRef, type CSSProperties } from 'vue'
 import type { ReferenceImage } from '../types/models'
 import { useImageMentions } from '../composables/useImageMentions'
+import { useTextarea } from '../composables/useTextarea'
 
 const model = defineModel<string>({ required: true })
 const props = withDefaults(
@@ -13,8 +14,9 @@ const props = withDefaults(
     rows?: number
     strictMentions?: boolean
     mentionsEnabled?: boolean
+    autoResize?: boolean
   }>(),
-  { strictMentions: false, mentionsEnabled: true },
+  { strictMentions: false, mentionsEnabled: true, autoResize: false },
 )
 const emit = defineEmits<{
   paste: [event: ClipboardEvent]
@@ -30,6 +32,7 @@ const menu = useTemplateRef<HTMLDivElement>('menu')
 const wrap = useTemplateRef<HTMLDivElement>('wrap')
 const tooltip = ref<{ src: string; style: CSSProperties } | null>(null)
 const dropping = ref(false)
+useTextarea(input, model, () => props.autoResize, 260)
 function dragOver(event: DragEvent) {
   if (!event.dataTransfer?.types.includes('Files')) return
   event.preventDefault()
@@ -141,28 +144,41 @@ defineExpose({ insertReference })
         <template v-else>{{ segment.text }}</template>
       </template>
     </div>
-    <div
-      v-if="showMenu"
-      ref="menu"
-      class="image-mention-menu"
-      :style="menuStyle"
-      role="listbox"
-    >
-      <button
-        v-for="(option, index) in suggestions"
-        :key="option.label"
-        class="image-mention-option"
-        type="button"
-        role="option"
-        :aria-selected="menuIndex === index"
-        :class="{ active: menuIndex === index }"
-        @mousedown.prevent="insert(index)"
+    <Teleport to="body">
+      <div
+        v-if="showMenu"
+        ref="menu"
+        class="image-mention-menu"
+        :style="menuStyle"
+        role="listbox"
       >
-        <img :src="images[option.index]?.data" alt="" />{{ option.label }}
-      </button>
-    </div>
-    <div v-if="tooltip" class="image-mention-tooltip" :style="tooltip.style">
-      <img :src="tooltip.src" alt="参考图预览" />
-    </div>
+        <button
+          v-for="(option, index) in suggestions"
+          :key="option.label"
+          class="image-mention-option"
+          type="button"
+          role="option"
+          :aria-selected="menuIndex === index"
+          :class="{ active: menuIndex === index }"
+          @mousedown.prevent="insert(index)"
+        >
+          <img v-image-source="images[option.index]?.data" alt="" />{{
+            option.label
+          }}<span
+            v-if="images[option.index]?.origin"
+            class="image-mention-origin"
+            :data-origin="
+              images[option.index]?.origin === '输出' ? 'output' : 'input'
+            "
+            >{{ images[option.index]?.origin }}</span
+          >
+        </button>
+      </div>
+    </Teleport>
+    <Teleport to="body">
+      <div v-if="tooltip" class="image-mention-tooltip" :style="tooltip.style">
+        <img v-image-source.full="tooltip.src" alt="参考图预览" />
+      </div>
+    </Teleport>
   </div>
 </template>

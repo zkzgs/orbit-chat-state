@@ -8,6 +8,8 @@ import type {
 } from '../types/models'
 import { createId } from '../utils/id'
 import { normalizeFavoriteFolders } from './state'
+import { imageStorage } from './database'
+import { agentImageIds } from '../api/image-agent.js'
 
 export function combineRecords<T extends { id: string }>(old: T[], added: T[]) {
   return [
@@ -40,7 +42,11 @@ export function collectImageIds(
 ) {
   return new Set([
     ...conversations.flatMap((item) =>
-      item.messages.flatMap((message) => message.imageIds || []),
+      item.messages.flatMap((message) => [
+        ...(message.imageIds || []),
+        ...(message.mentionImageIds || []),
+        ...agentImageIds(message),
+      ]),
     ),
     ...batches.flatMap((item) => [
       ...item.imageIds,
@@ -63,37 +69,9 @@ export async function mergeImages(
 ) {
   const records = new Map(base.map((item) => [item.id, item]))
   const idMap = new Map<string, string>()
-  const contentStart = (src: string) =>
-    src.startsWith('data:') ? src.indexOf(',') + 1 : 0
-  const fingerprint = async (src: string) => {
-    const start = contentStart(src)
-    let first = 2166136261
-    let second = 2246822519
-    for (let i = start; i < src.length; i++) {
-      const code = src.charCodeAt(i)
-      first = Math.imul(first ^ code, 16777619)
-      second = Math.imul(second ^ code, 3266489917)
-      if (i > start && (i - start) % (256 * 1024) === 0)
-        await new Promise((resolve) => window.setTimeout(resolve, 0))
-    }
-    return `${src.length - start}:${(first >>> 0).toString(36)}:${(second >>> 0).toString(36)}`
-  }
-  const sameImage = async (first: string, second: string) => {
-    const firstStart = contentStart(first)
-    const secondStart = contentStart(second)
-    const length = first.length - firstStart
-    if (length !== second.length - secondStart) return false
-    for (let offset = 0; offset < length; offset += 256 * 1024) {
-      if (
-        first.slice(firstStart + offset, firstStart + offset + 256 * 1024) !==
-        second.slice(secondStart + offset, secondStart + offset + 256 * 1024)
-      )
-        return false
-      if (offset && offset % (4 * 1024 * 1024) === 0)
-        await new Promise((resolve) => window.setTimeout(resolve, 0))
-    }
-    return true
-  }
+  const fingerprint = (src: string) => imageStorage.fingerprint(src)
+  const sameImage = (first: string, second: string) =>
+    imageStorage.sameSource(first, second)
   const fingerprints = new Map<string, string[]>()
   function indexImage(image: StoredImage, key: string) {
     const ids = fingerprints.get(key) || []
@@ -125,7 +103,14 @@ export async function mergeImages(
     }
     const id = same?.id || (records.has(source.id) ? createId() : source.id)
     idMap.set(source.id, id)
-    const record = { ...source, id, type: 'image' as const }
+    const record = {
+      ...source,
+      id,
+      type: 'image' as const,
+      ...(same?.origin === 'generated' || same?.batchId
+        ? { origin: 'generated' as const }
+        : {}),
+    }
     records.set(id, record)
     if (!same) indexImage(record, key)
     if (i % 8 === 0) {

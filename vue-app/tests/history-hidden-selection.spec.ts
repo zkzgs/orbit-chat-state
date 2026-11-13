@@ -1,8 +1,9 @@
+import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 
-async function seed(page: Page) {
+async function seed(page: Page, theme = 'dark') {
   await page.route(
     'https://cdn.jsdelivr.net/npm/selecto@1.26.2/dist/selecto.min.js',
     (route) =>
@@ -13,10 +14,10 @@ async function seed(page: Page) {
       }),
   )
   await page.goto('/vue-app/dist/index.html')
-  await page.evaluate(async () => {
+  await page.evaluate(async (theme) => {
     localStorage.setItem(
       'orbit-chat-state-v1',
-      JSON.stringify({ settings: { demoMode: true } }),
+      JSON.stringify({ settings: { demoMode: true, theme } }),
     )
     localStorage.setItem(
       'orbit-image-favorite-folders-v1',
@@ -26,7 +27,7 @@ async function seed(page: Page) {
       ]),
     )
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('orbit-chat-images-v1', 1)
+      const request = indexedDB.open('orbit-chat-images-v1')
       request.onupgradeneeded = () =>
         request.result.createObjectStore('generations', { keyPath: 'id' })
       request.onsuccess = () => resolve(request.result)
@@ -89,7 +90,7 @@ async function seed(page: Page) {
       tx.onerror = () => reject(tx.error)
     })
     db.close()
-  })
+  }, theme)
 }
 
 for (const [version, url] of [
@@ -173,7 +174,7 @@ for (const [version, url] of [
     const pending = page.waitForEvent('download')
     await page.locator('[data-data-scope="image"]').click()
     const download = await pending
-    const payload = JSON.parse(await readFile((await download.path())!, 'utf8'))
+    const payload = readBackup(await readFile((await download.path())!))
     expect(
       payload.favoriteFolders.find((item: any) => item.id === 'secret').hidden,
     ).toBe(true)
@@ -190,6 +191,7 @@ for (const [version, url] of [
         buffer: Buffer.from(JSON.stringify(payload)),
       })
       await expect(page.locator('#toast')).toContainText(mode + '导入')
+      await expect(page.locator('#importProgress')).toBeHidden()
       const folders = await page.evaluate(() =>
         JSON.parse(
           localStorage.getItem('orbit-image-favorite-folders-v1') || '[]',
@@ -355,7 +357,7 @@ for (const [version, url] of [
     const pending = page.waitForEvent('download')
     await page.locator('[data-data-scope="image"]').click()
     const download = await pending
-    const payload = JSON.parse(await readFile((await download.path())!, 'utf8'))
+    const payload = readBackup(await readFile((await download.path())!))
     expect(payload.favoriteFolders[0].coverImageId).toBe('c')
     expect(payload.favoriteFolders[1].coverImageId).toBeNull()
     let mode = '覆盖'
@@ -370,6 +372,7 @@ for (const [version, url] of [
         buffer: Buffer.from(JSON.stringify(payload)),
       })
       await expect(page.locator('#toast')).toContainText(mode + '导入')
+      await expect(page.locator('#importProgress')).toBeHidden()
     }
     await importPayload()
     let folders = await page.evaluate(() =>
@@ -380,8 +383,13 @@ for (const [version, url] of [
     expect(folders[0].coverImageId).toBe('c')
     expect(folders[1].coverImageId).toBeNull()
     mode = '合并'
-    payload.images.find((image: any) => image.id === 'c').src +=
-      encodeURIComponent('<!--new-image-->')
+    const changed = payload.images.find((image: any) => image.id === 'c')
+    changed.src =
+      'data:image/svg+xml;base64,' +
+      Buffer.concat([
+        Buffer.from(changed.src.split(',')[1], 'base64'),
+        Buffer.from('<!--new-image-->'),
+      ]).toString('base64')
     await importPayload()
     folders = await page.evaluate(() =>
       JSON.parse(
@@ -483,7 +491,7 @@ for (const [version, url] of [
     )
     await page.screenshot({
       animations: 'disabled',
-      path: `/workspace/screens/${version}-favorite-popup.png`,
+      path: `.cache/screens/${version}-favorite-popup.png`,
     })
     await page.locator('#cancelFavoriteFolderDialog').click()
     // Unfavorited popup must keep Save on the right even with the left action hidden.
@@ -513,14 +521,12 @@ for (const [version, url] of [
     await expect(page.locator('#removeFavoriteFolderChoices')).toBeVisible()
     await page.screenshot({
       animations: 'disabled',
-      path: `/workspace/screens/${version}-details-favorite-popup.png`,
+      path: `.cache/screens/${version}-details-favorite-popup.png`,
     })
     await page.keyboard.press('Escape')
     await expect(page.locator('#imageLightbox')).toBeVisible()
     await page.locator('#lightboxImage').click()
-    await page.locator('#viewerFavorite').click()
-    await expect(page.locator('#removeFavoriteFolderChoices')).toBeVisible()
-    await page.keyboard.press('Escape')
+    await expect(page.locator('#viewerFavorite')).toHaveCount(0)
     await expect(page.locator('#chatImageViewer')).toBeVisible()
     await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
@@ -553,7 +559,7 @@ for (const [version, url] of [
     await expect(page.locator('.custom-tooltip.show')).toHaveText('删除收藏夹')
     await page.screenshot({
       animations: 'disabled',
-      path: `/workspace/screens/${version}-folder-cards.png`,
+      path: `.cache/screens/${version}-folder-cards.png`,
     })
     await folder.locator('.favorite-folder-open').click()
     await expect(cards).toHaveCount(3)
@@ -566,13 +572,13 @@ for (const [version, url] of [
     await expect(nonCover).toHaveCSS('opacity', '0')
     await page.screenshot({
       animations: 'disabled',
-      path: `/workspace/screens/${version}-folder-images-idle.png`,
+      path: `.cache/screens/${version}-folder-images-idle.png`,
     })
     await cards.nth(1).hover()
     await expect(nonCover).toHaveCSS('opacity', '1')
     await page.screenshot({
       animations: 'disabled',
-      path: `/workspace/screens/${version}-folder-images-hover.png`,
+      path: `.cache/screens/${version}-folder-images-hover.png`,
     })
     await nonCover.click()
     await page.locator('#imageHistoryTitle').hover()
@@ -581,7 +587,7 @@ for (const [version, url] of [
     await expect(nonCover.locator('.cover-label-idle')).toHaveText('封面')
     await page.screenshot({
       animations: 'disabled',
-      path: `/workspace/screens/${version}-folder-explicit-cover.png`,
+      path: `.cache/screens/${version}-folder-explicit-cover.png`,
     })
     await nonCover.hover()
     await expect(nonCover.locator('.cover-label-hover')).toBeVisible()
@@ -596,7 +602,7 @@ for (const [version, url] of [
     await expectOneLine()
     await page.screenshot({
       animations: 'disabled',
-      path: `/workspace/screens/${version}-folder-cards-mobile.png`,
+      path: `.cache/screens/${version}-folder-cards-mobile.png`,
     })
   })
 
@@ -606,7 +612,7 @@ for (const [version, url] of [
     await seed(page)
     await page.evaluate(async () => {
       const db = await new Promise<IDBDatabase>((resolve) => {
-        const req = indexedDB.open('orbit-chat-images-v1', 1)
+        const req = indexedDB.open('orbit-chat-images-v1')
         req.onsuccess = () => resolve(req.result)
       })
       await new Promise<void>((resolve) => {
@@ -649,7 +655,7 @@ for (const [version, url] of [
     await seed(page)
     await page.evaluate(async () => {
       const db = await new Promise<IDBDatabase>((resolve) => {
-        const req = indexedDB.open('orbit-chat-images-v1', 1)
+        const req = indexedDB.open('orbit-chat-images-v1')
         req.onsuccess = () => resolve(req.result)
       })
       await new Promise<void>((resolve) => {
@@ -722,7 +728,7 @@ for (const [version, url] of [
     await page.goto(url)
     const cards = page.locator('#imageHistory .history-item')
     await expect(cards).toHaveCount(4)
-    await expect(page.locator('.selecto-selection')).toHaveCount(1)
+    await expect(page.locator('.history-drag-select')).toHaveCount(1)
     const first = await cards
       .first()
       .locator('.history-image-button')
@@ -760,5 +766,34 @@ for (const [version, url] of [
     await page.locator('#imagePrompt').click()
     await expect(page.locator('#imageHistory .selected')).toHaveCount(0)
     await expect(page.locator('#historySelectionBar')).toBeHidden()
+  })
+
+  test(`${version}: light theme keeps selection bar and favorite cover readable`, async ({
+    page,
+  }) => {
+    await seed(page, 'light')
+    await page.goto(url)
+    await page.locator('[data-view="image"]').click()
+    const first = page.locator('#imageHistory .history-item').first()
+    await first.hover()
+    await first.locator('.history-select').check()
+    const bar = page.locator('#historySelectionBar')
+    await expect(bar).toBeVisible()
+    await expect(bar).toHaveCSS('background-color', 'rgba(255, 255, 255, 0.96)')
+
+    await page.locator('#historyClearSelection').click()
+    await page.locator('[data-history-library="favorites"]').click()
+    const folder = page
+      .locator('.favorite-folder-card')
+      .filter({ hasText: '私密收藏' })
+    await folder.locator('.favorite-folder-open').click()
+    const cover = page
+      .locator('#imageHistory .history-item')
+      .first()
+      .locator('.favorite-cover-button')
+    await cover.hover()
+    expect(
+      await cover.evaluate((element) => getComputedStyle(element).backgroundColor),
+    ).toMatch(/^rgba\(255, 255, 255,/)
   })
 }

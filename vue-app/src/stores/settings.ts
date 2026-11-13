@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useWorkspaceStore } from './workspace'
 import { useInterfaceStore } from './interface'
 import { apiFetch, buildModelsEndpoint, normalizeProxyUrl } from '../api/client'
@@ -9,11 +9,14 @@ import { cloneData } from '../utils/clone'
 import { createId } from '../utils/id'
 import { errorMessage } from '../utils/format'
 import { rememberProxyUrl } from '../storage/proxy-url-history'
+import { listGeminiModels } from '../api/native-media.js'
+import { applyTheme } from '../utils/theme'
 
 export const useSettingsStore = defineStore('settings-form', () => {
   const workspace = useWorkspaceStore()
   const ui = useInterfaceStore()
   const draft = reactive(cloneData(workspace.state.settings))
+  let baseline = ''
   const showKey = reactive({ chat: false, image: false })
   const loadingModels = reactive({ chat: false, image: false })
   const verifiedProxy = ref('')
@@ -26,17 +29,58 @@ export const useSettingsStore = defineStore('settings-form', () => {
   )
   function open() {
     Object.assign(draft, cloneData(workspace.state.settings))
+    baseline = snapshot()
     if (draft.proxyEnabled)
       verifiedProxy.value = normalizeProxyUrl(draft.proxyUrl)
     ui.settingsOpen = true
+    applyTheme(draft.theme)
   }
-  function close() {
+  function snapshot() {
+    return JSON.stringify({
+      draft,
+      settings: workspace.state.settings,
+      profiles: workspace.state.connectionProfiles,
+      activeProfiles: workspace.state.activeConnectionProfiles,
+      models: workspace.modelCatalog,
+    })
+  }
+  function close(force = false) {
+    if (!force && baseline && snapshot() !== baseline) {
+      if (window.confirm('设置已修改, 是否保存更改?')) {
+        save()
+        return
+      }
+      const saved = JSON.parse(baseline)
+      Object.assign(workspace.state.settings, saved.settings)
+      Object.assign(workspace.state.connectionProfiles, saved.profiles)
+      Object.assign(
+        workspace.state.activeConnectionProfiles,
+        saved.activeProfiles,
+      )
+      Object.assign(workspace.modelCatalog, saved.models)
+      Object.assign(draft, cloneData(saved.settings))
+    }
+    applyTheme(workspace.state.settings.theme)
     ui.settingsOpen = false
   }
+  watch(
+    () => draft.theme,
+    (theme) => {
+      if (ui.settingsOpen) applyTheme(theme)
+    },
+  )
   function save() {
+    if (
+      !Number.isInteger(draft.imageAgentRetryLimit) ||
+      draft.imageAgentRetryLimit < 0 ||
+      draft.imageAgentRetryLimit > 5
+    ) {
+      ui.notify('Agent 重试上限应为 0 到 5 的整数', 'error')
+      return
+    }
     Object.assign(workspace.state.settings, cloneData(draft))
     rememberProxyUrl(draft.proxyUrl)
-    close()
+    close(true)
     ui.notify('设置已保存')
   }
   function invalidateProxy() {
@@ -74,16 +118,30 @@ export const useSettingsStore = defineStore('settings-form', () => {
     }
   }
   async function loadModels(kind: ApiKind, fromDraft = ui.settingsOpen) {
+    if (loadingModels[kind]) return
     const settings = fromDraft ? draft : workspace.state.settings
     const baseUrl =
       kind === 'chat' ? settings.chatBaseUrl : settings.imageBaseUrl
     const key = kind === 'chat' ? settings.chatApiKey : settings.imageApiKey
     if (!baseUrl || !key) {
-      if (fromDraft) ui.notify('请先填写对应的接口地址和 API Key', 'error')
+      ui.notify('请先填写对应的接口地址和 API Key', 'error')
       return
     }
     loadingModels[kind] = true
     try {
+      if (kind === 'image' && settings.imageProvider === 'gemini') {
+        workspace.modelCatalog.image = await listGeminiModels(
+          apiFetch,
+          settings,
+          AbortSignal.timeout(15000),
+        )
+        const profile = workspace.state.connectionProfiles.image.find(
+          (item) => item.id === workspace.state.activeConnectionProfiles.image,
+        )
+        if (profile) profile.models = [...workspace.modelCatalog.image]
+        ui.notify(`已获取 ${workspace.modelCatalog.image.length} 个模型`)
+        return
+      }
       const response = await apiFetch(
         buildModelsEndpoint(baseUrl),
         {
@@ -103,10 +161,9 @@ export const useSettingsStore = defineStore('settings-form', () => {
         (item) => item.id === workspace.state.activeConnectionProfiles[kind],
       )
       if (active) active.models = [...workspace.modelCatalog[kind]]
-      if (fromDraft)
-        ui.notify(`已获取 ${workspace.modelCatalog[kind].length} 个模型`)
+      ui.notify(`已获取 ${workspace.modelCatalog[kind].length} 个模型`)
     } catch (error) {
-      if (fromDraft) ui.notify(errorMessage(error), 'error')
+      ui.notify(errorMessage(error), 'error')
     } finally {
       loadingModels[kind] = false
     }
@@ -123,6 +180,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
           baseUrl: draft.imageBaseUrl.trim(),
           apiKey: draft.imageApiKey.trim(),
           model: draft.imageModel.trim(),
+          imageProvider: draft.imageProvider,
           countMode: draft.imageCountMode,
           backgroundMode: draft.imageBackgroundMode,
         }
@@ -155,6 +213,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
         imageBaseUrl: profile.baseUrl,
         imageApiKey: profile.apiKey,
         imageModel: profile.model,
+        imageProvider: profile.imageProvider || 'openai',
         imageCountMode: profile.countMode || 'parameter',
         imageBackgroundMode: profile.backgroundMode || 'parameter',
       })
@@ -162,6 +221,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
         imageBaseUrl: draft.imageBaseUrl,
         imageApiKey: draft.imageApiKey,
         imageModel: draft.imageModel,
+        imageProvider: draft.imageProvider,
         imageCountMode: draft.imageCountMode,
         imageBackgroundMode: draft.imageBackgroundMode,
       })
