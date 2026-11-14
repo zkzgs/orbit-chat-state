@@ -573,12 +573,12 @@
 }
 .context-toolbar.toolbar-is-compact .chat-quick-settings,
 .context-toolbar.toolbar-is-tight .chat-quick-settings {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
 }
 .context-toolbar.toolbar-is-compact .toolbar-more-host,
 .context-toolbar.toolbar-is-tight .toolbar-more-host {
-  margin-left: auto;
+  margin-left: 0;
 }
 .toolbar-agent-group {
   display: flex;
@@ -609,12 +609,12 @@
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: flex-end;
     gap: 6px;
   }
   .context-toolbar .chat-quick-settings {
     display: flex;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     width: auto;
     min-width: 0;
     align-items: center;
@@ -628,7 +628,7 @@
   }
   .context-toolbar .quick-setting.model-combo-host,
   .context-toolbar .quick-setting:has(#chatModelQuick) {
-    flex: 1 1 7rem;
+    flex: 0 1 auto;
     min-width: 0;
   }
   .context-toolbar .quick-setting.model-combo-host input,

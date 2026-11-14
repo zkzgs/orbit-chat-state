@@ -406,16 +406,18 @@ export function useWorkspaceData() {
       }
       await workspace.collectUnusedImages()
       setImportProgress('正在写入本地缓存', 93, true)
-      await workspace.saveAllImages()
+      if (!(await workspace.saveAllImages()))
+        throw new Error('图片未能写入本地缓存, 请重试导入')
       if (ui.settingsOpen) useSettingsStore().open()
+      if (ui.polishOpen) usePromptTemplatesStore().syncPolishFromSettings()
       setImportProgress('导入完成', 100)
       ui.notify(`工作区已${merge ? '合并导入' : '覆盖导入'}`)
     } catch (error) {
       ui.notify(errorMessage(error), 'error')
     } finally {
-      await dispose()
       if (importProgress.percent >= 100)
         await new Promise((resolve) => window.setTimeout(resolve, 600))
+      await dispose()
       Object.assign(importProgress, {
         active: false,
         indeterminate: false,

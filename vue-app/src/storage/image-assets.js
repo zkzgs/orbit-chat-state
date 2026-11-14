@@ -77,7 +77,12 @@ export function createImageStorage(options) {
   async function transaction(run) {
     const db = await open()
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(stores, 'readwrite')
+      let tx
+      try {
+        tx = db.transaction(stores, 'readwrite', { durability: 'strict' })
+      } catch {
+        tx = db.transaction(stores, 'readwrite')
+      }
       tx.oncomplete = resolve
       tx.onerror = () => reject(tx.error)
       tx.onabort = () => reject(tx.error)

@@ -235,7 +235,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
   async function saveAllImages() {
     if (!ready.value) await initialize()
-    await persistRecords(
+    return persistRecords(
       [...images.value, ...batches.value, ...tasks.value],
       [],
       true,

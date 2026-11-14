@@ -141,7 +141,7 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
 @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-3px); opacity: 1; } }
 
 .composer-wrap { width: 100%; max-width: 900px; margin: 0 auto; padding: 4px 24px 23px; }
-.context-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 8px; }
+.context-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 0 2px 8px; }
 .context-mode { display: flex; align-items: center; gap: 2px; }
 .toolbar-label { margin-right: 6px; color: var(--muted-2); font-size: 11px; }
 .context-option { padding: 4px 7px; border: 0; border-radius: 4px; background: transparent; color: var(--muted-2); font-size: 11px; }
@@ -1771,12 +1771,12 @@ video[hidden] {
 }
 .context-toolbar.toolbar-is-compact .chat-quick-settings,
 .context-toolbar.toolbar-is-tight .chat-quick-settings {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
 }
 .context-toolbar.toolbar-is-compact .toolbar-more-host,
 .context-toolbar.toolbar-is-tight .toolbar-more-host {
-  margin-left: auto;
+  margin-left: 0;
 }
 .toolbar-agent-group {
   display: flex;
@@ -1807,12 +1807,12 @@ video[hidden] {
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: flex-end;
     gap: 6px;
   }
   .context-toolbar .chat-quick-settings {
     display: flex;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     width: auto;
     min-width: 0;
     align-items: center;
@@ -1826,7 +1826,7 @@ video[hidden] {
   }
   .context-toolbar .quick-setting.model-combo-host,
   .context-toolbar .quick-setting:has(#chatModelQuick) {
-    flex: 1 1 7rem;
+    flex: 0 1 auto;
     min-width: 0;
   }
   .context-toolbar .quick-setting.model-combo-host input,
@@ -4589,7 +4589,12 @@ function createImageStorage(options) {
   async function transaction(run) {
     const db = await open()
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(stores, 'readwrite')
+      let tx
+      try {
+        tx = db.transaction(stores, 'readwrite', { durability: 'strict' })
+      } catch {
+        tx = db.transaction(stores, 'readwrite')
+      }
       tx.oncomplete = resolve
       tx.onerror = () => reject(tx.error)
       tx.onabort = () => reject(tx.error)
@@ -11437,9 +11442,17 @@ function updateAgentRetryControls() {
   $('#imageAgentRetryMismatch').closest('.toggle-row').classList.toggle('is-disabled', !enabled);
 }
 
-function openSettings() {
-  syncModalViewport();
-  $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
+function captureSettingsBaseline() {
+  settingsBaseline = {
+    form: settingsFormSnapshot(),
+    settings: cloneValue(state.settings),
+    profiles: cloneValue(state.connectionProfiles),
+    activeProfiles: cloneValue(state.activeConnectionProfiles),
+    models: cloneValue(modelCatalog),
+  };
+}
+
+function fillSettingsForm() {
   $('#chatBaseUrl').value = state.settings.chatBaseUrl;
   $('#chatApiKey').value = state.settings.chatApiKey;
   $('#chatModel').value = state.settings.chatModel;
@@ -11483,15 +11496,26 @@ function openSettings() {
   if (verifiedProxyUrl === normalizeProxyUrl($('#proxyUrl').value)) setProxyTestStatus('success', state.settings.proxyEnabled ? '代理已启用' : '连接已测试, 可以开启代理');
   else setProxyTestStatus('', '尚未测试代理服务');
   renderAllConnectionProfiles();
+}
+
+function refreshOpenSettingsAfterImport() {
+  if (!$('#settingsBackdrop').hidden) {
+    fillSettingsForm();
+    captureSettingsBaseline();
+  }
+  if (!$('#promptPolishBackdrop').hidden) {
+    const activeTemplate = getPolishTemplates().find((template) => template.id === state.settings.activeImagePolishTemplateId);
+    $('#polishInstruction').value = activeTemplate?.instruction || state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction;
+  }
+}
+
+function openSettings() {
+  syncModalViewport();
+  $$('.model-dropdown').forEach((dropdown) => dropdown.hidden = true);
+  fillSettingsForm();
   selectSettingsTab(activeSettingsTab);
   $('#settingsBackdrop').hidden = false;
-  settingsBaseline = {
-    form: settingsFormSnapshot(),
-    settings: cloneValue(state.settings),
-    profiles: cloneValue(state.connectionProfiles),
-    activeProfiles: cloneValue(state.activeConnectionProfiles),
-    models: cloneValue(modelCatalog),
-  };
+  captureSettingsBaseline();
 }
 
 function closeSettings(force = false) {
@@ -11779,8 +11803,10 @@ async function replaceStoredImages(records) {
 async function persistImageStore() {
   try {
     await replaceStoredImages([...storedImages.values()].filter((record) => record.type === 'image' && record.src).concat(imageHistory.map(createStoredBatch), imageTasks.map(createStoredImageTask)));
+    return true;
   } catch {
     // 当前环境禁用 IndexedDB 时, 保留内存中的工作区状态
+    return false;
   }
 }
 
@@ -12119,9 +12145,10 @@ async function importWorkspace(file) {
         storedImages = mergedImages.records;
         updateImportProgress('正在写入本地缓存', 93, true);
         await removeUnreferencedImages();
-        await persistImageStore();
+        if (!(await persistImageStore())) throw new Error('图片未能写入本地缓存, 请重试导入');
         persist();
         render();
+        refreshOpenSettingsAfterImport();
         updateImportProgress('导入完成', 100);
         showToast('配置已导入');
         return;
@@ -12161,11 +12188,12 @@ async function importWorkspace(file) {
     ensureActiveConversation();
     updateImportProgress('正在写入本地缓存', 93, true);
     await removeUnreferencedImages();
-    await persistImageStore();
+    if (!(await persistImageStore())) throw new Error('图片未能写入本地缓存, 请重试导入');
     persist();
     render();
     renderImageHistory();
     renderMessages();
+    refreshOpenSettingsAfterImport();
     updateImportProgress('导入完成', 100);
     showToast(`${getExportScopeLabel(scope)}已${merge ? '合并导入' : '覆盖导入'}`);
   } catch (error) {

@@ -733,7 +733,8 @@ select:not(:disabled):hover {
 .context-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 6px;
   padding: 0 2px 8px;
 }
 .context-mode {

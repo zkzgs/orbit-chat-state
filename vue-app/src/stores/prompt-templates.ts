@@ -249,6 +249,15 @@ export const usePromptTemplatesStore = defineStore('prompt-templates', () => {
     await workspace.collectUnusedImages()
     ui.notify('润色模板已删除，当前润色要求仍保留')
   }
+  function syncPolishFromSettings() {
+    const activeTemplate = workspace.state.settings.imagePolishTemplates.find(
+      (item) =>
+        item.id === workspace.state.settings.activeImagePolishTemplateId,
+    )
+    polish.instruction =
+      activeTemplate?.instruction ||
+      workspace.state.settings.imagePolishInstruction
+  }
   function openPolish() {
     const activeTemplate = workspace.state.settings.imagePolishTemplates.find(
       (item) =>
@@ -477,6 +486,7 @@ export const usePromptTemplatesStore = defineStore('prompt-templates', () => {
     selectPolish,
     savePolish,
     deletePolish,
+    syncPolishFromSettings,
     openPolish,
     closePolish,
     addPolishReferences,
