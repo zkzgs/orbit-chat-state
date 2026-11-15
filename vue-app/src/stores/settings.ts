@@ -27,8 +27,12 @@ export const useSettingsStore = defineStore('settings-form', () => {
       normalizeProxyUrl(draft.proxyUrl) === verifiedProxy.value &&
       Boolean(verifiedProxy.value),
   )
-  function open() {
+  function syncFromWorkspace() {
     Object.assign(draft, cloneData(workspace.state.settings))
+    if (ui.settingsOpen) baseline = snapshot()
+  }
+  function open() {
+    syncFromWorkspace()
     baseline = snapshot()
     if (draft.proxyEnabled)
       verifiedProxy.value = normalizeProxyUrl(draft.proxyUrl)
@@ -312,6 +316,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
     proxyTesting,
     canEnableProxy,
     open,
+    syncFromWorkspace,
     close,
     save,
     invalidateProxy,

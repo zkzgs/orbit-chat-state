@@ -44,7 +44,25 @@ const exportFilePrefixes: Record<DataScope, string> = {
   all: 'orbit-all-data',
 }
 
+async function importedImagesPersisted(images: { id: string; src?: string; hasBlob?: boolean; type?: string }[]) {
+  for (const image of images) {
+    if (image.type && image.type !== 'image') continue
+    const src = image.src || ''
+    const needsAsset =
+      image.hasBlob ||
+      src.startsWith('orbit-image:') ||
+      src.startsWith('data:')
+    if (!needsAsset) continue
+    const id = src.startsWith('orbit-image:')
+      ? src.slice('orbit-image:'.length)
+      : image.id
+    if (!(await imageStorage.hasAsset(id))) return false
+  }
+  return true
+}
+
 export function useWorkspaceData() {
+
   const workspace = useWorkspaceStore()
   const ui = useInterfaceStore()
   const image = useImageGenerationStore()
@@ -387,14 +405,18 @@ export function useWorkspaceData() {
                 profiles,
               )
             : profiles
-          const active =
-            config.activeConnectionProfiles?.[kind] ||
-            (merge ? workspace.state.activeConnectionProfiles[kind] : '')
+          const importedActive = config.activeConnectionProfiles
+          const requested =
+            importedActive && Object.hasOwn(importedActive, kind)
+              ? importedActive[kind] || ''
+              : merge
+                ? workspace.state.activeConnectionProfiles[kind]
+                : ''
           workspace.state.activeConnectionProfiles[kind] =
             workspace.state.connectionProfiles[kind].some(
-              (item) => item.id === active,
+              (item) => item.id === requested,
             )
-              ? active
+              ? requested
               : ''
           workspace.modelCatalog[kind] = [
             ...new Set([
@@ -408,7 +430,16 @@ export function useWorkspaceData() {
       setImportProgress('正在写入本地缓存', 93, true)
       if (!(await workspace.saveAllImages()))
         throw new Error('图片未能写入本地缓存, 请重试导入')
-      if (ui.settingsOpen) useSettingsStore().open()
+      const importedIds = new Set(
+        sourceImages.map((image) => remap([image.id])[0]).filter(Boolean),
+      )
+      if (
+        !(await importedImagesPersisted(
+          workspace.images.filter((image) => importedIds.has(image.id)),
+        ))
+      )
+        throw new Error('图片未能写入本地缓存, 请重试导入')
+      useSettingsStore().syncFromWorkspace()
       if (ui.polishOpen) usePromptTemplatesStore().syncPolishFromSettings()
       setImportProgress('导入完成', 100)
       ui.notify(`工作区已${merge ? '合并导入' : '覆盖导入'}`)

@@ -131,14 +131,21 @@ function openStepImage(step: AgentStep, image: StoredImage, index: number) {
               v-html="renderMarkdown(step.text || '')"
             ></div>
           </details>
+          <details
+            v-else-if="
+              (step.type === 'tool_call' || step.type === 'retry') && step.prompt
+            "
+            class="message-reasoning"
+            :open="stepOpen(index)"
+          >
+            <summary>{{ agentStepTitle(step) }}</summary>
+            <pre class="agent-step-prompt">{{ step.prompt }}</pre>
+          </details>
           <div
             v-else-if="step.type === 'tool_call' || step.type === 'retry'"
             class="agent-step-tool"
           >
             <div class="agent-step-label">{{ agentStepTitle(step) }}</div>
-            <pre v-if="step.prompt" class="agent-step-prompt">{{
-              step.prompt
-            }}</pre>
           </div>
           <div v-else-if="step.type === 'waiting'" class="agent-step-waiting">
             <span

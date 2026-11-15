@@ -1690,7 +1690,8 @@ select:not(:disabled):hover {
 .toast {
   position: fixed;
   top: 18px;
-  right: 18px;
+  left: 50%;
+  right: auto;
   z-index: 60;
   width: min(380px, calc(100vw - 36px));
   display: flex;
@@ -1706,13 +1707,13 @@ select:not(:disabled):hover {
   line-height: 1.5;
   box-shadow: var(--shadow);
   opacity: 0;
-  transform: translateX(calc(100% + 24px));
+  transform: translateX(-50%) translateY(-8px);
   pointer-events: none;
-  transition: 0.24s ease;
+  transition: opacity 0.24s ease, transform 0.24s ease;
 }
 .toast.show {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateX(-50%) translateY(0);
   pointer-events: auto;
 }
 .toast.error {
@@ -3577,9 +3578,6 @@ select:not(:disabled):hover {
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-.toast {
-  top: calc(var(--topbar-height, 75px) + 18px);
 }
 .image-history {
   position: relative;
@@ -5464,4 +5462,10 @@ select:not(:disabled):hover {
 }
 .image-context-menu button:hover {
   background: rgba(var(--shade-rgb, 255, 255, 255), 0.08);
+}
+
+@media (max-width: 780px) {
+  .image-privacy-settings {
+    display: none;
+  }
 }

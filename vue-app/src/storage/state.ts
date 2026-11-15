@@ -5,6 +5,7 @@ import {
   STORAGE_KEY,
 } from '../constants/workspace'
 import { createId } from '../utils/id'
+import { closeAbandonedAgentSteps } from '../api/image-agent.js'
 
 export function createInitialState(): WorkspaceState {
   const id = createId()
@@ -26,7 +27,7 @@ export function loadState(): WorkspaceState {
       localStorage.getItem(STORAGE_KEY) || 'null',
     ) as WorkspaceState | null
     if (!saved) return initial
-    return {
+    const state = {
       ...initial,
       ...saved,
       settings: {
@@ -49,6 +50,8 @@ export function loadState(): WorkspaceState {
         ? saved.conversations
         : initial.conversations,
     }
+    if (closeAbandonedAgentSteps(state.conversations)) saveState(state)
+    return state
   } catch {
     return initial
   }

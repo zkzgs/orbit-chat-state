@@ -247,7 +247,18 @@ for (const [version, url] of [
       const page = await context.newPage()
       await seed(page, 'http://127.0.0.1:4178' + url)
       for (const mode of ['单张图片', '生图列表']) {
-        await enable(page, mode)
+        await page.evaluate((mode) => {
+          const key = 'orbit-chat-state-v1'
+          const state = JSON.parse(localStorage.getItem(key) || '{}')
+          state.settings = {
+            ...(state.settings || {}),
+            imagePrivacyEnabled: true,
+            imagePrivacyMode: mode,
+          }
+          localStorage.setItem(key, JSON.stringify(state))
+        }, mode === '单张图片' ? 'single' : 'list')
+        await page.reload()
+        await expect(page.locator('.history-item.success')).toHaveCount(2)
         await expect(page.locator('#imageHistory')).toHaveCSS('filter', 'none')
         await expect(
           page.locator('.history-image-button img').first(),
@@ -258,6 +269,7 @@ for (const [version, url] of [
       }
       await page.locator('#topbarSettings').click()
       await page.locator('#settings-tab-display').click()
+      await expect(page.locator('.image-privacy-settings')).toBeHidden()
       await page.locator('#saveSettings').screenshot({
         path: test.info().outputPath('mobile-save-button.png'),
       })

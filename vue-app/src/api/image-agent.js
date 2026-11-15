@@ -249,13 +249,36 @@ function parsePartialToolArgs(raw) {
   }
 }
 
+export function closeAbandonedAgentSteps(conversations, now = Date.now()) {
+  let changed = false
+  for (const conversation of conversations || []) {
+    for (const message of conversation.messages || []) {
+      for (const step of message.steps || []) {
+        if (step.type === 'waiting' && !step.endedAt) {
+          step.endedAt = now
+          step.error = '页面刷新后无法继续上次生图'
+          changed = true
+        }
+      }
+    }
+  }
+  return changed
+}
+
 export function agentStepTitle(step) {
   if (step.type === 'thinking') return '思考'
   if (step.type === 'tool_call') return '调用 ' + (step.name || 'generate_image')
   if (step.type === 'retry') return '重试生图'
   if (step.type === 'waiting') {
     const retry = step.name === 'retry_image' || step.retry
-    if (step.endedAt) return retry ? '已重试' : '已生成'
+    if (step.endedAt)
+      return step.error
+        ? retry
+          ? '重试已中断'
+          : '生图已中断'
+        : retry
+          ? '已重试'
+          : '已生成'
     return retry ? '正在重试图片' : '正在生成图片'
   }
   if (step.type === 'image')

@@ -928,27 +928,29 @@ function onTabKey(event: KeyboardEvent) {
                   { value: 'system', label: '跟随系统' },
                 ]"
             /></label>
-            <label class="toggle-row"
-              ><span><strong>图片隐私遮罩</strong></span
-              ><input
-                v-model="settings.draft.imagePrivacyEnabled"
-                type="checkbox"
-                id="imagePrivacyEnabled" /><span class="toggle-ui"></span
-            ></label>
-            <label
-              class="field-label"
-              :class="{
-                'is-disabled': !settings.draft.imagePrivacyEnabled,
-              }"
-              >遮罩范围<CustomSelect
-                v-model="settings.draft.imagePrivacyMode"
-                id="imagePrivacyMode"
-                :disabled="!settings.draft.imagePrivacyEnabled"
-                :options="[
-                  { value: 'single', label: '单张图片' },
-                  { value: 'list', label: '生图列表' },
-                ]"
-            /></label>
+            <div class="image-privacy-settings">
+              <label class="toggle-row"
+                ><span><strong>图片隐私遮罩</strong></span
+                ><input
+                  v-model="settings.draft.imagePrivacyEnabled"
+                  type="checkbox"
+                  id="imagePrivacyEnabled" /><span class="toggle-ui"></span
+              ></label>
+              <label
+                class="field-label"
+                :class="{
+                  'is-disabled': !settings.draft.imagePrivacyEnabled,
+                }"
+                >遮罩范围<CustomSelect
+                  v-model="settings.draft.imagePrivacyMode"
+                  id="imagePrivacyMode"
+                  :disabled="!settings.draft.imagePrivacyEnabled"
+                  :options="[
+                    { value: 'single', label: '单张图片' },
+                    { value: 'list', label: '生图列表' },
+                  ]"
+              /></label>
+            </div>
             <label class="toggle-row"
               ><span
                 ><strong>演示模式</strong

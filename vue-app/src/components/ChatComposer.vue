@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import PromptEditor from './PromptEditor.vue'
 import { chatFileAccept } from '../api/chat-files.js'
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useChatStore } from '../stores/chat'
 import { useSettingsStore } from '../stores/settings'
 import { inputFiles, pastedImages } from '../utils/events'
@@ -119,6 +119,12 @@ function layoutToolbar() {
     : 52
   tight.value = moreW + preferredQuick + 12 > bar.clientWidth
 }
+watch(
+  () => ui.agentImageSettingsOpen,
+  (open) => {
+    if (open) moreOpen.value = false
+  },
+)
 onMounted(() => {
   layoutToolbar()
   observer = new ResizeObserver(() => layoutToolbar())

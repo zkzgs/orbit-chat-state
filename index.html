@@ -234,7 +234,7 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
 .image-history-section { margin-top: 35px; }.history-heading { display: flex; align-items: end; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--line); }.history-heading h3 { margin: 5px 0 0; font-size: 16px; letter-spacing: -.02em; }.history-count { min-width: 21px; padding: 2px 6px; border-radius: 10px; background: rgba(var(--shade-rgb, 255, 255, 255), .06); color: var(--muted); text-align: center; font-size: 10px; }.image-history { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding-top: 13px; }.history-item { position: relative; min-width: 0; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel-soft); text-align: left; }.history-item:hover { border-color: rgba(var(--interaction-rgb, 116, 212, 203), .5); }.history-item img { display: block; width: 100%; aspect-ratio: 1 / .78; object-fit: cover; }.history-item-info { padding: 7px 8px 8px; }.history-item-prompt { overflow: hidden; color: var(--color-c4cfdd, #c4cfdd); font-size: 10px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }.history-item-time { display: block; margin-top: 4px; overflow: hidden; color: var(--muted-2); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .history-image-button { display: block; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; }
 
-.modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; overflow: clip; padding: 18px; background: rgba(2,7,13,.72); backdrop-filter: blur(8px); }.modal-backdrop[hidden], .image-view[hidden], .chat-view[hidden] { display: none; }.settings-modal { width: min(620px, 100%); min-height: 0; max-height: min(760px, 94vh); display: flex; flex-direction: column; border: 1px solid var(--line-strong); border-radius: 11px; background: var(--color-111b29, #111b29); box-shadow: var(--shadow); }.modal-header { flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 25px 19px; border-bottom: 1px solid var(--line); }.modal-header h2 { margin: 6px 0 0; font-size: 21px; letter-spacing: -.03em; }.settings-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 2px 25px; }.settings-section { padding: 22px 0; border-bottom: 1px solid var(--line); }.compact-section { border-bottom: 0; }.section-title { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 17px; }.section-number { color: var(--accent); font-family: ui-monospace, monospace; font-size: 11px; }.section-title strong { display: block; font-size: 13px; }.section-title small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.field-label { display: flex; flex-direction: column; gap: 6px; margin-bottom: 13px; color: var(--muted); font-size: 11px; }.field-label input, .field-label textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: var(--color-0d1725, #0d1725); color: var(--ink); font-size: 12px; }.field-label input:focus, .field-label textarea:focus { border-color: rgba(var(--interaction-rgb, 116, 212, 203), .55); }.field-label textarea { resize: vertical; line-height: 1.5; }.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }.input-with-action { position: relative; }.input-with-action input { padding-right: 52px; }.show-key { position: absolute; top: 50%; right: 7px; transform: translateY(-50%); padding: 3px; border: 0; background: transparent; color: var(--muted-2); font-size: 10px; }.show-key:hover { color: var(--ink); }.toggle-row { position: relative; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }.toggle-row > span:first-child strong { display: block; color: var(--ink); font-size: 12px; }.toggle-row > span:first-child small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.toggle-row input { position: absolute; top: 50%; right: 11px; width: 13px; height: 13px; margin: 0; transform: translateY(-50%); opacity: 0; pointer-events: none; }.toggle-ui { position: relative; width: 35px; height: 20px; flex: 0 0 auto; border-radius: 10px; background: var(--color-28364a, #28364a); transition: .2s; }.toggle-ui::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-8391a3, #8391a3); transition: .2s; }.toggle-row input:checked + .toggle-ui { background: rgba(var(--accent-rgb, 230, 243, 107), .55); }.toggle-row input:checked + .toggle-ui::after { left: 18px; background: var(--accent); }.modal-footer { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 16px 25px; border-top: 1px solid var(--line); }.modal-footer > div { display: flex; gap: 8px; }.text-button { padding: 5px 0; border: 0; background: transparent; font-size: 11px; }.danger { color: var(--danger, var(--color-ff8f8f, #ff8f8f)); }.danger:hover { text-decoration: underline; }.toast { position: fixed; top: 18px; right: 18px; z-index: 60; width: min(380px, calc(100vw - 36px)); display: flex; align-items: flex-start; gap: 10px; padding: 13px 12px 13px 14px; border: 1px solid var(--line-strong); border-left: 3px solid var(--cyan); border-radius: 7px; background: var(--color-1b293a, #1b293a); color: var(--ink); font-size: 12px; line-height: 1.5; box-shadow: var(--shadow); opacity: 0; transform: translateX(calc(100% + 24px)); pointer-events: none; transition: .24s ease; }.toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; }.toast.error { border-left-color: var(--danger, var(--color-ff8f8f, #ff8f8f)); }.toast-icon { flex: 0 0 auto; color: var(--cyan); font-size: 14px; line-height: 1.45; }.toast.error .toast-icon { color: var(--danger, var(--color-ff8f8f, #ff8f8f)); }.toast-message { min-width: 0; flex: 1; overflow-wrap: anywhere; }.toast-close { width: 23px; height: 23px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; }.toast-close:hover { background: rgba(var(--shade-rgb, 255, 255, 255), .08); color: var(--ink); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; overflow: clip; padding: 18px; background: rgba(2,7,13,.72); backdrop-filter: blur(8px); }.modal-backdrop[hidden], .image-view[hidden], .chat-view[hidden] { display: none; }.settings-modal { width: min(620px, 100%); min-height: 0; max-height: min(760px, 94vh); display: flex; flex-direction: column; border: 1px solid var(--line-strong); border-radius: 11px; background: var(--color-111b29, #111b29); box-shadow: var(--shadow); }.modal-header { flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 25px 19px; border-bottom: 1px solid var(--line); }.modal-header h2 { margin: 6px 0 0; font-size: 21px; letter-spacing: -.03em; }.settings-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 2px 25px; }.settings-section { padding: 22px 0; border-bottom: 1px solid var(--line); }.compact-section { border-bottom: 0; }.section-title { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 17px; }.section-number { color: var(--accent); font-family: ui-monospace, monospace; font-size: 11px; }.section-title strong { display: block; font-size: 13px; }.section-title small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.field-label { display: flex; flex-direction: column; gap: 6px; margin-bottom: 13px; color: var(--muted); font-size: 11px; }.field-label input, .field-label textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: var(--color-0d1725, #0d1725); color: var(--ink); font-size: 12px; }.field-label input:focus, .field-label textarea:focus { border-color: rgba(var(--interaction-rgb, 116, 212, 203), .55); }.field-label textarea { resize: vertical; line-height: 1.5; }.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }.input-with-action { position: relative; }.input-with-action input { padding-right: 52px; }.show-key { position: absolute; top: 50%; right: 7px; transform: translateY(-50%); padding: 3px; border: 0; background: transparent; color: var(--muted-2); font-size: 10px; }.show-key:hover { color: var(--ink); }.toggle-row { position: relative; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }.toggle-row > span:first-child strong { display: block; color: var(--ink); font-size: 12px; }.toggle-row > span:first-child small { display: block; margin-top: 3px; color: var(--muted-2); font-size: 10px; }.toggle-row input { position: absolute; top: 50%; right: 11px; width: 13px; height: 13px; margin: 0; transform: translateY(-50%); opacity: 0; pointer-events: none; }.toggle-ui { position: relative; width: 35px; height: 20px; flex: 0 0 auto; border-radius: 10px; background: var(--color-28364a, #28364a); transition: .2s; }.toggle-ui::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-8391a3, #8391a3); transition: .2s; }.toggle-row input:checked + .toggle-ui { background: rgba(var(--accent-rgb, 230, 243, 107), .55); }.toggle-row input:checked + .toggle-ui::after { left: 18px; background: var(--accent); }.modal-footer { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 16px 25px; border-top: 1px solid var(--line); }.modal-footer > div { display: flex; gap: 8px; }.text-button { padding: 5px 0; border: 0; background: transparent; font-size: 11px; }.danger { color: var(--danger, var(--color-ff8f8f, #ff8f8f)); }.danger:hover { text-decoration: underline; }.toast { position: fixed; top: 18px; left: 50%; right: auto; z-index: 60; width: min(380px, calc(100vw - 36px)); display: flex; align-items: flex-start; gap: 10px; padding: 13px 12px 13px 14px; border: 1px solid var(--line-strong); border-left: 3px solid var(--cyan); border-radius: 7px; background: var(--color-1b293a, #1b293a); color: var(--ink); font-size: 12px; line-height: 1.5; box-shadow: var(--shadow); opacity: 0; transform: translateX(-50%) translateY(-8px); pointer-events: none; transition: opacity .24s ease, transform .24s ease; }.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }.toast.error { border-left-color: var(--danger, var(--color-ff8f8f, #ff8f8f)); }.toast-icon { flex: 0 0 auto; color: var(--cyan); font-size: 14px; line-height: 1.45; }.toast.error .toast-icon { color: var(--danger, var(--color-ff8f8f, #ff8f8f)); }.toast-message { min-width: 0; flex: 1; overflow-wrap: anywhere; }.toast-close { width: 23px; height: 23px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; }.toast-close:hover { background: rgba(var(--shade-rgb, 255, 255, 255), .08); color: var(--ink); }
 .settings-section .toggle-row + .field-label { margin-top: 16px; }
 .field-label-heading { display: flex; align-items: center; justify-content: space-between; }
 .field-label select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: var(--color-0d1725, #0d1725); color: var(--ink); font-size: 12px; }
@@ -557,7 +557,6 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
 .metadata-disclosure { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 9px; }
 .metadata-disclosure summary { color: var(--muted-2); font-size: 10px; cursor: pointer; }
 .metadata-disclosure pre { max-height: 180px; margin: 8px 0 0; overflow: auto; padding: 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--color-0b121d, #0b121d); color: var(--muted); font-size: 9px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-.toast { top: calc(var(--topbar-height, 75px) + 18px); }
 .image-history { position: relative; }
 .image-history-section { position: relative; }
 .image-history ::selection { background: transparent; color: inherit; }
@@ -1689,13 +1688,16 @@ video[hidden] {
   margin-top: 0;
 }
 .agent-step-prompt {
-  margin: 6px 0 0;
+  margin: 7px 0 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font: inherit;
   font-size: 12px;
-  line-height: 1.6;
-  color: var(--text);
+  line-height: 1.65;
+  color: var(--muted-2);
+}
+.agent-step .message-reasoning .agent-step-prompt {
+  margin-top: 7px;
 }
 .agent-step-waiting {
   display: flex;
@@ -1885,6 +1887,8 @@ video[hidden] {
   font-size: 11px;
 }
 /* END SHARED CHAT STYLES */
+@media (max-width: 780px) { .image-privacy-settings { display: none; } }
+
 
 .virtual-grid-spacer { grid-column: 1 / -1; min-width:0; pointer-events:none; }
 .history-drag-select { position:fixed; z-index:19; pointer-events:none; border:1px solid var(--cyan); background:rgba(116,212,203,.14); }
@@ -2182,8 +2186,7 @@ video[hidden] {
         <div class="settings-section compact-section" id="settings-panel-display" role="tabpanel" aria-labelledby="settings-tab-display" data-settings-panel="display" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">09</span><div><strong>外观与隐私</strong></div></div>
           <label class="field-label">主题<select id="themeSetting"><option value="dark">深色</option><option value="light">浅色</option><option value="system">跟随系统</option></select></label>
-          <label class="toggle-row"><span><strong>图片隐私遮罩</strong></span><input type="checkbox" id="imagePrivacyEnabled"><span class="toggle-ui"></span></label>
-          <label class="field-label">遮罩范围<select id="imagePrivacyMode" disabled><option value="single">单张图片</option><option value="list">生图列表</option></select></label>
+          <div class="image-privacy-settings"><label class="toggle-row"><span><strong>图片隐私遮罩</strong></span><input type="checkbox" id="imagePrivacyEnabled"><span class="toggle-ui"></span></label><label class="field-label">遮罩范围<select id="imagePrivacyMode" disabled><option value="single">单张图片</option><option value="list">生图列表</option></select></label></div>
           <label class="toggle-row"><span><strong>演示模式</strong><small>不填写 Key 时也能体验完整交互</small></span><input type="checkbox" id="demoMode"><span class="toggle-ui"></span></label>
         </div>
         <div class="settings-section compact-section data-management-section" id="settings-panel-data" role="tabpanel" aria-labelledby="settings-tab-data" data-settings-panel="data" tabindex="0" hidden>
@@ -2679,7 +2682,7 @@ function loadState() {
     const imagePolishTemplates = normalizePolishTemplates(savedSettings.imagePolishTemplates);
     const activeImagePromptTemplateId = imagePromptTemplates.some((template) => template.id === savedSettings.activeImagePromptTemplateId) ? savedSettings.activeImagePromptTemplateId : '';
     const activeImagePolishTemplateId = imagePolishTemplates.some((template) => template.id === savedSettings.activeImagePolishTemplateId) ? savedSettings.activeImagePolishTemplateId : '';
-    return {
+    const loaded = {
       ...defaultState,
       ...saved,
       settings: { ...defaultState.settings, ...savedSettings, imageOptions: { ...defaultState.settings.imageOptions, ...(savedSettings.imageOptions || {}) }, imagePromptTemplates, activeImagePromptTemplateId, imagePolishTemplates, activeImagePolishTemplateId },
@@ -2687,6 +2690,10 @@ function loadState() {
       activeConnectionProfiles: { ...defaultState.activeConnectionProfiles, ...(saved.activeConnectionProfiles || {}) },
       conversations: Array.isArray(saved.conversations) ? saved.conversations : []
     };
+    if (typeof closeAbandonedAgentSteps === 'function' && closeAbandonedAgentSteps(loaded.conversations)) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded)); } catch {}
+    }
+    return loaded;
   } catch (error) {
     return createInitialState();
   }
@@ -2990,15 +2997,7 @@ function createWorkspaceArchive(
         const blob = new Blob(parts)
         parts = []
         if (entry.name === 'manifest.json') manifest = blob
-        else {
-          const id = session + entry.name
-          staged.push(id)
-          pending.push(
-            storage
-              .putAsset(id, blob)
-              .then((source) => files.set(entry.name, source)),
-          )
-        }
+        else files.set(entry.name, blob)
       }
       entry.start()
     })
@@ -3011,14 +3010,38 @@ function createWorkspaceArchive(
           ),
           offset + 128 * 1024 >= file.size,
         )
-        await Promise.all(pending)
-        pending = []
         if (failure) throw failure
         onProgress(Math.min(0.9, ((offset + 128 * 1024) / file.size) * 0.9))
         await pause()
       }
       if (!manifest) throw new Error('压缩包缺少 manifest.json')
       const payload = await readJson(new File([manifest], 'manifest.json'))
+      const fileBlobs = new Map(files)
+      const mimeByFile = new Map()
+      for (const image of payload.images || [])
+        if (image.file)
+          mimeByFile.set(
+            image.file,
+            image.mimeType || 'application/octet-stream',
+          )
+      for (const conversation of payload.conversations || [])
+        for (const message of conversation.messages || [])
+          for (const file of message.files || [])
+            if (file.archiveFile)
+              mimeByFile.set(file.archiveFile, 'application/pdf')
+      files.clear()
+      for (const [name, blob] of fileBlobs) {
+        if (name === 'manifest.json' || !blob) continue
+        const type = mimeByFile.get(name) || blob.type || 'application/octet-stream'
+        const data = blob.type === type ? blob : blob.slice(0, blob.size, type)
+        const id = session + name
+        staged.push(id)
+        pending.push(
+          storage.putAsset(id, data).then((source) => files.set(name, source)),
+        )
+      }
+      await Promise.all(pending)
+      pending = []
       for (const conversation of payload.conversations || [])
         for (const message of conversation.messages || [])
           for (const file of message.files || []) {
@@ -3032,18 +3055,7 @@ function createWorkspaceArchive(
         if (!image.file) continue
         if (!files.get(image.file))
           throw new Error(`备份缺少图片文件: ${image.file}`)
-        const source = files.get(image.file)
-        // ZIP 无 MIME 信息, 以清单恢复原始类型。
-        const blob = await storage.readBlob(source)
-        await storage.putAsset(
-          source.slice('orbit-image:'.length),
-          blob.slice(
-            0,
-            blob.size,
-            image.mimeType || 'application/octet-stream',
-          ),
-        )
-        image.src = source
+        image.src = files.get(image.file)
         image.hasBlob = true
         delete image.file
         delete image.mimeType
@@ -3816,13 +3828,36 @@ function parsePartialToolArgs(raw) {
   }
 }
 
+function closeAbandonedAgentSteps(conversations, now = Date.now()) {
+  let changed = false
+  for (const conversation of conversations || []) {
+    for (const message of conversation.messages || []) {
+      for (const step of message.steps || []) {
+        if (step.type === 'waiting' && !step.endedAt) {
+          step.endedAt = now
+          step.error = '页面刷新后无法继续上次生图'
+          changed = true
+        }
+      }
+    }
+  }
+  return changed
+}
+
 function agentStepTitle(step) {
   if (step.type === 'thinking') return '思考'
   if (step.type === 'tool_call') return '调用 ' + (step.name || 'generate_image')
   if (step.type === 'retry') return '重试生图'
   if (step.type === 'waiting') {
     const retry = step.name === 'retry_image' || step.retry
-    if (step.endedAt) return retry ? '已重试' : '已生成'
+    if (step.endedAt)
+      return step.error
+        ? retry
+          ? '重试已中断'
+          : '生图已中断'
+        : retry
+          ? '已重试'
+          : '已生成'
     return retry ? '正在重试图片' : '正在生成图片'
   }
   if (step.type === 'image')
@@ -5133,6 +5168,28 @@ function createImageStorage(options) {
     }
   }
 
+  function writePrepared(tx, item) {
+    const store = tx.objectStore(options.storeName)
+    if (item.sameReference) {
+      // 旧记录尚未迁移时保留其原图, 只更新调用方传来的元数据。
+      const request = store.get(item.record.id)
+      request.onsuccess = () => {
+        const previous = request.result
+        store.put({
+          ...item.stored,
+          src: previous?.src || '',
+          hasBlob: previous?.hasBlob || item.stored.hasBlob,
+          fingerprint: item.stored.fingerprint || previous?.fingerprint,
+        })
+      }
+    } else {
+      store.put(item.stored)
+      tx.objectStore(thumbnails).delete(item.record.id)
+      if (item.blob) tx.objectStore(assets).put({ id: item.record.id, blob: item.blob })
+      else tx.objectStore(assets).delete(item.record.id)
+    }
+  }
+
   async function writeRecords(records = [], deleted = [], replace = false) {
     const generation = epoch
     if (replace && !records.length) {
@@ -5146,9 +5203,24 @@ function createImageStorage(options) {
       return []
     }
     const saved = []
+    const pending = []
+    async function flush() {
+      const batch = pending.splice(0)
+      if (!batch.length) return
+      if (generation !== epoch) throw new Error('图片存储已重置')
+      await transaction((tx) => {
+        for (const item of batch) writePrepared(tx, item)
+      })
+      for (const item of batch) {
+        memory.delete(item.record.id)
+        if (!item.sameReference) invalidate(item.record.id)
+        saved.push(metadata(item.stored))
+      }
+    }
     for (const record of records) {
       if (generation !== epoch) throw new Error('图片存储已重置')
       if (record.type !== 'image') {
+        await flush()
         await transaction((tx) => tx.objectStore(options.storeName).put(record))
         saved.push(record)
         continue
@@ -5162,43 +5234,18 @@ function createImageStorage(options) {
         : referenced && !sameReference
           ? await readBlob(original)
           : undefined
-      const hash =
-        sameReference && record.fingerprint
-          ? record.fingerprint
-          : await fingerprint(original)
+      const hash = record.fingerprint || (await fingerprint(original))
       const stored = {
         ...record,
         src: referenced || hasData ? '' : original,
         hasBlob: Boolean(blob) || record.hasBlob,
         fingerprint: hash,
       }
-      if (generation !== epoch) throw new Error('图片存储已重置')
-      await transaction((tx) => {
-        const store = tx.objectStore(options.storeName)
-        if (sameReference) {
-          // 旧记录尚未迁移时保留其原图, 只更新调用方传来的元数据。
-          const request = store.get(record.id)
-          request.onsuccess = () => {
-            const previous = request.result
-            store.put({
-              ...stored,
-              src: previous?.src || '',
-              hasBlob: previous?.hasBlob || stored.hasBlob,
-              fingerprint: stored.fingerprint || previous?.fingerprint,
-            })
-          }
-        } else {
-          store.put(stored)
-          tx.objectStore(thumbnails).delete(record.id)
-          if (blob) tx.objectStore(assets).put({ id: record.id, blob })
-          else tx.objectStore(assets).delete(record.id)
-        }
-      })
-      memory.delete(record.id)
-      if (!sameReference) invalidate(record.id)
-      saved.push(metadata(stored))
+      pending.push({ record, stored, blob, sameReference })
+      if (pending.length >= 8) await flush()
       await pause()
     }
+    await flush()
     const remove = new Set(deleted)
     if (replace) {
       const keep = new Set(records.map((record) => record.id))
@@ -5230,6 +5277,9 @@ function createImageStorage(options) {
   function retain(record) {
     memory.set(record.id, record)
   }
+  async function hasAsset(id) {
+    return Boolean(await get(assets, id))
+  }
   async function putAsset(id, blob) {
     await transaction((tx) => tx.objectStore(assets).put({ id, blob }))
     return source(id)
@@ -5256,6 +5306,7 @@ function createImageStorage(options) {
     retain,
     bindImage,
     unbindImage,
+    hasAsset,
     putAsset,
     deleteAssets,
     videoFrame,
@@ -6989,28 +7040,63 @@ function isChatStageNearBottom(stage) {
 }
 
 let chatScrollForcePending = false;
-function scrollChatStage(force = false) {
+let chatScrollUserActive = false;
+let chatScrollLastTop = 0;
+let chatScrollUserTimer = 0;
+let chatScrollProgrammaticTimer = 0;
+function beginChatUserScroll() {
+  chatScrollUserActive = true;
+  window.clearTimeout(chatScrollUserTimer);
+}
+function endChatUserScroll() {
+  window.clearTimeout(chatScrollUserTimer);
+  chatScrollUserTimer = window.setTimeout(() => {
+    chatScrollUserActive = false;
+    const stage = $('.content-stage');
+    if (stage && isChatStageNearBottom(stage)) chatFollowBottom = true;
+    updateChatBottomButton();
+  }, 120);
+}
+function scrollChatStage(force = false, smooth = false) {
   const stage = $('.content-stage');
   if (!stage || $('#chatView').hidden) return;
   if (force) {
     chatFollowBottom = true;
     chatScrollForcePending = true;
+    chatScrollUserActive = false;
   }
   if (!force && !chatFollowBottom && !chatScrollForcePending) return;
+  if (chatScrollUserActive && !force && !chatScrollForcePending) return;
   window.cancelAnimationFrame(chatScrollFrame);
   chatScrollFrame = window.requestAnimationFrame(() => {
     const forceScroll = chatScrollForcePending;
     chatScrollForcePending = false;
     if ($('#chatView').hidden) return;
-    if (!forceScroll && !chatFollowBottom) return;
+    if (!forceScroll && (!chatFollowBottom || chatScrollUserActive)) return;
     chatScrollProgrammatic = true;
-    stage.scrollTop = stage.scrollHeight;
-    window.requestAnimationFrame(() => {
-      chatScrollProgrammatic = false;
-      // 程序滚底后保持跟随。消息重绘会暂时换上占位图, 高度稍后才撑开,
-      // 若此时按离底距离取消跟随, 后续出图就不再贴底。只有用户滚动/上滑才取消。
-      updateChatBottomButton();
-    });
+    if (smooth && forceScroll) {
+      stage.scrollTo({ top: stage.scrollHeight, behavior: 'smooth' });
+      const finish = () => {
+        stage.removeEventListener('scrollend', finish);
+        window.clearTimeout(chatScrollProgrammaticTimer);
+        chatScrollLastTop = stage.scrollTop;
+        chatScrollProgrammatic = false;
+        updateChatBottomButton();
+      };
+      stage.addEventListener('scrollend', finish, { once: true });
+      window.clearTimeout(chatScrollProgrammaticTimer);
+      chatScrollProgrammaticTimer = window.setTimeout(finish, 500);
+    } else {
+      stage.scrollTop = stage.scrollHeight;
+      chatScrollLastTop = stage.scrollTop;
+      queueMicrotask(() => {
+        chatScrollLastTop = stage.scrollTop;
+        chatScrollProgrammatic = false;
+        // 程序滚底后保持跟随。消息重绘会暂时换上占位图, 高度稍后才撑开,
+        // 若此时按离底距离取消跟随, 后续出图就不再贴底。只有用户滚动/上滑才取消。
+        updateChatBottomButton();
+      });
+    }
   });
 }
 
@@ -7023,14 +7109,30 @@ function bindChatStageScroll() {
   const stage = $('.content-stage');
   if (!stage || stage.dataset.chatScrollBound === '1') return;
   stage.dataset.chatScrollBound = '1';
+  chatScrollLastTop = stage.scrollTop;
   stage.addEventListener('scroll', () => {
-    if (chatScrollProgrammatic) return;
-    chatFollowBottom = isChatStageNearBottom(stage);
+    if (chatScrollProgrammatic) {
+      chatScrollLastTop = stage.scrollTop;
+      return;
+    }
+    if (stage.scrollTop + 1 < chatScrollLastTop) chatFollowBottom = false;
+    else if (isChatStageNearBottom(stage)) chatFollowBottom = true;
+    chatScrollLastTop = stage.scrollTop;
     updateChatBottomButton();
   }, { passive: true });
   stage.addEventListener('wheel', (event) => {
-    if (event.deltaY < 0) chatFollowBottom = false;
+    if (event.deltaY < 0) {
+      chatFollowBottom = false;
+      beginChatUserScroll();
+      endChatUserScroll();
+    }
   }, { passive: true });
+  stage.addEventListener('touchstart', beginChatUserScroll, { passive: true });
+  stage.addEventListener('touchmove', () => {
+    beginChatUserScroll();
+    if (stage.scrollTop + 1 < chatScrollLastTop) chatFollowBottom = false;
+  }, { passive: true });
+  stage.addEventListener('touchend', endChatUserScroll, { passive: true });
   stage.addEventListener('load', (event) => {
     if (event.target instanceof HTMLImageElement && event.target.closest('.chat-view')) scrollChatStage();
   }, true);
@@ -7283,7 +7385,9 @@ function renderAgentStep(step, active = false) {
   if (step.type === 'thinking')
     return `<section class="agent-step agent-step-${step.type}"><details class="message-reasoning"${active ? ' open' : ''}><summary>${escapeHtml(title)}</summary><div class="message-reasoning-content markdown-body">${renderMarkdown(step.text || '')}</div></details></section>`;
   if (step.type === 'tool_call' || step.type === 'retry')
-    return `<section class="agent-step agent-step-${step.type}"><div class="agent-step-label">${escapeHtml(title)}</div>${step.prompt ? `<pre class="agent-step-prompt">${escapeHtml(step.prompt)}</pre>` : ''}</section>`;
+    return step.prompt
+      ? `<section class="agent-step agent-step-${step.type}"><details class="message-reasoning"${active ? ' open' : ''}><summary>${escapeHtml(title)}</summary><pre class="agent-step-prompt">${escapeHtml(step.prompt)}</pre></details></section>`
+      : `<section class="agent-step agent-step-${step.type}"><div class="agent-step-label">${escapeHtml(title)}</div></section>`;
   if (step.type === 'waiting')
     return `<section class="agent-step agent-step-waiting">${step.endedAt ? '' : '<span class="agent-activity-spinner" aria-hidden="true"></span>'}<span data-step-waiting data-started-at="${step.startedAt || ''}"${step.endedAt ? ` data-ended-at="${step.endedAt}"` : ''} data-retry="${step.retry || step.name === 'retry_image' ? '1' : ''}">${escapeHtml(title)} · ${agentWaitSeconds(step)} 秒</span></section>`;
   if (step.type === 'image') {
@@ -7388,7 +7492,6 @@ function renderMessages() {
     return `<article class="message ${message.role}${message.id === chatRuns.get(state.activeConversationId)?.messageId ? ' streaming' : ''}" data-message-id="${message.id}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div>${steps || reasoning}${text}${message.error ? `<div class="message-error" role="alert">请求失败: ${escapeHtml(message.error)}</div>` : ''}${files ? `<div class="chat-files">${files}</div>` : ''}${!hasSteps && image ? `<div class="message-images">${image}</div>` : ''}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
   }).join('');
   hydrateDeferredImages(list, 'messages');
-  chatScrollProgrammatic = false;
   $$('.copy-message').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard?.writeText(decodeURIComponent(button.dataset.message));
     showToast('已复制到剪贴板');
@@ -7403,6 +7506,9 @@ function renderMessages() {
   }));
   renderChatMentionMirror();
   if (document.activeElement === $('#messageInput')) updateChatMentionMenu();
+  const stage = $('.content-stage');
+  if (stage) chatScrollLastTop = stage.scrollTop;
+  chatScrollProgrammatic = false;
   scrollChatStage(false);
 }
 
@@ -7527,6 +7633,7 @@ function updateAgentImageFields() {
 }
 
 function openAgentImageSettings() {
+  closeComposerToolbarMore();
   if (!state.settings.chatImageTools) return;
   agentImageDraft = { ...getImageConfig() };
   $('#agentImageModel').value = state.settings.imageModel;
@@ -11499,10 +11606,8 @@ function fillSettingsForm() {
 }
 
 function refreshOpenSettingsAfterImport() {
-  if (!$('#settingsBackdrop').hidden) {
-    fillSettingsForm();
-    captureSettingsBaseline();
-  }
+  fillSettingsForm();
+  if (!$('#settingsBackdrop').hidden) captureSettingsBaseline();
   if (!$('#promptPolishBackdrop').hidden) {
     const activeTemplate = getPolishTemplates().find((template) => template.id === state.settings.activeImagePolishTemplateId);
     $('#polishInstruction').value = activeTemplate?.instruction || state.settings.imagePolishInstruction || defaultState.settings.imagePolishInstruction;
@@ -11800,6 +11905,18 @@ async function replaceStoredImages(records) {
   imageTasks = hydrateImageTasks(saved, false);
 }
 
+async function importedImagesPersisted(images) {
+  for (const image of images) {
+    if (image.type && image.type !== 'image') continue;
+    const src = image.src || '';
+    const needsAsset = image.hasBlob || src.startsWith('orbit-image:') || src.startsWith('data:');
+    if (!needsAsset) continue;
+    const id = src.startsWith('orbit-image:') ? src.slice('orbit-image:'.length) : image.id;
+    if (!(await imageStorage.hasAsset(id))) return false;
+  }
+  return true;
+}
+
 async function persistImageStore() {
   try {
     await replaceStoredImages([...storedImages.values()].filter((record) => record.type === 'image' && record.src).concat(imageHistory.map(createStoredBatch), imageTasks.map(createStoredImageTask)));
@@ -11815,7 +11932,6 @@ async function mergeImageResources(baseRecords, sourceRecords, onProgress) {
   const idMap = new Map();
   const fingerprintIds = new Map();
   const fingerprint = (src) => imageStorage.fingerprint(src);
-  const sameImage = (first, second) => imageStorage.sameSource(first, second);
   const indexImage = (record, fingerprint) => {
     const ids = fingerprintIds.get(fingerprint) || [];
     ids.push(record.id);
@@ -11823,7 +11939,9 @@ async function mergeImageResources(baseRecords, sourceRecords, onProgress) {
   };
   for (let index = 0; index < baseRecords.length; index += 1) {
     const record = baseRecords[index];
-    indexImage(record, await fingerprint(record.src));
+    const key = record.fingerprint || await fingerprint(record.src);
+    record.fingerprint = key;
+    indexImage(record, key);
     if (index % 8 === 0) {
       onProgress?.(baseRecords.length ? ((index + 1) / baseRecords.length) * 0.2 : 0.2);
       await new Promise((resolve) => window.setTimeout(resolve, 0));
@@ -11831,23 +11949,24 @@ async function mergeImageResources(baseRecords, sourceRecords, onProgress) {
   }
   for (let index = 0; index < sourceRecords.length; index += 1) {
     const source = sourceRecords[index];
-    const imageFingerprint = await fingerprint(source.src);
+    const imageFingerprint = source.fingerprint || await fingerprint(source.src);
+    source.fingerprint = imageFingerprint;
     const sameId = records.get(source.id);
-    let sameSource = sameId && await sameImage(sameId.src, source.src) ? sameId : null;
+    const sameIdKey = sameId && (sameId.fingerprint || await fingerprint(sameId.src));
+    if (sameId && sameIdKey) sameId.fingerprint = sameIdKey;
+    let sameSource = sameId && sameIdKey === imageFingerprint ? sameId : null;
     if (!sameSource) {
-      for (const id of fingerprintIds.get(imageFingerprint) || []) {
-        const candidate = records.get(id);
-        if (candidate && await sameImage(candidate.src, source.src)) { sameSource = candidate; break; }
-      }
+      const id = (fingerprintIds.get(imageFingerprint) || [])[0];
+      if (id) sameSource = records.get(id) || null;
     }
     if (sameSource) {
       idMap.set(source.id, sameSource.id);
-      records.set(sameSource.id, { ...source, id: sameSource.id, type: 'image', ...(sameSource.origin === 'generated' || sameSource.batchId ? { origin: 'generated' } : {}) });
+      records.set(sameSource.id, { ...source, id: sameSource.id, type: 'image', fingerprint: imageFingerprint, ...(sameSource.origin === 'generated' || sameSource.batchId ? { origin: 'generated' } : {}) });
     } else {
       let id = source.id;
       if (records.has(id)) id = createId();
       idMap.set(source.id, id);
-      const record = { ...source, id, type: 'image' };
+      const record = { ...source, id, type: 'image', fingerprint: imageFingerprint };
       records.set(id, record);
       indexImage(record, imageFingerprint);
     }
@@ -12133,19 +12252,23 @@ async function importWorkspace(file) {
           return result;
         }, { chat: [], image: [] });
       }
-      state.activeConnectionProfiles = merge ? { ...state.activeConnectionProfiles, ...(payload.apiConfig.activeConnectionProfiles || {}) } : { chat: payload.apiConfig.activeConnectionProfiles?.chat || '', image: payload.apiConfig.activeConnectionProfiles?.image || '' };
+      const importedActive = payload.apiConfig.activeConnectionProfiles || {};
+      state.activeConnectionProfiles = ['chat', 'image'].reduce((result, kind) => {
+        const requested = Object.prototype.hasOwnProperty.call(importedActive, kind)
+          ? (importedActive[kind] || '')
+          : (merge ? state.activeConnectionProfiles[kind] : '');
+        result[kind] = state.connectionProfiles[kind].some((profile) => profile.id === requested) ? requested : '';
+        return result;
+      }, { chat: '', image: '' });
       if (payload.apiConfig.modelCatalog && typeof payload.apiConfig.modelCatalog === 'object') {
         modelCatalog.chat = merge ? [...new Set([...modelCatalog.chat, ...(payload.apiConfig.modelCatalog.chat || [])])] : (Array.isArray(payload.apiConfig.modelCatalog.chat) ? [...new Set(payload.apiConfig.modelCatalog.chat)] : []);
         modelCatalog.image = merge ? [...new Set([...modelCatalog.image, ...(payload.apiConfig.modelCatalog.image || [])])] : (Array.isArray(payload.apiConfig.modelCatalog.image) ? [...new Set(payload.apiConfig.modelCatalog.image)] : []);
       }
-      ['chat', 'image'].forEach((kind) => {
-        if (!state.connectionProfiles[kind].some((profile) => profile.id === state.activeConnectionProfiles[kind])) state.activeConnectionProfiles[kind] = '';
-      });
       if (scope === 'config') {
         storedImages = mergedImages.records;
         updateImportProgress('正在写入本地缓存', 93, true);
         await removeUnreferencedImages();
-        if (!(await persistImageStore())) throw new Error('图片未能写入本地缓存, 请重试导入');
+        if (!(await persistImageStore()) || !(await importedImagesPersisted(sourceImages.map((image) => mergedImages.records.get(mergedImages.idMap.get(image.id) || image.id)).filter(Boolean)))) throw new Error('图片未能写入本地缓存, 请重试导入');
         persist();
         render();
         refreshOpenSettingsAfterImport();
@@ -12188,7 +12311,7 @@ async function importWorkspace(file) {
     ensureActiveConversation();
     updateImportProgress('正在写入本地缓存', 93, true);
     await removeUnreferencedImages();
-    if (!(await persistImageStore())) throw new Error('图片未能写入本地缓存, 请重试导入');
+    if (!(await persistImageStore()) || !(await importedImagesPersisted(sourceImages.map((image) => mergedImages.records.get(mergedImages.idMap.get(image.id) || image.id)).filter(Boolean)))) throw new Error('图片未能写入本地缓存, 请重试导入');
     persist();
     render();
     renderImageHistory();
@@ -12782,7 +12905,7 @@ function bindEvents() {
   document.body.append($('#messageMentionMenu'));
   bindSidebarResize($('#sidebar'), $('#sidebarResize'), () => $('.app-shell').classList.add('sidebar-collapsed'));
   bindSidebarTitles($('#conversationList'));
-  $('#scrollChatBottom').addEventListener('click', () => scrollChatStage(true));
+  $('#scrollChatBottom').addEventListener('click', () => scrollChatStage(true, true));
   window.addEventListener('resize', updateChatMentionMenu);
   document.addEventListener('scroll', event => { if (!event.target.closest?.('#messageMentionMenu')) closeChatMentionMenu(); }, true);
   window.visualViewport?.addEventListener('resize', updateChatMentionMenu);

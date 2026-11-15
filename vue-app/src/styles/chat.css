@@ -491,13 +491,16 @@
   margin-top: 0;
 }
 .agent-step-prompt {
-  margin: 6px 0 0;
+  margin: 7px 0 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font: inherit;
   font-size: 12px;
-  line-height: 1.6;
-  color: var(--text);
+  line-height: 1.65;
+  color: var(--muted-2);
+}
+.agent-step .message-reasoning .agent-step-prompt {
+  margin-top: 7px;
 }
 .agent-step-waiting {
   display: flex;

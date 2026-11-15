@@ -70,9 +70,7 @@ export async function mergeImages(
   const records = new Map(base.map((item) => [item.id, item]))
   const idMap = new Map<string, string>()
   const fingerprint = (src: string) => imageStorage.fingerprint(src)
-  const sameImage = (first: string, second: string) =>
-    imageStorage.sameSource(first, second)
-  const fingerprints = new Map<string, string[]>()
+const fingerprints = new Map<string, string[]>()
   function indexImage(image: StoredImage, key: string) {
     const ids = fingerprints.get(key) || []
     ids.push(image.id)
@@ -80,7 +78,9 @@ export async function mergeImages(
   }
   for (let i = 0; i < base.length; i++) {
     const image = base[i]
-    indexImage(image, await fingerprint(image.src))
+    const key = image.fingerprint || (await fingerprint(image.src))
+    image.fingerprint = key
+    indexImage(image, key)
     if (i % 8 === 0) {
       onProgress?.(base.length ? ((i + 1) / base.length) * 0.2 : 0.2)
       await new Promise((resolve) => window.setTimeout(resolve, 0))
@@ -88,18 +88,17 @@ export async function mergeImages(
   }
   for (let i = 0; i < incoming.length; i++) {
     const source = incoming[i]
-    const key = await fingerprint(source.src)
+    const key = source.fingerprint || (await fingerprint(source.src))
+    source.fingerprint = key
     const sameId = records.get(source.id)
-    let same =
-      sameId && (await sameImage(sameId.src, source.src)) ? sameId : undefined
+    const sameIdKey =
+      sameId && (sameId.fingerprint || (await fingerprint(sameId.src)))
+    if (sameId && sameIdKey) sameId.fingerprint = sameIdKey
+    // 指纹已覆盖全部字节, 相同指纹视为同一张图, 避免手机上再逐字节比对。
+    let same = sameId && sameIdKey === key ? sameId : undefined
     if (!same) {
-      for (const id of fingerprints.get(key) || []) {
-        const candidate = records.get(id)!
-        if (await sameImage(candidate.src, source.src)) {
-          same = candidate
-          break
-        }
-      }
+      const id = (fingerprints.get(key) || [])[0]
+      if (id) same = records.get(id)
     }
     const id = same?.id || (records.has(source.id) ? createId() : source.id)
     idMap.set(source.id, id)
@@ -107,6 +106,7 @@ export async function mergeImages(
       ...source,
       id,
       type: 'image' as const,
+      fingerprint: key,
       ...(same?.origin === 'generated' || same?.batchId
         ? { origin: 'generated' as const }
         : {}),

@@ -183,15 +183,7 @@ export function createWorkspaceArchive(
         const blob = new Blob(parts)
         parts = []
         if (entry.name === 'manifest.json') manifest = blob
-        else {
-          const id = session + entry.name
-          staged.push(id)
-          pending.push(
-            storage
-              .putAsset(id, blob)
-              .then((source) => files.set(entry.name, source)),
-          )
-        }
+        else files.set(entry.name, blob)
       }
       entry.start()
     })
@@ -204,14 +196,38 @@ export function createWorkspaceArchive(
           ),
           offset + 128 * 1024 >= file.size,
         )
-        await Promise.all(pending)
-        pending = []
         if (failure) throw failure
         onProgress(Math.min(0.9, ((offset + 128 * 1024) / file.size) * 0.9))
         await pause()
       }
       if (!manifest) throw new Error('压缩包缺少 manifest.json')
       const payload = await readJson(new File([manifest], 'manifest.json'))
+      const fileBlobs = new Map(files)
+      const mimeByFile = new Map()
+      for (const image of payload.images || [])
+        if (image.file)
+          mimeByFile.set(
+            image.file,
+            image.mimeType || 'application/octet-stream',
+          )
+      for (const conversation of payload.conversations || [])
+        for (const message of conversation.messages || [])
+          for (const file of message.files || [])
+            if (file.archiveFile)
+              mimeByFile.set(file.archiveFile, 'application/pdf')
+      files.clear()
+      for (const [name, blob] of fileBlobs) {
+        if (name === 'manifest.json' || !blob) continue
+        const type = mimeByFile.get(name) || blob.type || 'application/octet-stream'
+        const data = blob.type === type ? blob : blob.slice(0, blob.size, type)
+        const id = session + name
+        staged.push(id)
+        pending.push(
+          storage.putAsset(id, data).then((source) => files.set(name, source)),
+        )
+      }
+      await Promise.all(pending)
+      pending = []
       for (const conversation of payload.conversations || [])
         for (const message of conversation.messages || [])
           for (const file of message.files || []) {
@@ -225,18 +241,7 @@ export function createWorkspaceArchive(
         if (!image.file) continue
         if (!files.get(image.file))
           throw new Error(`备份缺少图片文件: ${image.file}`)
-        const source = files.get(image.file)
-        // ZIP 无 MIME 信息, 以清单恢复原始类型。
-        const blob = await storage.readBlob(source)
-        await storage.putAsset(
-          source.slice('orbit-image:'.length),
-          blob.slice(
-            0,
-            blob.size,
-            image.mimeType || 'application/octet-stream',
-          ),
-        )
-        image.src = source
+        image.src = files.get(image.file)
         image.hasBlob = true
         delete image.file
         delete image.mimeType

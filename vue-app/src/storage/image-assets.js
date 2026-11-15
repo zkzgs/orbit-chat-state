@@ -621,6 +621,28 @@ export function createImageStorage(options) {
     }
   }
 
+  function writePrepared(tx, item) {
+    const store = tx.objectStore(options.storeName)
+    if (item.sameReference) {
+      // 旧记录尚未迁移时保留其原图, 只更新调用方传来的元数据。
+      const request = store.get(item.record.id)
+      request.onsuccess = () => {
+        const previous = request.result
+        store.put({
+          ...item.stored,
+          src: previous?.src || '',
+          hasBlob: previous?.hasBlob || item.stored.hasBlob,
+          fingerprint: item.stored.fingerprint || previous?.fingerprint,
+        })
+      }
+    } else {
+      store.put(item.stored)
+      tx.objectStore(thumbnails).delete(item.record.id)
+      if (item.blob) tx.objectStore(assets).put({ id: item.record.id, blob: item.blob })
+      else tx.objectStore(assets).delete(item.record.id)
+    }
+  }
+
   async function writeRecords(records = [], deleted = [], replace = false) {
     const generation = epoch
     if (replace && !records.length) {
@@ -634,9 +656,24 @@ export function createImageStorage(options) {
       return []
     }
     const saved = []
+    const pending = []
+    async function flush() {
+      const batch = pending.splice(0)
+      if (!batch.length) return
+      if (generation !== epoch) throw new Error('图片存储已重置')
+      await transaction((tx) => {
+        for (const item of batch) writePrepared(tx, item)
+      })
+      for (const item of batch) {
+        memory.delete(item.record.id)
+        if (!item.sameReference) invalidate(item.record.id)
+        saved.push(metadata(item.stored))
+      }
+    }
     for (const record of records) {
       if (generation !== epoch) throw new Error('图片存储已重置')
       if (record.type !== 'image') {
+        await flush()
         await transaction((tx) => tx.objectStore(options.storeName).put(record))
         saved.push(record)
         continue
@@ -650,43 +687,18 @@ export function createImageStorage(options) {
         : referenced && !sameReference
           ? await readBlob(original)
           : undefined
-      const hash =
-        sameReference && record.fingerprint
-          ? record.fingerprint
-          : await fingerprint(original)
+      const hash = record.fingerprint || (await fingerprint(original))
       const stored = {
         ...record,
         src: referenced || hasData ? '' : original,
         hasBlob: Boolean(blob) || record.hasBlob,
         fingerprint: hash,
       }
-      if (generation !== epoch) throw new Error('图片存储已重置')
-      await transaction((tx) => {
-        const store = tx.objectStore(options.storeName)
-        if (sameReference) {
-          // 旧记录尚未迁移时保留其原图, 只更新调用方传来的元数据。
-          const request = store.get(record.id)
-          request.onsuccess = () => {
-            const previous = request.result
-            store.put({
-              ...stored,
-              src: previous?.src || '',
-              hasBlob: previous?.hasBlob || stored.hasBlob,
-              fingerprint: stored.fingerprint || previous?.fingerprint,
-            })
-          }
-        } else {
-          store.put(stored)
-          tx.objectStore(thumbnails).delete(record.id)
-          if (blob) tx.objectStore(assets).put({ id: record.id, blob })
-          else tx.objectStore(assets).delete(record.id)
-        }
-      })
-      memory.delete(record.id)
-      if (!sameReference) invalidate(record.id)
-      saved.push(metadata(stored))
+      pending.push({ record, stored, blob, sameReference })
+      if (pending.length >= 8) await flush()
       await pause()
     }
+    await flush()
     const remove = new Set(deleted)
     if (replace) {
       const keep = new Set(records.map((record) => record.id))
@@ -718,6 +730,9 @@ export function createImageStorage(options) {
   function retain(record) {
     memory.set(record.id, record)
   }
+  async function hasAsset(id) {
+    return Boolean(await get(assets, id))
+  }
   async function putAsset(id, blob) {
     await transaction((tx) => tx.objectStore(assets).put({ id, blob }))
     return source(id)
@@ -744,6 +759,7 @@ export function createImageStorage(options) {
     retain,
     bindImage,
     unbindImage,
+    hasAsset,
     putAsset,
     deleteAssets,
     videoFrame,

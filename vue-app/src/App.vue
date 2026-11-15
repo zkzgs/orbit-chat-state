@@ -65,7 +65,7 @@ const { follow, stickToBottom } = useChatScroll(
           class="chat-scroll-bottom"
           type="button"
           aria-label="回到底部"
-          @click="stickToBottom"
+          @click="stickToBottom(true)"
         >
           ↓
         </button>
