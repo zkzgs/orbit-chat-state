@@ -1519,6 +1519,48 @@ test('清除范围的说明、取消和对话清除行为保持原版规则', as
   await expect(page.locator('#chatBaseUrl')).toHaveValue('https://chat.test/v1')
 })
 
+for (const [version, url] of [
+  ['HTML', '/index.html'],
+  ['Vue', '/vue-app/dist/index.html'],
+])
+  test(`${version} 清除全部数据后配置恢复默认`, async ({ page }) => {
+    const dialogs: string[] = []
+    page.on('dialog', (dialog) => {
+      dialogs.push(dialog.message())
+      void dialog.accept()
+    })
+    await openWorkspace(
+      page,
+      {
+        chatBaseUrl: 'https://chat.test/v1',
+        chatApiKey: 'test-key',
+        chatModel: 'keep-me',
+        systemPrompt: '自定义系统提示',
+      },
+      url,
+    )
+    await page.locator('#topbarSettings').click()
+    await page.locator('#settings-tab-data').click()
+    await page.locator('#resetLocalData').click()
+    await page.locator('[data-data-scope="all"]').click()
+    await expect(page.locator('#toast')).toContainText('全部数据已清除')
+    expect(dialogs).toHaveLength(1)
+    expect(dialogs[0]).toContain('清除全部数据')
+    await page.locator('#topbarSettings').click()
+    await expect(page.locator('#chatBaseUrl')).toHaveValue('')
+    await expect(page.locator('#chatApiKey')).toHaveValue('')
+    await expect(page.locator('#chatModel')).toHaveValue('')
+    await page.locator('#settings-tab-prompts').click()
+    await expect(page.locator('#systemPrompt')).toHaveValue(
+      '你是一位简洁, 直接的中文助手，使用中文思考',
+    )
+    await page.reload()
+    await page.locator('#topbarSettings').click()
+    await expect(page.locator('#chatBaseUrl')).toHaveValue('')
+    await expect(page.locator('#chatApiKey')).toHaveValue('')
+    await expect(page.locator('#chatModel')).toHaveValue('')
+  })
+
 test('接口模板校验、自动命名、同名覆盖、临时配置和删除反馈', async ({
   page,
 }) => {
