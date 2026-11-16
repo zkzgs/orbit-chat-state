@@ -2798,7 +2798,63 @@ function syncNativeMediaControls() {
   syncCustomSelects();
 }
 
+function isRecordedConversation(conversation) {
+  return (conversation.messages || []).length > 0;
+}
+
+function draftIsOccupied(draft) {
+  return Boolean((draft?.text || '').trim() || (draft?.attachments || []).length || (draft?.files || []).length);
+}
+
+function currentComposerState() {
+  const input = document.getElementById('messageInput');
+  if (!input) return null;
+  return { text: input.value, attachments: [...pendingAttachments], files: [...pendingChatFiles], editingId: editingMessageId };
+}
+
+function hasComposerDraft(id) {
+  if (id === composerConversationId) {
+    const live = currentComposerState();
+    if (live && draftIsOccupied(live)) return true;
+  }
+  if (draftIsOccupied(composerDrafts.get(id))) return true;
+  return Boolean(state.settings.persistInputContent && (readChatDraft(id) || '').trim());
+}
+
+function saveCurrentComposerDraft() {
+  if (!composerConversationId || !state.conversations.some((item) => item.id === composerConversationId)) return;
+  const live = currentComposerState();
+  if (!live) return;
+  composerDrafts.set(composerConversationId, live);
+  if (state.settings.persistInputContent) saveChatDraft(composerConversationId, live.text);
+}
+
+function pickReusableEmptyConversation(current) {
+  const empties = state.conversations.filter((item) => !isRecordedConversation(item));
+  if (!empties.length) return null;
+  const currentEmpty = current && !isRecordedConversation(current) ? current : null;
+  if (currentEmpty && hasComposerDraft(currentEmpty.id)) return currentEmpty;
+  const withDraft = empties.filter((item) => hasComposerDraft(item.id));
+  if (withDraft.length) return withDraft.reduce((best, item) => (item.createdAt > best.createdAt ? item : best));
+  if (currentEmpty) return currentEmpty;
+  return empties.reduce((best, item) => (item.createdAt > best.createdAt ? item : best));
+}
+
+function discardAbandonedEmptyConversations() {
+  saveCurrentComposerDraft();
+  const next = state.conversations.filter((item) => item.id === state.activeConversationId || isRecordedConversation(item) || hasComposerDraft(item.id));
+  if (next.length === state.conversations.length) return;
+  const kept = new Set(next.map((item) => item.id));
+  for (const item of state.conversations) {
+    if (kept.has(item.id)) continue;
+    composerDrafts.delete(item.id);
+    removeChatDraft(item.id);
+  }
+  state.conversations = next;
+}
+
 function persist() {
+  discardAbandonedEmptyConversations();
   applyTheme();
   syncNativeMediaControls();
   if ($('#imageModelQuick')) $('#imageModelQuick').value = state.settings.imageModel;
@@ -7228,7 +7284,7 @@ function bindConversationTitleInput(input) {
   input.addEventListener('blur', () => commitConversationRename());
 }
 
-function selectableConversations() { return state.conversations.filter(item => !(chatRuns.has(item.id))); }
+function selectableConversations() { return state.conversations.filter(item => isRecordedConversation(item) && !(chatRuns.has(item.id))); }
 function exitConversationSelection(renderList = true) { conversationSelectionMode = false; selectedConversationIds.clear(); if (renderList) renderConversations(); }
 function toggleConversationSelection() { editingConversationId = null; if (conversationSelectionMode) exitConversationSelection(); else { conversationSelectionMode = true; renderConversations(); } }
 function toggleAllConversations() {
@@ -7255,7 +7311,8 @@ async function deleteSelectedConversations() {
 }
 function renderConversations() {
   const list = $('#conversationList');
-  $('#conversationCount').textContent = state.conversations.length;
+  const listed = state.conversations.filter(isRecordedConversation);
+  $('#conversationCount').textContent = listed.length;
   const eligible = selectableConversations();
   selectedConversationIds = new Set([...selectedConversationIds].filter(id => eligible.some(item => item.id === id)));
   $('#toggleConversationSelection').textContent = conversationSelectionMode ? '退出多选' : '多选';
@@ -7264,7 +7321,7 @@ function renderConversations() {
   $('#conversationSelectionCount').textContent = `${selectedConversationIds.size} 项`;
   $('#conversationDeleteSelected').disabled = !selectedConversationIds.size;
   $('#conversationSelectAll').textContent = eligible.length && eligible.every(item => selectedConversationIds.has(item.id)) ? '取消全选' : '全选';
-  list.innerHTML = state.conversations
+  list.innerHTML = listed
     .slice()
     .sort((a, b) => {
       if (state.settings.conversationSort === 'created')
@@ -11689,7 +11746,16 @@ function newConversation() {
   chatFollowBottom = true;
   const current = activeConversation();
   if (current?.chatContext) current.chatContext = snapshotChatContext();
-  if (current && current.messages.length === 0) {
+  const empty = pickReusableEmptyConversation(current);
+  if (empty) {
+    if (empty.id !== state.activeConversationId) {
+      state.activeConversationId = empty.id;
+      applyChatContext(empty.chatContext);
+      persist();
+      render();
+    } else {
+      discardAbandonedEmptyConversations();
+    }
     setView('chat');
     $('#messageInput').focus();
     $('#sidebar').classList.remove('open');
@@ -11873,7 +11939,7 @@ async function exportWorkspace() {
       showToast('配置已导出');
       return;
     }
-    const conversations = scope === 'image' ? [] : state.conversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
+    const conversations = scope === 'image' ? [] : state.conversations.filter(isRecordedConversation).map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
     const batches = scope === 'chat' ? [] : imageHistory.map(createStoredBatch);
     const tasks = scope === 'chat' ? [] : imageTasks.map(createStoredImageTask);
     const imageIds = scope === 'chat' ? getConversationImageIds(conversations) : scope === 'image' ? getImageWorkspaceImageIds(batches, tasks) : new Set([...getConversationImageIds(conversations), ...getImageWorkspaceImageIds(batches, tasks)]);
@@ -11885,7 +11951,7 @@ async function exportWorkspace() {
         if (id) { reference.imageId = id; draftReferenceIds.push(id); imageIds.add(id); }
       }
     }
-    const workspace = { version: 12, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: state.activeConversationId, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(exportImage), imageHistory: batches, imageTasks: tasks, ...(scope === 'chat' ? {} : { favoriteFolders }) };
+    const workspace = { version: 12, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: conversations.some((conversation) => conversation.id === state.activeConversationId) ? state.activeConversationId : conversations[0]?.id || null, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(exportImage), imageHistory: batches, imageTasks: tasks, ...(scope === 'chat' ? {} : { favoriteFolders }) };
     if (scope === 'all') workspace.apiConfig = { settings: state.settings, connectionProfiles: state.connectionProfiles, activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
     if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
     const label = getExportScopeLabel(scope);

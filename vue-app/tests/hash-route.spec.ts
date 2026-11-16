@@ -44,8 +44,34 @@ for (const [version, host, file] of [
               settings: { demoMode: true },
               activeConversationId: 'a',
               conversations: [
-                { id: 'a', title: '会话A', createdAt: 1, messages: [] },
-                { id: 'b 中文&x', title: '会话B', createdAt: 2, messages: [] },
+                {
+                  id: 'a',
+                  title: '会话A',
+                  createdAt: 1,
+                  messages: [
+                    {
+                      id: 'ma',
+                      role: 'user',
+                      content: '会话A',
+                      imageIds: [],
+                      createdAt: 1,
+                    },
+                  ],
+                },
+                {
+                  id: 'b 中文&x',
+                  title: '会话B',
+                  createdAt: 2,
+                  messages: [
+                    {
+                      id: 'mb',
+                      role: 'user',
+                      content: '会话B',
+                      imageIds: [],
+                      createdAt: 2,
+                    },
+                  ],
+                },
               ],
             }),
           )

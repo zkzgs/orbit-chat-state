@@ -237,7 +237,7 @@ for (const [version, url] of [
     await page.locator('#messageInput').fill('空会话草稿')
     await page.locator('#newChatButton').click()
     await expect(page.locator('#messageInput')).toHaveValue('空会话草稿')
-    await expect(page.locator('.conversation-item')).toHaveCount(3)
+    await expect(page.locator('.conversation-item')).toHaveCount(2)
   })
 
   test(`${version} 侧栏可完全收起, 溢出标题循环滚动且操作按钮与行背景一致`, async ({

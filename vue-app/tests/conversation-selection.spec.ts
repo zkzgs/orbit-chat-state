@@ -159,11 +159,9 @@ for (const [version, url] of [
       await page.locator('#conversationSelectAll').click()
       page.once('dialog', (d) => d.accept())
       await page.locator('#conversationDeleteSelected').click()
-      await expect(page.locator('.conversation-item')).toHaveCount(1)
-      await expect(page.locator('.conversation-item.active')).toContainText(
-        '新对话',
-      )
+      await expect(page.locator('.conversation-item')).toHaveCount(0)
       await expect(page.locator('.message')).toHaveCount(0)
+      await expect(page.locator('#messageInput')).toBeVisible()
       await expect.poll(() => imageIds(page)).toEqual([])
     })
   test(`${version} 对话多选禁选正在生成的对话，全选和删除跳过它，完成可退出`, async ({

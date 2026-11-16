@@ -80,7 +80,15 @@ async function seed(
                       createdAt: 1,
                     },
                   ]
-                : [],
+                : [
+                    {
+                      id: `msg-${i}`,
+                      role: 'user',
+                      content: `对话 ${i + 1}`,
+                      imageIds: [],
+                      createdAt: 1,
+                    },
+                  ],
           })),
           activeConversationId: 'chat-0',
         }),

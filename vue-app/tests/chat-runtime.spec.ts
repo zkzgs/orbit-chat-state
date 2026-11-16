@@ -56,7 +56,15 @@ async function open(
               title: '对话乙',
               createdAt: 1,
               chatContext: context('model-b'),
-              messages: [],
+              messages: [
+                {
+                  id: 'b-seed',
+                  role: 'user',
+                  content: '乙的开场',
+                  imageIds: [],
+                  createdAt: 1,
+                },
+              ],
             },
           ],
         }),

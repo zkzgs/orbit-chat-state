@@ -49,6 +49,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         (item) => item.id === state.activeConversationId,
       ) || state.conversations[0],
   )
+  function discardAbandonedEmptyConversations(
+    shouldKeep?: (id: string) => boolean,
+  ) {
+    const next = state.conversations.filter(
+      (item) =>
+        item.id === state.activeConversationId ||
+        item.messages.length > 0 ||
+        shouldKeep?.(item.id),
+    )
+    if (next.length !== state.conversations.length) state.conversations = next
+  }
   const imageMap = computed(
     () => new Map(images.value.map((image) => [image.id, image])),
   )
@@ -255,6 +266,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     ready,
     generation,
     activeConversation,
+    discardAbandonedEmptyConversations,
     imageMap,
     imageFavoriteFolders,
     imageConfig,

@@ -1375,17 +1375,17 @@ test('连续新建时复用当前空对话, 有消息后才添加新会话', asy
   const firstId = await readActiveConversationId()
   for (let index = 0; index < 3; index++)
     await page.locator('#newChatButton').click()
-  await expect(page.locator('.conversation-item')).toHaveCount(1)
+  await expect(page.locator('.conversation-item')).toHaveCount(0)
   expect(await readActiveConversationId()).toBe(firstId)
 
   await page.locator('#messageInput').fill('已有内容')
   await page.locator('#sendButton').click()
   await expect(page.locator('.message.assistant')).toContainText('已有内容')
   await page.locator('#newChatButton').click()
-  await expect(page.locator('.conversation-item')).toHaveCount(2)
+  await expect(page.locator('.conversation-item')).toHaveCount(1)
   const emptyId = await readActiveConversationId()
   await page.locator('#newChatButton').click()
-  await expect(page.locator('.conversation-item')).toHaveCount(2)
+  await expect(page.locator('.conversation-item')).toHaveCount(1)
   expect(await readActiveConversationId()).toBe(emptyId)
 })
 
@@ -1507,13 +1507,13 @@ test('清除范围的说明、取消和对话清除行为保持原版规则', as
   await page.locator('[data-data-scope="chat"]').click()
   expect(confirmation).toContain('清除对话工作区?')
   expect(confirmation).toContain('未被生图工作区引用的图片')
-  await expect(page.locator('.conversation-item')).toHaveCount(1)
+  await expect(page.locator('.conversation-item')).toHaveCount(0)
 
   await page.locator('#settings-tab-data').click()
   await page.locator('#resetLocalData').click()
   page.once('dialog', (dialog) => void dialog.accept())
   await page.locator('[data-data-scope="chat"]').click()
-  await expect(page.locator('.conversation-item')).toHaveCount(1)
+  await expect(page.locator('.conversation-item')).toHaveCount(0)
   await expect(page.locator('#toast')).toContainText('对话工作区已清除')
   await page.locator('#topbarSettings').click()
   await expect(page.locator('#chatBaseUrl')).toHaveValue('https://chat.test/v1')
@@ -1702,21 +1702,15 @@ test('对话重命名、删除提示、菜单关闭和 Markdown/HTML 导出保�
     await page.locator('.conversation-row').hover()
     await exportButton.click()
   }
-  await openExportMenu()
-  await expect(
-    page.getByRole('menuitem', { name: '导出 Markdown' }),
-  ).toBeDisabled()
-  await page.keyboard.press('Escape')
+  await expect(page.locator('.conversation-item')).toHaveCount(0)
 
   await page
     .locator('#messageInput')
     .fill('内容 <script>alert(1)</script> & **加粗**')
-  await page.locator('.conversation-item.active').click()
-  await expect(page.locator('#messageInput')).toHaveValue(
-    '内容 <script>alert(1)</script> & **加粗**',
-  )
   await page.locator('#sendButton').click()
   await expect(page.locator('.message.assistant')).toBeVisible()
+  await expect(page.locator('.conversation-item.active')).toBeVisible()
+  await expect(page.locator('#messageInput')).toHaveValue('')
   await openExportMenu()
   await page.getByRole('menuitem', { name: '重命名对话' }).click()
   await page.locator('.conversation-title-input').fill('危险<script>')

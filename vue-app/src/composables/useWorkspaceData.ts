@@ -44,14 +44,14 @@ const exportFilePrefixes: Record<DataScope, string> = {
   all: 'orbit-all-data',
 }
 
-async function importedImagesPersisted(images: { id: string; src?: string; hasBlob?: boolean; type?: string }[]) {
+async function importedImagesPersisted(
+  images: { id: string; src?: string; hasBlob?: boolean; type?: string }[],
+) {
   for (const image of images) {
     if (image.type && image.type !== 'image') continue
     const src = image.src || ''
     const needsAsset =
-      image.hasBlob ||
-      src.startsWith('orbit-image:') ||
-      src.startsWith('data:')
+      image.hasBlob || src.startsWith('orbit-image:') || src.startsWith('data:')
     if (!needsAsset) continue
     const id = src.startsWith('orbit-image:')
       ? src.slice('orbit-image:'.length)
@@ -62,7 +62,6 @@ async function importedImagesPersisted(images: { id: string; src?: string; hasBl
 }
 
 export function useWorkspaceData() {
-
   const workspace = useWorkspaceStore()
   const ui = useInterfaceStore()
   const image = useImageGenerationStore()
@@ -110,7 +109,11 @@ export function useWorkspaceData() {
         requestAnimationFrame(() => setTimeout(resolve, 0)),
       )
       await workspace.initialize()
-      const conversations = includeChat ? workspace.state.conversations : []
+      const conversations = includeChat
+        ? workspace.state.conversations.filter(
+            (item) => item.messages.length > 0,
+          )
+        : []
       const imageHistory = includeImages ? workspace.batches : []
       const imageTasks = includeImages ? workspace.tasks : []
       const draftIds: string[] = []
@@ -141,7 +144,11 @@ export function useWorkspaceData() {
         scope,
         exportedAt: Date.now(),
         contextMode: workspace.state.contextMode,
-        activeConversationId: workspace.state.activeConversationId,
+        activeConversationId: conversations.some(
+          (item) => item.id === workspace.state.activeConversationId,
+        )
+          ? workspace.state.activeConversationId
+          : conversations[0]?.id || null,
         conversations,
         images: workspace.images
           .filter((item) => ids.has(item.id))

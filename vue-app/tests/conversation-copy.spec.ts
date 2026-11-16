@@ -116,7 +116,7 @@ for (const [version, url] of [
     await expect(page.locator('.message-image')).toHaveCount(1)
     await expect
       .poll(async () => (await stored(page)).conversations.length)
-      .toBe(3)
+      .toBe(2)
     const state = await stored(page),
       copy = state.conversations.find(
         (c: any) => c.title === '原始对话（副本）',
@@ -180,7 +180,7 @@ for (const [version, url] of [
     await originalRow.hover()
     await originalRow.getByRole('button', { name: '对话操作' }).click()
     await page.getByRole('menuitem', { name: '删除对话', exact: true }).click()
-    await expect(page.locator('.conversation-item')).toHaveCount(2)
+    await expect(page.locator('.conversation-item')).toHaveCount(1)
     await page.reload()
     await page.locator('[data-view="chat"]').click()
     await expect(page.locator('.message-image')).toHaveCount(1)
@@ -203,7 +203,7 @@ for (const [version, url] of [
     })
     await expect(page.locator('#toast')).toContainText('覆盖导入')
     await page.locator('#cancelSettings').click()
-    await expect(page.locator('.conversation-item')).toHaveCount(3)
+    await expect(page.locator('.conversation-item')).toHaveCount(2)
     const restored = (await stored(page)).conversations.find(
       (c: any) => c.id === copy.id,
     )

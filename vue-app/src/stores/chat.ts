@@ -20,7 +20,11 @@ import type {
   Settings,
 } from '../types/models'
 import { imageStorage } from '../storage/database'
-import { agentMessages, agentStepTitle, runImageAgent } from '../api/image-agent.js'
+import {
+  agentMessages,
+  agentStepTitle,
+  runImageAgent,
+} from '../api/image-agent.js'
 import { apiFetch, buildApiEndpoint } from '../api/client'
 import { useImageGenerationStore } from './image-generation'
 import { imageSize } from '../utils/image-options'
@@ -59,7 +63,9 @@ export const useChatStore = defineStore('chat', () => {
   const conversationSelectionMode = ref(false)
   const selectedConversations = ref(new Set<string>())
   const selectableConversations = computed(() =>
-    workspace.state.conversations.filter((item) => !isGenerating(item.id)),
+    workspace.state.conversations.filter(
+      (item) => item.messages.length > 0 && !isGenerating(item.id),
+    ),
   )
   const allConversationsSelected = computed(
     () =>
@@ -149,7 +155,10 @@ export const useChatStore = defineStore('chat', () => {
       ...workspace.messageImages(ids),
       ...batchImages,
     ]
-      .filter((image, index, list) => list.findIndex((item) => item.id === image.id) === index)
+      .filter(
+        (image, index, list) =>
+          list.findIndex((item) => item.id === image.id) === index,
+      )
       .filter((image) => image.mediaType !== 'video')
       .map((image) => ({
         id: image.id,
@@ -173,6 +182,46 @@ export const useChatStore = defineStore('chat', () => {
     return images
   })
   const editingId = ref('')
+  function hasComposerDraft(id: string) {
+    if (id === workspace.state.activeConversationId) {
+      if (draft.value.trim() || attachments.value.length || files.value.length)
+        return true
+    }
+    const saved = drafts.get(id)
+    if (
+      saved &&
+      (saved.text.trim() || saved.attachments.length || saved.files.length)
+    )
+      return true
+    return Boolean(
+      workspace.state.settings.persistInputContent &&
+      (readChatDraft(id) || '').trim(),
+    )
+  }
+  function discardAbandonedEmptyConversations() {
+    workspace.discardAbandonedEmptyConversations(hasComposerDraft)
+  }
+  function pickReusableEmptyConversation() {
+    const empties = workspace.state.conversations.filter(
+      (item) => item.messages.length === 0,
+    )
+    if (!empties.length) return
+    const current = workspace.activeConversation
+    const currentEmpty =
+      current && current.messages.length === 0 ? current : undefined
+    if (currentEmpty && hasComposerDraft(currentEmpty.id)) return currentEmpty
+    const withDraft = empties.filter((item) => hasComposerDraft(item.id))
+    if (withDraft.length)
+      return withDraft.reduce((best, item) =>
+        item.createdAt > best.createdAt ? item : best,
+      )
+    return (
+      currentEmpty ||
+      empties.reduce((best, item) =>
+        item.createdAt > best.createdAt ? item : best,
+      )
+    )
+  }
   watch(
     () => workspace.state.activeConversationId,
     (id, previous) => {
@@ -189,6 +238,7 @@ export const useChatStore = defineStore('chat', () => {
         if (workspace.state.settings.persistInputContent)
           saveChatDraft(previous, draft.value)
       }
+      discardAbandonedEmptyConversations()
       const saved = id ? drafts.get(id) : undefined
       draft.value =
         saved?.text ||
@@ -337,7 +387,13 @@ export const useChatStore = defineStore('chat', () => {
   function newConversation() {
     const current = workspace.activeConversation
     if (current?.chatContext) current.chatContext = snapshotChatContext()
-    if (current && current.messages.length === 0) {
+    const empty = pickReusableEmptyConversation()
+    if (empty) {
+      if (empty.id !== workspace.state.activeConversationId) {
+        workspace.state.activeConversationId = empty.id
+        applyChatContext(empty.chatContext)
+      }
+      discardAbandonedEmptyConversations()
       ui.activeView = 'chat'
       ui.sidebarOpen = false
       void nextTick(() => document.getElementById('messageInput')?.focus())
@@ -524,7 +580,10 @@ export const useChatStore = defineStore('chat', () => {
         ...workspace.messageImages(message.imageIds),
         ...workspace.messageBatchImages(message),
       ]
-        .filter((image, index, list) => list.findIndex((item) => item.id === image.id) === index)
+        .filter(
+          (image, index, list) =>
+            list.findIndex((item) => item.id === image.id) === index,
+        )
         .filter((image) => image.mediaType !== 'video')
       const current = [...conversation.messages]
         .reverse()
@@ -744,7 +803,8 @@ export const useChatStore = defineStore('chat', () => {
               last && !['thinking', 'summary'].includes(last.type),
             )
             if (!assistant || immediate) applyChunk()
-            else if (!streamTimer) streamTimer = setTimeout(() => applyChunk(), 40)
+            else if (!streamTimer)
+              streamTimer = setTimeout(() => applyChunk(), 40)
           },
           onStatus: (activity: { status: string; prompt: string }) => {
             run.activity = activity
@@ -822,10 +882,12 @@ export const useChatStore = defineStore('chat', () => {
       applyChunk()
     } catch (error) {
       if (signal.aborted) {
-        if (pending.content || pending.reasoning || pendingSteps?.length) applyChunk()
+        if (pending.content || pending.reasoning || pendingSteps?.length)
+          applyChunk()
         ui.notify('已暂停生成')
       } else {
-        if (pending.content || pending.reasoning || pendingSteps?.length) applyChunk()
+        if (pending.content || pending.reasoning || pendingSteps?.length)
+          applyChunk()
         if (!assistant) applyChunk()
         assistant!.error = errorMessage(error)
         ui.notify(assistant!.error, 'error')
@@ -906,12 +968,11 @@ export const useChatStore = defineStore('chat', () => {
           : ''
       }
       const blocks = message.steps.flatMap((step) => {
-        if (
-          step.type === 'thinking' ||
-          step.type === 'summary'
-        )
+        if (step.type === 'thinking' || step.type === 'summary')
           return step.text
-            ? [`> ${agentStepTitle(step)}\n> ${step.text.replace(/\n/g, '\n> ')}`]
+            ? [
+                `> ${agentStepTitle(step)}\n> ${step.text.replace(/\n/g, '\n> ')}`,
+              ]
             : []
         if (step.type === 'tool_call' || step.type === 'retry')
           return [
@@ -933,18 +994,13 @@ export const useChatStore = defineStore('chat', () => {
       }
       return `<div class="message-steps">${message.steps
         .map((step) => {
-          if (
-            step.type === 'thinking' ||
-            step.type === 'summary'
-          )
+          if (step.type === 'thinking' || step.type === 'summary')
             return step.text
               ? `<section><h3>${escapeHtml(agentStepTitle(step))}</h3><div>${renderMarkdown(step.text)}</div></section>`
               : ''
           if (step.type === 'tool_call' || step.type === 'retry')
             return `<section><h3>${escapeHtml(agentStepTitle(step))}</h3>${
-              step.prompt
-                ? `<pre>${escapeHtml(step.prompt)}</pre>`
-                : ''
+              step.prompt ? `<pre>${escapeHtml(step.prompt)}</pre>` : ''
             }</section>`
           if (step.type === 'image' && step.error && !step.imageIds?.length)
             return `<section><p>生图失败: ${escapeHtml(step.error)}</p></section>`
@@ -953,7 +1009,6 @@ export const useChatStore = defineStore('chat', () => {
         .join('')}</div>`
     }
     function exportMarkdown() {
-
       const sections = [
         `# ${conversation.title}`,
         `> 导出时间：${formatTime(Date.now())}`,
@@ -964,17 +1019,19 @@ export const useChatStore = defineStore('chat', () => {
           ...workspace.messageImages(message.imageIds),
           ...workspace.messageBatchImages(message),
         ]
-          .filter((image, index, list) => list.findIndex((item) => item.id === image.id) === index)
+          .filter(
+            (image, index, list) =>
+              list.findIndex((item) => item.id === image.id) === index,
+          )
           .map(
             (image, index) =>
               `> 图片 ${index + 1}${image.name ? `：${image.name}` : ''}`,
           )
           .join('\n')
         const reasoning = exportStepsMarkdown(message)
-        const body =
-          message.steps?.some((step) => step.type === 'summary')
-            ? ''
-            : message.content || ''
+        const body = message.steps?.some((step) => step.type === 'summary')
+          ? ''
+          : message.content || ''
         sections.push(
           `## ${role} · ${formatTime(message.createdAt)}\n\n${reasoning}${body}${message.error ? '\n\n> 请求失败: ' + message.error : ''}${imageLines ? `\n\n${imageLines}` : ''}`,
         )
@@ -990,7 +1047,10 @@ export const useChatStore = defineStore('chat', () => {
             ...workspace.messageImages(message.imageIds),
             ...workspace.messageBatchImages(message),
           ]
-            .filter((image, index, list) => list.findIndex((item) => item.id === image.id) === index)
+            .filter(
+              (image, index, list) =>
+                list.findIndex((item) => item.id === image.id) === index,
+            )
             .map((image, index) => {
               const name = image.name || `图片 ${index + 1}`
               return `<figure><img src="${escapeHtml(exportedImages.get(image.id) || '')}" alt="${escapeHtml(name)}"><figcaption>${escapeHtml(name)}</figcaption></figure>`

@@ -22,9 +22,9 @@ const conversations = computed(() => {
     workspace.state.settings.conversationSort === 'created'
       ? (item: (typeof workspace.state.conversations)[number]) => item.createdAt
       : updatedAt
-  return [...workspace.state.conversations].sort(
-    (first, second) => time(second) - time(first),
-  )
+  return [...workspace.state.conversations]
+    .filter((item) => item.messages.length > 0)
+    .sort((first, second) => time(second) - time(first))
 })
 const editingId = ref('')
 const editingTitle = ref('')
@@ -185,7 +185,7 @@ function onRenameKeydown(event: KeyboardEvent) {
       <div class="conversation-heading-label">
         <span>最近对话</span
         ><span class="conversation-count" id="conversationCount">{{
-          workspace.state.conversations.length
+          conversations.length
         }}</span>
       </div>
       <div class="conversation-header-actions">
