@@ -473,7 +473,7 @@ for (const stream of [false, true])
         const output = tools.length ? JSON.parse(tools.at(-1).content) : null
         if (output) {
           expect(output.retry_tool_call_id).toBe(handle)
-          expect(output.retryRemaining).toBe(3 - tools.length)
+          expect(output).not.toHaveProperty('retryRemaining')
         }
         const message =
           tools.length < 3
@@ -576,7 +576,9 @@ test('Agent 失败重试共享每轮上限, 沿用原图并允许修正提示词
     ['original'],
   ])
   expect(generated[1].prompt).toBe('修正要求')
-  expect(JSON.parse(rounds.at(-1).results[0].content).error).toContain('上限')
+  expect(JSON.parse(rounds.at(-1).results[0].content).error).toBe(
+    '该图片任务已不可再重试',
+  )
 })
 for (const preview of [false, true])
   test('Agent 效果重试必须开启预览 ' + preview, async () => {
@@ -621,7 +623,9 @@ test('Agent 默认禁止重试, 不执行模型越权或跨轮重试', async () 
     false,
   )
   expect(b.generated).toHaveLength(0)
-  expect(JSON.parse(b.rounds[0].results[0].content).error).toContain('本轮')
+  expect(JSON.parse(b.rounds[0].results[0].content).error).toContain(
+    '之前的消息',
+  )
 })
 
 test('AI 生图参数限于当前接口的参数值, 不接受底层策略或模型覆盖', async () => {

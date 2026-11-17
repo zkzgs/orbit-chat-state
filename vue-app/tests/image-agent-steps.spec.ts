@@ -95,7 +95,11 @@ test('Agent 步骤按轮次保留思考、工具、等待、图片和重试', as
         item.tool_calls?.[0]?.function?.name === 'retry_image',
     ),
   ).toBe(true)
-  expect(JSON.parse(requests[1].messages.find((item: any) => item.role === 'tool').content).retryRemaining).toBe(5)
+  const firstTool = JSON.parse(
+    requests[1].messages.find((item: any) => item.role === 'tool').content,
+  )
+  expect(firstTool.retry_tool_call_id).toBe('gen-1')
+  expect(firstTool).not.toHaveProperty('retryRemaining')
   expect(lastSteps.filter((step) => step.type === 'waiting').every((step) => step.endedAt)).toBe(true)
   expect(final).toEqual([
     'thinking',

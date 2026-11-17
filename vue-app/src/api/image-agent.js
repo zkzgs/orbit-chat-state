@@ -444,7 +444,10 @@ export async function runImageAgent(options) {
     options.settings.imageAgentRetryMismatch &&
     options.settings.imageAgentPreview,
   )
-  const retryLimit = options.settings.imageAgentRetryLimit ?? 2
+  // 重试上限只在本地判断, 每次读取当前设置, 不发给模型。
+  const currentRetryLimit = () =>
+    options.retryLimit?.() ?? options.settings.imageAgentRetryLimit ?? 2
+  const retryLimit = currentRetryLimit()
   const allowRetry = (retryErrors || retryMismatch) && retryLimit > 0
   const autoParameters = Boolean(options.settings.imageAgentAutoParameters)
   const imageModels = [
@@ -466,13 +469,15 @@ export async function runImageAgent(options) {
         : tool,
   )
   const attempts = new Map()
+  const notRun = new Set()
+  const notRunHint = '未执行生图，不可重试，请修正参数后重新调用 generate_image'
   let retries = 0
   messages.unshift({
     role: 'system',
     content: `只有用户要求生图或改图时才使用 generate_image, 日常聊天直接回答。可引用的当前对话图片 ID: ${[...available].join(', ') || '无'}。工具成功后按返回结果回答, 不要虚构图片链接。${options.settings.imageAgentInstruction ? `\n\n用户补充要求: ${options.settings.imageAgentInstruction}` : ''}`,
   })
   messages[0].content += allowRetry
-    ? `\n用户允许你判断是否重试图片任务: 失败后重试${retryErrors ? '允许' : '不允许'}, 效果不符时重试${retryMismatch ? '允许' : '不允许'}。本轮最多额外重试 ${retryLimit} 次, 共用次数。工具返回后仍在同一次用户消息的工具流程中, 可以继续检查结果并调用 retry_image。tool_call_id 必须原样使用工具结果中的 retry_tool_call_id, 不要猜测或使用 taskId、图片 ID。该句柄只在本次流程内有效, 跨用户消息继续改图请引用图片 ID 调用 generate_image。重试沿用原参考图并可修正提示词。不要把重试伪装成 generate_image 新任务; 达到上限后如实说明。没有结果预览时不要声称检查过画面。`
+    ? `\n用户允许你判断是否重试图片任务: 失败后重试${retryErrors ? '允许' : '不允许'}, 效果不符时重试${retryMismatch ? '允许' : '不允许'}。工具返回后仍在同一次用户消息的工具流程中, 可以继续检查结果并调用 retry_image。tool_call_id 必须原样使用工具结果中的 retry_tool_call_id, 不要猜测或使用 taskId、图片 ID。该句柄只在本次流程内有效, 跨用户消息继续改图请引用图片 ID 调用 generate_image。重试沿用原参考图并可修正提示词。不要把重试伪装成 generate_image 新任务; 不可再重试时如实说明。没有结果预览时不要声称检查过画面。`
     : '\n用户未允许本轮图片重试, 不要因生成失败或效果不满自行再次生图。'
   messages[0].content += autoParameters
     ? `\n当前默认生图模型为 ${options.settings.imageModel}。根据用户要求选择每次 image_options, model 只能从用户可用模型列表中选, 重试时也可修正参数。接口、数量提交策略、背景实现策略和请求图片压缩由客户端控制。`
@@ -521,8 +526,9 @@ export async function runImageAgent(options) {
     toolSteps.set(index, step)
     return step
   }
-  const rounds = 5 + (allowRetry ? retryLimit : 0)
+  let rounds = 5 + (allowRetry ? retryLimit : 0)
   for (let index = 0; index < rounds; index++) {
+    rounds = Math.max(rounds, 5 + (allowRetry ? currentRetryLimit() : 0))
     if (options.signal.aborted) throw options.signal.reason
     options.onStatus?.({ status: '正在等待对话模型', prompt: '' })
     const textStep = startTextStep()
@@ -568,6 +574,8 @@ export async function runImageAgent(options) {
     for (const call of result.tool_calls) {
       let output
       let retryId
+      let started = false
+      const isRetry = call.function?.name === 'retry_image'
       try {
         if (
           call.type !== 'function' ||
@@ -577,12 +585,13 @@ export async function runImageAgent(options) {
         const args = JSON.parse(call.function.arguments)
         if (!args.prompt?.trim()) throw new Error('图片工具参数不完整')
         let ids
-        const isRetry = call.function.name === 'retry_image'
         if (isRetry) {
           const previous = attempts.get(args.tool_call_id)
           if (!previous)
             throw new Error(
-              '只能重试本轮已执行的图片任务, 请原样使用工具结果中的 retry_tool_call_id, 不要使用 taskId 或图片 ID',
+              notRun.has(args.tool_call_id)
+                ? notRunHint
+                : '该重试句柄来自之前的消息, 已失效; 如需重做请调用 generate_image, 可引用图片 ID',
             )
           if (previous.hasImages ? !retryMismatch : !retryErrors)
             throw new Error(
@@ -590,11 +599,14 @@ export async function runImageAgent(options) {
                 ? '未允许效果不符时重试, 或未开启结果预览'
                 : '未允许生图失败后重试',
             )
-          if (retries >= retryLimit)
-            throw new Error('本轮图片重试次数已达到上限')
+          if (retries >= currentRetryLimit())
+            throw new Error('该图片任务已不可再重试')
           ids = previous.ids
         } else {
-          if (used >= 8) throw new Error('本轮图片生成次数已达到上限')
+          if (used >= 8)
+            throw Object.assign(new Error('本轮图片生成次数已达到上限'), {
+              noHint: true,
+            })
           ids = args.reference_image_ids
         }
         if (!Array.isArray(ids)) throw new Error('图片工具参数不完整')
@@ -615,7 +627,7 @@ export async function runImageAgent(options) {
         attempts.set(retryId, attempt)
         options.onStatus?.({
           status: isRetry
-            ? `正在重试图片 (${retries}/${retryLimit})`
+            ? `正在重试图片 (${retries}/${currentRetryLimit()})`
             : '正在生成图片',
           prompt: args.prompt,
         })
@@ -627,6 +639,7 @@ export async function runImageAgent(options) {
         }
         steps.push(waiting)
         emitSteps()
+        started = true
         try {
           output = await options.generate(args.prompt, ids, parameters)
         } finally {
@@ -654,6 +667,11 @@ export async function runImageAgent(options) {
       } catch (error) {
         if (options.signal.aborted) throw options.signal.reason
         output = { status: 'error', error: error.message, imageIds: [] }
+        // 生图前的参数或引用错误没有可重试的任务, 提示模型改用 generate_image。
+        if (!started && !isRetry && !error.noHint) {
+          notRun.add(call.id)
+          output.error += '。' + notRunHint
+        }
         const last = steps[steps.length - 1]
         if (last?.type === 'waiting' && !last.endedAt) last.endedAt = Date.now()
         if (last?.type !== 'image' || last.toolCallId !== call.id)
@@ -666,19 +684,24 @@ export async function runImageAgent(options) {
         else if (!last.imageIds?.length) last.error = error.message
         emitSteps()
       }
-      if (allowRetry)
-        output = {
-          ...output,
-          ...(retryId ? { retry_tool_call_id: retryId } : {}),
-          retryRemaining: Math.max(0, retryLimit - retries),
-        }
       const tool = {
         role: 'tool',
         tool_call_id: call.id,
         content: JSON.stringify(output),
       }
       results.push(tool)
-      messages.push(tool)
+      // 重试句柄只在本轮请求里提供, 不写入保存的工具结果。
+      messages.push(
+        allowRetry && retryId
+          ? {
+              ...tool,
+              content: JSON.stringify({
+                ...output,
+                retry_tool_call_id: retryId,
+              }),
+            }
+          : tool,
+      )
       // 每次工具完成即保存, 后续对话失败也不会丢失已生成的图片。
       await options.onRound({ assistant, results: [...results] })
     }
@@ -707,12 +730,27 @@ export async function runImageAgent(options) {
   throw new Error('已达到本轮图片工具调用上限')
 }
 
+function historyToolResult(result) {
+  // 历史轮次的重试句柄和次数已失效, 发送时去掉 (兼容旧数据)。
+  if (!result) return result
+  try {
+    const { retry_tool_call_id, retryRemaining, ...output } = JSON.parse(
+      result.content,
+    )
+    return { ...result, content: JSON.stringify(output) }
+  } catch {
+    return result
+  }
+}
+
 export function agentMessages(message) {
   return (message.toolRounds || []).flatMap((round) => [
     round.assistant,
     ...round.assistant.tool_calls.map(
       (call) =>
-        round.results.find((item) => item.tool_call_id === call.id) || {
+        historyToolResult(
+          round.results.find((item) => item.tool_call_id === call.id),
+        ) || {
           role: 'tool',
           tool_call_id: call.id,
           content: JSON.stringify({

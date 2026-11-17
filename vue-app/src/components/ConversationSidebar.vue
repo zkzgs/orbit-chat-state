@@ -326,6 +326,14 @@ function onRenameKeydown(event: KeyboardEvent) {
         复制对话
       </button>
       <button
+        class="copy-conversation-markdown"
+        role="menuitem"
+        :disabled="!menuConversation.messages.length || ui.exporting"
+        @click="chat.exportConversation('clipboard', menuConversation.id)"
+      >
+        复制为 Markdown
+      </button>
+      <button
         role="menuitem"
         :disabled="!menuConversation.messages.length || ui.exporting"
         @click="chat.exportConversation('markdown', menuConversation.id)"

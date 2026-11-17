@@ -9,7 +9,7 @@ import { prepareReferences, readReference } from '../utils/images'
 import { chatImageContent } from '../api/chat-images.js'
 import { readChatFiles, chatDocuments } from '../api/chat-files.js'
 import { errorMessage, formatTime } from '../utils/format'
-import { downloadFile } from '../utils/files'
+import { copyText, downloadFile } from '../utils/files'
 import { escapeHtml, renderMarkdown } from '../utils/markdown'
 import type {
   Message,
@@ -790,6 +790,7 @@ export const useChatStore = defineStore('chat', () => {
           messages: await buildMessages(conversation.id, settings, contextMode),
           imageIds: available,
           signal,
+          retryLimit: () => workspace.state.settings.imageAgentRetryLimit,
           onChunk: settings.chatStream ? update : undefined,
           onSteps: (steps: NonNullable<Message['steps']>) => {
             if (signal.aborted) return
@@ -899,7 +900,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
   async function exportConversation(
-    format: 'markdown' | 'html',
+    format: 'markdown' | 'html' | 'clipboard',
     id = workspace.state.activeConversationId,
   ) {
     if (ui.exporting) return
@@ -915,10 +916,16 @@ export const useChatStore = defineStore('chat', () => {
     ui.exporting = true
     Object.assign(ui.exportProgress, {
       active: true,
-      label: '正在导出对话',
+      label: format === 'clipboard' ? '正在复制对话' : '正在导出对话',
       percent: 0,
     })
     try {
+      if (format === 'clipboard') {
+        // 复制内容与 Markdown 导出完全一致。
+        await copyText(exportMarkdown())
+        ui.notify('当前对话已复制')
+        return
+      }
       await new Promise((resolve) =>
         requestAnimationFrame(() => setTimeout(resolve, 0)),
       )
@@ -955,7 +962,11 @@ export const useChatStore = defineStore('chat', () => {
       )
       ui.notify(`当前对话已导出为 ${format === 'html' ? 'HTML' : 'Markdown'}`)
     } catch (error) {
-      ui.notify('导出失败: ' + errorMessage(error), 'error')
+      ui.notify(
+        (format === 'clipboard' ? '复制失败: ' : '导出失败: ') +
+          errorMessage(error),
+        'error',
+      )
     } finally {
       ui.exporting = false
       ui.exportProgress.active = false
