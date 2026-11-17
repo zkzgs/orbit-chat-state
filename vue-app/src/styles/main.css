@@ -3120,6 +3120,9 @@ select:not(:disabled):hover {
 .search-toggle input {
   accent-color: var(--cyan);
 }
+.search-mode-setting {
+  margin-left: 4px;
+}
 .history-selection-bar {
   position: sticky;
   bottom: 0;
@@ -3628,7 +3631,7 @@ select:not(:disabled):hover {
   transform: translateY(0);
 }
 .custom-tooltip {
-  z-index: 220;
+  z-index: 250;
 }
 .toast {
   z-index: 300;
@@ -3772,6 +3775,11 @@ select:not(:disabled):hover {
 }
 .quick-setting .custom-select-trigger::after {
   right: 6px;
+}
+.search-mode-setting > .custom-select-host,
+.search-mode-setting .custom-select-trigger {
+  width: 84px;
+  flex-basis: 84px;
 }
 .field-label .custom-select-trigger {
   padding: 9px 28px 9px 10px;

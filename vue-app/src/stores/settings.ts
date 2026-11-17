@@ -179,6 +179,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
           apiKey: draft.chatApiKey.trim(),
           model: draft.chatModel.trim(),
           reasoningEffort: draft.reasoningEffort,
+          apiFormat: draft.chatApiFormat,
         }
       : {
           baseUrl: draft.imageBaseUrl.trim(),
@@ -205,12 +206,14 @@ export const useSettingsStore = defineStore('settings-form', () => {
         chatApiKey: profile.apiKey,
         chatModel: profile.model,
         reasoningEffort: profile.reasoningEffort || 'auto',
+        chatApiFormat: profile.apiFormat || 'chat',
       })
       Object.assign(workspace.state.settings, {
         chatBaseUrl: draft.chatBaseUrl,
         chatApiKey: draft.chatApiKey,
         chatModel: draft.chatModel,
         reasoningEffort: draft.reasoningEffort,
+        chatApiFormat: draft.chatApiFormat,
       })
     } else {
       Object.assign(draft, {

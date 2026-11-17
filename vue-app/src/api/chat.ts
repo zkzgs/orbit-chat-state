@@ -1,6 +1,13 @@
-import { apiFetch, buildApiEndpoint } from './client'
+import { apiFetch, chatEndpoint } from './client'
 import type { Settings } from '../types/models'
-import { chatReasoningMessages } from './image-agent.js'
+import {
+  addUrlCitations,
+  applyWebSearch,
+  chatReasoningMessages,
+  fromResponsesEvent,
+  fromResponsesOutput,
+  toResponsesBody,
+} from './image-agent.js'
 
 export interface TextPart {
   type: 'text'
@@ -26,6 +33,7 @@ interface ChatDelta {
   reasoning_content?: string
   reasoning?: string
   reasoning_text?: string
+  annotations?: unknown[]
 }
 interface ChatPayload {
   choices?: { delta?: ChatDelta; message?: ChatDelta; text?: string }[]
@@ -46,12 +54,12 @@ function resultText(value?: ChatDelta) {
       '',
   }
 }
+type Source = { url: string; title: string }
 export async function requestChat(
   settings: Settings,
   messages: ChatRequestMessage[],
   signal: AbortSignal,
   onChunk?: (content: string, reasoning: string) => void,
-  onUnsupportedSearch?: () => void,
 ) {
   const body: {
     model: string
@@ -59,7 +67,6 @@ export async function requestChat(
     temperature: number
     stream: boolean
     reasoning_effort?: string
-    web_search_options?: object
   } = {
     model: settings.chatModel,
     messages: chatReasoningMessages(messages, settings),
@@ -68,31 +75,21 @@ export async function requestChat(
   }
   if (settings.reasoningEffort !== 'auto')
     body.reasoning_effort = settings.reasoningEffort
-  if (settings.chatWebSearch) body.web_search_options = {}
-  const send = () =>
-    apiFetch(
-      buildApiEndpoint(settings.chatBaseUrl, '/chat/completions'),
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${settings.chatApiKey}`,
-        },
-        body: JSON.stringify(body),
-        signal,
+  applyWebSearch(body, settings)
+  const responses = settings.chatApiFormat === 'responses'
+  const response = await apiFetch(
+    chatEndpoint(settings),
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${settings.chatApiKey}`,
       },
-      settings,
-    )
-  let response = await send()
-  if (
-    !response.ok &&
-    body.web_search_options &&
-    [400, 404, 422].includes(response.status)
-  ) {
-    delete body.web_search_options
-    onUnsupportedSearch?.()
-    response = await send()
-  }
+      body: JSON.stringify(responses ? toResponsesBody(body) : body),
+      signal,
+    },
+    settings,
+  )
   if (!response.ok) {
     const payload = (await response.json()) as ChatPayload
     throw new Error(payload.error?.message || `接口返回 ${response.status}`)
@@ -102,18 +99,26 @@ export async function requestChat(
     response.headers.get('content-type')?.includes('application/json') ||
     !response.body
   ) {
-    const payload = (await response.json()) as ChatPayload
+    let payload = (await response.json()) as ChatPayload
+    if (responses) payload = fromResponsesOutput(payload) as ChatPayload
     const result = resultText(payload.choices?.[0]?.message)
     if (!result.content && !result.reasoning)
       throw new Error('接口没有返回可显示的内容')
     onChunk?.(result.content, result.reasoning)
-    return result
+    return {
+      ...result,
+      sources: addUrlCitations(
+        [],
+        payload.choices?.[0]?.message?.annotations,
+      ) as Source[],
+    }
   }
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let content = ''
   let reasoning = ''
+  const sources: Source[] = []
   let finished = false
   function readLine(line: string) {
     if (!line.trim().startsWith('data:')) return
@@ -123,13 +128,17 @@ export async function requestChat(
       return
     }
     if (!data) return
-    let payload: ChatPayload
+    let payload: ChatPayload | null
     try {
       payload = JSON.parse(data) as ChatPayload
     } catch {
       return
     }
+    if (responses) payload = fromResponsesEvent(payload) as ChatPayload | null
+    if (!payload) return
     if (payload.error?.message) throw new Error(payload.error.message)
+    for (const item of payload.choices || [])
+      addUrlCitations(sources, (item.delta || item.message)?.annotations)
     const choice = payload.choices?.[0]
     const delta = resultText(choice?.delta || choice?.message)
     content += delta.content || choice?.text || ''
@@ -154,5 +163,5 @@ export async function requestChat(
     reader.releaseLock()
   }
   if (!content && !reasoning) throw new Error('接口没有返回可显示的内容')
-  return { content, reasoning }
+  return { content, reasoning, sources }
 }

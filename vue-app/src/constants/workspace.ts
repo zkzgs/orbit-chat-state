@@ -62,6 +62,8 @@ export function createDefaultSettings(): Settings {
     systemPrompt: '你是一位简洁, 直接的中文助手，使用中文思考',
     reasoningEffort: 'auto',
     chatWebSearch: false,
+    chatWebSearchMode: 'web_search_options',
+    chatApiFormat: 'chat',
     chatStream: true,
     imagePolishInstruction:
       '保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。',

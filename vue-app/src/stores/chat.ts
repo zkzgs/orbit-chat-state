@@ -25,7 +25,7 @@ import {
   agentStepTitle,
   runImageAgent,
 } from '../api/image-agent.js'
-import { apiFetch, buildApiEndpoint } from '../api/client'
+import { apiFetch, chatEndpoint } from '../api/client'
 import { useImageGenerationStore } from './image-generation'
 import { imageSize } from '../utils/image-options'
 import {
@@ -738,7 +738,11 @@ export const useChatStore = defineStore('chat', () => {
         conversation.messages[conversation.messages.length - 1].createdAt
       if (conversation.title === '新对话')
         conversation.title = content.slice(0, 24) || '图片对话'
-      let result: { content: string; reasoning: string }
+      let result: {
+        content: string
+        reasoning: string
+        sources?: Message['sources']
+      }
       if (settings.demoMode || !settings.chatApiKey || !settings.chatBaseUrl) {
         const text = references.length
           ? '我已经收到这张图片。当前是演示模式, 配置真实接口后可以根据图片内容进行分析。'
@@ -781,10 +785,7 @@ export const useChatStore = defineStore('chat', () => {
           fetch: apiFetch,
           settings: {
             ...settings,
-            chatBaseUrl: buildApiEndpoint(
-              settings.chatBaseUrl,
-              '/chat/completions',
-            ),
+            chatBaseUrl: chatEndpoint(settings),
           },
           imageModels: workspace.modelCatalog.image,
           messages: await buildMessages(conversation.id, settings, contextMode),
@@ -809,13 +810,6 @@ export const useChatStore = defineStore('chat', () => {
           },
           onStatus: (activity: { status: string; prompt: string }) => {
             run.activity = activity
-          },
-          onUnsupportedSearch: () => {
-            if (conversation.chatContext)
-              conversation.chatContext.settings.chatWebSearch = false
-            if (workspace.state.activeConversationId === conversation.id)
-              workspace.state.settings.chatWebSearch = false
-            ui.notify('当前接口不支持联网参数, 已关闭联网并重试', 'warning')
           },
           preview: (id: string) => {
             const image = workspace.imageMap.get(id)
@@ -868,19 +862,10 @@ export const useChatStore = defineStore('chat', () => {
           await buildMessages(conversation.id, settings, contextMode),
           signal,
           settings.chatStream ? update : undefined,
-          () => {
-            if (conversation.chatContext)
-              conversation.chatContext.settings.chatWebSearch = false
-            if (workspace.state.activeConversationId === conversation.id)
-              workspace.state.settings.chatWebSearch = false
-            ui.notify(
-              '当前接口不支持 web_search_options, 已关闭联网并重试',
-              'warning',
-            )
-          },
         )
       pending = result
       applyChunk()
+      if (result.sources?.length) assistant!.sources = result.sources
     } catch (error) {
       if (signal.aborted) {
         if (pending.content || pending.reasoning || pendingSteps?.length)

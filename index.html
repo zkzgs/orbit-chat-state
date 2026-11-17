@@ -476,6 +476,7 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
 .topbar-actions { order: 4; }
 .search-toggle { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; color: var(--muted-2); font-size: 10px; cursor: pointer; }
 .search-toggle input { accent-color: var(--cyan); }
+.search-mode-setting { margin-left: 4px; }
 .history-selection-bar { position: sticky; bottom: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 9px 10px; border: 1px solid rgba(var(--interaction-rgb, 116, 212, 203), .28); border-radius: 7px; background: rgba(17,27,41,.96); box-shadow: 0 -8px 22px rgba(0,0,0,.16); }
 .history-selection-bar[hidden] { display: none; }
 .selection-count { color: var(--ink); font-size: 11px; }
@@ -565,7 +566,7 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
 @media (hover: none), (pointer: coarse) { .image-history .history-select { opacity: 1; pointer-events: auto; } }
 .custom-tooltip { position: fixed; z-index: 100; max-width: 260px; padding: 6px 8px; border: 1px solid rgba(var(--shade-rgb, 255, 255, 255), .16); border-radius: 5px; background: var(--color-263348, #263348); color: var(--ink); font-size: 11px; line-height: 1.35; box-shadow: 0 8px 24px rgba(0,0,0,.32); pointer-events: none; opacity: 0; }
 .custom-tooltip.show { opacity: 1; transform: translateY(0); }
-.custom-tooltip { z-index: 220; }
+.custom-tooltip { z-index: 250; }
 .toast { z-index: 300; }
 .image-viewer img, .lightbox-image-wrap img { -webkit-user-drag: none; user-select: none; }
 .lightbox-details { gap: 10px; }
@@ -587,6 +588,7 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
 .custom-select-option:hover, .custom-select-option:focus-visible { background: rgba(var(--interaction-rgb, 116, 212, 203), .1); color: var(--ink); outline: 0; }
 .custom-select-option.selected { background: rgba(var(--accent-rgb, 230, 243, 107), .1); color: var(--accent); }
 .quick-setting .custom-select-trigger { width: 70px; height: 27px; min-height: 27px; padding: 0 20px 0 7px; font-size: 10px; }
+.search-mode-setting > .custom-select-host, .search-mode-setting .custom-select-trigger { width: 84px; flex-basis: 84px; }
 .quick-setting .custom-select-trigger::after { right: 6px; }
 .field-label .custom-select-trigger { padding: 9px 28px 9px 10px; font-size: 12px; }
 .profile-select-label .custom-select-trigger { padding: 8px 28px 8px 9px; font-size: 12px; }
@@ -1248,6 +1250,19 @@ video[hidden] {
 }
 .markdown-body pre code {
   overflow-wrap: normal;
+}
+.message-sources {
+  margin-top: 10px;
+  color: var(--muted-2);
+  font-size: 12px;
+}
+.message-sources ol {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+.message-sources a {
+  color: var(--cyan);
+  overflow-wrap: anywhere;
 }
 .message-error {
   margin-top: 10px;
@@ -2004,7 +2019,8 @@ video[hidden] {
             <span class="toolbar-label">上下文</span>
             <button class="context-option active" data-context="client" title="每次请求都带上本会话的历史消息">客户端拼接</button>
             <button class="context-option" data-context="single" title="每次只发送当前问题和系统提示词">单轮请求</button>
-            <label class="search-toggle" title="向对话接口发送 web_search_options；是否真正联网由接口和模型决定"><input type="checkbox" id="chatWebSearch"><span>联网搜索</span></label>
+            <label class="search-toggle" title="开启后按右侧联网方式发送联网参数；是否真正联网由接口和模型决定，不支持时直接显示接口报错"><input type="checkbox" id="chatWebSearch"><span>联网搜索</span></label>
+            <label class="quick-setting search-mode-setting" title="联网方式：参数=web_search_options；工具=tools 里加 web_search；DeepSeek=tools 里加 deepseek_web_search 和 deepseek_read_url"><select id="chatWebSearchMode" aria-label="联网方式"><option value="web_search_options">参数</option><option value="web_search">工具</option><option value="deepseek">DeepSeek</option></select></label>
             <label class="search-toggle" title="开启后边生成边显示回复；关闭则等完整回复后一次显示"><input type="checkbox" id="chatStream"><span>流式输出</span></label>
           </div>
           <div class="chat-quick-settings" aria-label="当前对话模型设置">
@@ -2129,8 +2145,9 @@ video[hidden] {
       <div class="modal-header"><div><div class="eyebrow">Workspace setup</div><h2 id="settingsTitle">接口与偏好设置</h2></div><button class="icon-button" id="closeSettings" aria-label="关闭设置">×</button></div>
       <div class="settings-layout"><nav class="settings-tabs" role="tablist" aria-label="设置模块" aria-orientation="vertical"><button id="settings-tab-chat" type="button" role="tab" data-settings-tab="chat" aria-controls="settings-panel-chat" aria-selected="true" tabindex="0" class="active"><span aria-hidden="true">01</span>对话接口</button><button id="settings-tab-image" type="button" role="tab" data-settings-tab="image" aria-controls="settings-panel-image" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">02</span>生图接口</button><button id="settings-tab-proxy" type="button" role="tab" data-settings-tab="proxy" aria-controls="settings-panel-proxy" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">03</span>请求代理</button><button id="settings-tab-chat-policy" type="button" role="tab" data-settings-tab="chat-policy" aria-controls="settings-panel-chat-policy" aria-selected="false" tabindex="-1"><span aria-hidden="true">04</span>对话策略</button><button id="settings-tab-images" type="button" role="tab" data-settings-tab="images" aria-controls="settings-panel-images" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">05</span>图片策略</button><button id="settings-tab-agent" type="button" role="tab" data-settings-tab="agent" aria-controls="settings-panel-agent" aria-selected="false" tabindex="-1"><span aria-hidden="true">06</span>生图 Agent</button><button id="settings-tab-prompts" type="button" role="tab" data-settings-tab="prompts" aria-controls="settings-panel-prompts" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">07</span>提示词偏好</button><button id="settings-tab-habits" type="button" role="tab" data-settings-tab="habits" aria-controls="settings-panel-habits" aria-selected="false" tabindex="-1"><span aria-hidden="true">08</span>操作习惯</button><button id="settings-tab-display" type="button" role="tab" data-settings-tab="display" aria-controls="settings-panel-display" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">09</span>外观与隐私</button><button id="settings-tab-data" type="button" role="tab" data-settings-tab="data" aria-controls="settings-panel-data" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">10</span>数据管理</button></nav><div class="settings-scroll">
         <div class="settings-section" id="settings-panel-chat" role="tabpanel" aria-labelledby="settings-tab-chat" data-settings-panel="chat" tabindex="0">
-          <div class="section-title"><span class="section-number">01</span><div><strong>对话接口</strong><small>兼容 OpenAI Chat Completions 格式</small></div></div>
+          <div class="section-title"><span class="section-number">01</span><div><strong>对话接口</strong><small>兼容 OpenAI Chat Completions / Responses 格式</small></div></div>
           <div class="profile-manager"><label class="profile-select-label">对话接口模板<select id="chatProfileSelect" aria-label="选择对话接口模板"><option value="">临时配置（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveChatProfile" type="button">另存为</button><button class="secondary-button" id="updateChatProfile" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteChatProfile" type="button" title="删除当前对话模板" aria-label="删除当前对话模板" disabled>×</button></div><small class="profile-help">选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。</small></div>
+          <label class="field-label">接口格式<select id="chatApiFormat"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select><small class="field-help">Chat Completions 请求 /chat/completions；Responses 请求 /responses</small></label>
           <label class="field-label">接口地址<input id="chatBaseUrl" type="url" placeholder="https://api.openai.com/v1"><small class="field-help">填写 API 根地址, 系统会自动追加对话请求路径</small></label>
           <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="chatApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="chatApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="chatModel" list="chatModelOptions" type="text" placeholder="点击获取或手动输入模型"><datalist id="chatModelOptions"></datalist></label></div>
           <label class="field-label">思考程度 <select id="reasoningEffort"><option value="auto">自动, 由模型决定</option><option value="none">关闭 · none</option><option value="minimal">最小 · minimal</option><option value="low">轻度 · low</option><option value="medium">中 · medium</option><option value="high">高 · high</option><option value="xhigh">极高 · xhigh</option><option value="max">Ultra · max</option></select><small class="field-help">官方取值按模型而异, 不支持的取值会被接口拒绝。自动模式不发送此字段</small></label>
@@ -2486,6 +2503,8 @@ const defaultState = {
     systemPrompt: '你是一位简洁, 直接的中文助手，使用中文思考',
     reasoningEffort: 'auto',
     chatWebSearch: false,
+    chatWebSearchMode: 'web_search_options',
+    chatApiFormat: 'chat',
     chatStream: true,
     imagePolishInstruction: '保留原始创作意图，补充主体、构图、光影、材质和画面质量细节。只输出可直接用于生图的完整提示词。',
     imagePolishSystemPrompt: '你是专业的图像生成提示词编辑器。严格按照用户的润色要求处理原始关键词；如果收到参考图，请结合参考图中的主体、构图、色彩、风格和视觉特征定制提示词。只输出润色后的完整提示词，不要解释。',
@@ -3927,13 +3946,149 @@ function agentWaitSeconds(step, now = Date.now()) {
   return Math.max(0, Math.round(((step.endedAt || now) - step.startedAt) / 1000))
 }
 
+// 只发送所选联网方式对应的字段; 是否支持由上游判断, 报错原样显示。
+function applyWebSearch(body, settings) {
+  if (!settings.chatWebSearch) return body
+  const mode = settings.chatWebSearchMode
+  if (mode === 'web_search' || mode === 'deepseek')
+    body.tools = [
+      ...(body.tools || []),
+      ...(mode === 'web_search'
+        ? [{ type: 'web_search' }]
+        : [{ type: 'deepseek_web_search' }, { type: 'deepseek_read_url' }]),
+    ]
+  else body.web_search_options = {}
+  return body
+}
+
+// Responses 接口: 把 Chat Completions 请求体转换为 /responses 请求体。
+function toResponsesBody(body) {
+  const { messages, tools, web_search_options, reasoning_effort, ...rest } = body
+  const input = []
+  const instructions = []
+  for (const message of messages) {
+    if (message.role === 'system' && typeof message.content === 'string') {
+      instructions.push(message.content)
+      continue
+    }
+    if (message.role === 'tool') {
+      input.push({
+        type: 'function_call_output',
+        call_id: message.tool_call_id,
+        output: message.content,
+      })
+      continue
+    }
+    const content =
+      typeof message.content === 'string'
+        ? message.content
+        : (message.content || []).map((part) =>
+            part.type === 'image_url'
+              ? { type: 'input_image', image_url: part.image_url.url }
+              : part.type === 'file'
+                ? { type: 'input_file', ...part.file }
+                : {
+                    type: message.role === 'assistant' ? 'output_text' : 'input_text',
+                    text: part.text,
+                  },
+          )
+    if (content?.length) input.push({ role: message.role, content })
+    for (const call of message.tool_calls || [])
+      input.push({
+        type: 'function_call',
+        call_id: call.id,
+        name: call.function.name,
+        arguments: call.function.arguments,
+      })
+  }
+  // Responses 没有 web_search_options, 参数方式改用 web_search 工具。
+  const list = [
+    ...(tools || []).map((tool) =>
+      tool.type === 'function' ? { type: 'function', ...tool.function } : tool,
+    ),
+    ...(web_search_options ? [{ type: 'web_search' }] : []),
+  ]
+  return {
+    ...rest,
+    ...(instructions.length ? { instructions: instructions.join('\n\n') } : {}),
+    input,
+    ...(list.length ? { tools: list } : {}),
+    ...(reasoning_effort
+      ? { reasoning: { effort: reasoning_effort, summary: 'auto' } }
+      : {}),
+  }
+}
+
+// 把 Responses 结果转换为 Chat Completions 的 message 结构。
+function fromResponsesOutput(response) {
+  const message = { content: '', reasoning_content: '', tool_calls: [], annotations: [] }
+  for (const item of response?.output || []) {
+    if (item.type === 'message')
+      for (const part of item.content || []) {
+        message.content += part.text || ''
+        message.annotations.push(...(part.annotations || []))
+      }
+    if (item.type === 'reasoning')
+      message.reasoning_content += (item.summary?.length ? item.summary : item.content || [])
+        .map((part) => part.text || '')
+        .join('')
+    if (item.type === 'function_call')
+      message.tool_calls.push({
+        id: item.call_id,
+        type: 'function',
+        function: { name: item.name, arguments: item.arguments || '' },
+      })
+  }
+  return { choices: [{ message }], error: response?.error }
+}
+
+// 把 Responses 流式事件转换为 Chat Completions 的 delta 结构, 无关事件返回 null。
+function fromResponsesEvent(event) {
+  const delta = (value) => ({ choices: [{ delta: value }] })
+  const type = event?.type
+  if (type === 'response.output_text.delta') return delta({ content: event.delta })
+  if (type === 'response.reasoning_summary_text.delta' || type === 'response.reasoning_text.delta')
+    return delta({ reasoning_content: event.delta })
+  if (type === 'response.output_text.annotation.added')
+    return delta({ annotations: [event.annotation] })
+  if (type === 'response.output_item.added' && event.item?.type === 'function_call')
+    return delta({
+      tool_calls: [
+        {
+          index: event.output_index,
+          id: event.item.call_id,
+          type: 'function',
+          function: { name: event.item.name, arguments: event.item.arguments || '' },
+        },
+      ],
+    })
+  if (type === 'response.function_call_arguments.delta')
+    return delta({ tool_calls: [{ index: event.output_index, function: { arguments: event.delta } }] })
+  if (type === 'response.completed')
+    return delta({ annotations: fromResponsesOutput(event.response).choices[0].message.annotations })
+  if (type === 'error') return { error: { message: event.message || event.error?.message || '对话请求失败' } }
+  if (type === 'response.failed' || type === 'response.incomplete')
+    return { error: { message: event.response?.error?.message || event.response?.incomplete_details?.reason || '对话请求失败' } }
+  return null
+}
+
+// 收集 url_citation 注释, 按 url 去重。
+function addUrlCitations(sources, annotations) {
+  for (const item of Array.isArray(annotations) ? annotations : []) {
+    const cite = item?.type === 'url_citation' ? item.url_citation || item : null
+    const url = typeof cite?.url === 'string' ? cite.url : ''
+    if (/^https?:\/\//i.test(url) && !sources.some((source) => source.url === url))
+      sources.push({ url, title: String(cite.title || url) })
+  }
+  return sources
+}
+
 async function requestToolChat(
   fetchApi,
   settings,
   messages,
   signal,
   onChunk,
-  onUnsupportedSearch,
   tools = [imageTool],
 ) {
   const body = {
@@ -3944,31 +4099,21 @@ async function requestToolChat(
   }
   if (settings.reasoningEffort && settings.reasoningEffort !== 'auto')
     body.reasoning_effort = settings.reasoningEffort
-  if (settings.chatWebSearch) body.web_search_options = {}
-  const send = () =>
-    fetchApi(
-      settings.chatBaseUrl,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${settings.chatApiKey}`,
-        },
-        body: JSON.stringify(body),
-        signal,
+  applyWebSearch(body, settings)
+  const responses = settings.chatApiFormat === 'responses'
+  const response = await fetchApi(
+    settings.chatBaseUrl,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${settings.chatApiKey}`,
       },
-      settings,
-    )
-  let response = await send()
-  if (
-    !response.ok &&
-    body.web_search_options &&
-    [400, 404, 422].includes(response.status)
-  ) {
-    delete body.web_search_options
-    onUnsupportedSearch?.()
-    response = await send()
-  }
+      body: JSON.stringify(responses ? toResponsesBody(body) : body),
+      signal,
+    },
+    settings,
+  )
   if (!response.ok) {
     const raw = await response.text()
     let message = raw.slice(0, 500)
@@ -3980,7 +4125,9 @@ async function requestToolChat(
   let content = '',
     reasoning = ''
   const calls = new Map()
+  const sources = []
   function consume(message, delta = false) {
+    addUrlCitations(sources, message?.annotations)
     const text =
       typeof message?.content === 'string'
         ? message.content
@@ -4034,6 +4181,8 @@ async function requestToolChat(
       } catch {
         return
       }
+      if (responses) payload = fromResponsesEvent(payload)
+      if (!payload) return
       if (payload.error)
         throw new Error(payload.error.message || '对话请求失败')
       consume(
@@ -4061,14 +4210,15 @@ async function requestToolChat(
       reader.releaseLock()
     }
   } else {
-    const payload = await response.json()
+    let payload = await response.json()
+    if (responses) payload = fromResponsesOutput(payload)
     if (payload.error) throw new Error(payload.error.message || '对话请求失败')
     consume(payload.choices?.[0]?.message)
   }
   const tool_calls = [...calls.values()]
   if (!content && !reasoning && !tool_calls.length)
     throw new Error('接口没有返回可显示的内容')
-  return { content, reasoning, tool_calls }
+  return { content, reasoning, tool_calls, sources }
 }
 
 async function runImageAgent(options) {
@@ -4119,6 +4269,7 @@ async function runImageAgent(options) {
     : '\n生图参数沿用用户的生图工作区配置, 不要自行设置 image_options。'
   let used = 0
   const steps = []
+  const sources = []
   const emitSteps = () => options.onSteps?.(steps)
   function startTextStep() {
     const step = { type: 'thinking', text: '' }
@@ -4183,9 +4334,10 @@ async function runImageAgent(options) {
             emitSteps()
           }
         : undefined,
-      options.onUnsupportedSearch,
       index === rounds - 1 ? [] : tools,
     )
+    for (const source of result.sources)
+      if (!sources.some((item) => item.url === source.url)) sources.push(source)
     textStep.text = result.reasoning || textStep.text || ''
     for (const [toolIndex, call] of result.tool_calls.entries())
       upsertToolStep(call, toolIndex, toolSteps)
@@ -4193,7 +4345,7 @@ async function runImageAgent(options) {
     if (!result.tool_calls.length) {
       if (result.content) steps.push({ type: 'summary', text: result.content })
       emitSteps()
-      return result
+      return { ...result, sources }
     }
     emitSteps()
     if (index === rounds - 1) throw new Error('已达到本轮图片工具调用上限')
@@ -6836,7 +6988,7 @@ function showCustomTooltip(target) {
   if (/^关闭/.test(text || '')) { target.removeAttribute('title'); delete target.dataset.tooltip; hideCustomTooltip(); return; }
   if (!text) return;
   if (target.hasAttribute('title')) { target.dataset.tooltip = target.getAttribute('title'); target.removeAttribute('title'); }
-  if (target.matches('.settings-tabs button') || target.innerText.replace(/\s+/g, '') === text.replace(/\s+/g, '')) { hideCustomTooltip(); return; }
+  if (target.matches('.settings-tabs button') || target.querySelector('.custom-select-trigger[aria-expanded="true"]') || target.innerText.replace(/\s+/g, '') === text.replace(/\s+/g, '')) { hideCustomTooltip(); return; }
   const tooltip = ensureCustomTooltip();
   tooltip.textContent = text;
   tooltip.classList.add('show');
@@ -7263,6 +7415,9 @@ function render() {
   $('#chatModelQuick').value = state.settings.chatModel;
   $('#reasoningEffortQuick').value = state.settings.reasoningEffort || 'auto';
   $('#chatWebSearch').checked = Boolean(state.settings.chatWebSearch);
+  $('#chatWebSearchMode').value = state.settings.chatWebSearchMode;
+  $('#chatWebSearchMode').disabled = !state.settings.chatWebSearch;
+  syncCustomSelect($('#chatWebSearchMode'));
   $('#chatStream').checked = Boolean(state.settings.chatStream);
   $('#chatImageTools').checked = Boolean(state.settings.chatImageTools);
   $('#agentImageSettings').disabled = !state.settings.chatImageTools;
@@ -7594,7 +7749,7 @@ function renderMessages() {
     const steps = renderAgentSteps(message);
     const reasoning = hasSteps ? '' : (message.reasoning ? `<details class="message-reasoning"${message.id === chatRuns.get(state.activeConversationId)?.messageId ? ' open' : ''}><summary>${message.id === chatRuns.get(state.activeConversationId)?.messageId && !message.content ? (chatRuns.get(state.activeConversationId)?.activity?.status || '正在思考') : '思考过程'}</summary><div class="message-reasoning-content markdown-body">${renderMarkdown(message.reasoning)}</div></details>` : '');
     const text = hasSteps && message.steps.some((step) => step.type === 'summary') ? '' : `<div class="message-text markdown-body">${renderMarkdown(message.content)}</div>`;
-    return `<article class="message ${message.role}${message.id === chatRuns.get(state.activeConversationId)?.messageId ? ' streaming' : ''}" data-message-id="${message.id}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div>${steps || reasoning}${text}${message.error ? `<div class="message-error" role="alert">请求失败: ${escapeHtml(message.error)}</div>` : ''}${files ? `<div class="chat-files">${files}</div>` : ''}${!hasSteps && image ? `<div class="message-images">${image}</div>` : ''}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
+    return `<article class="message ${message.role}${message.id === chatRuns.get(state.activeConversationId)?.messageId ? ' streaming' : ''}" data-message-id="${message.id}"><div class="message-avatar">${message.role === 'assistant' ? 'O' : 'ME'}</div><div class="message-content"><div class="message-meta"><span class="message-role">${message.role === 'assistant' ? 'Orbit' : '你'}</span><span class="message-time">${formatTime(message.createdAt)}</span></div>${steps || reasoning}${text}${message.sources?.length ? `<div class="message-sources"><span>来源</span><ol>${message.sources.map((source) => `<li><a href="${escapeHtml(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.title || source.url)}</a></li>`).join('')}</ol></div>` : ''}${message.error ? `<div class="message-error" role="alert">请求失败: ${escapeHtml(message.error)}</div>` : ''}${files ? `<div class="chat-files">${files}</div>` : ''}${!hasSteps && image ? `<div class="message-images">${image}</div>` : ''}<div class="message-actions">${editAction}<button class="message-action copy-message" data-message="${encodeURIComponent(message.content)}">复制</button><button class="message-action delete-message" data-message-id="${message.id}">删除</button></div></div></article>`;
   }).join('');
   hydrateDeferredImages(list, 'messages');
   $$('.copy-message').forEach((button) => button.addEventListener('click', async () => {
@@ -8643,7 +8798,7 @@ function buildApiEndpoint(input, suffix) {
   let value = input.trim().replace(/\/$/, '');
   if (!value) return '';
   if (value.endsWith(suffix)) return value;
-  const knownEndpoint = /\/(chat\/completions|images\/generations|images\/edits)$/;
+  const knownEndpoint = /\/(chat\/completions|responses|images\/generations|images\/edits)$/;
   if (knownEndpoint.test(value)) return `${value.replace(knownEndpoint, '')}${suffix}`;
   if (value.endsWith('/v1') || value.endsWith('/api')) return `${value}${suffix}`;
   if (!/^https?:\/\//i.test(value)) return value;
@@ -8655,8 +8810,12 @@ function buildApiEndpoint(input, suffix) {
   return value;
 }
 
+function chatEndpoint(settings) {
+  return buildApiEndpoint(settings.chatBaseUrl, settings.chatApiFormat === 'responses' ? '/responses' : '/chat/completions');
+}
+
 function buildModelsEndpoint(input) {
-  const value = input.trim().replace(/\/$/, '').replace(/\/(chat\/completions|images\/generations|models)$/, '');
+  const value = input.trim().replace(/\/$/, '').replace(/\/(chat\/completions|responses|images\/generations|models)$/, '');
   if (!value) return '';
   if (!/^https?:\/\//i.test(value)) return `${value}/models`;
   const url = new URL(value);
@@ -9061,7 +9220,7 @@ function updateStreamingMessage(run, content, immediate = false, reasoning = nul
   }, 40);
 }
 
-function finalizeStreamingMessage(run, content, reasoning = null) {
+function finalizeStreamingMessage(run, content, reasoning = null, sources = []) {
   window.clearTimeout(run.timer);
   run.timer = 0;
   if (!run.messageId) {
@@ -9074,6 +9233,7 @@ function finalizeStreamingMessage(run, content, reasoning = null) {
   if (!message) return;
   message.content = content;
   if (reasoning !== null) message.reasoning = reasoning;
+  if (sources?.length) message.sources = sources;
   if (!content.trim() && !message.reasoning?.trim() && !message.imageIds?.length && !message.toolRounds?.length && !message.steps?.length) {
     const conversation = state.conversations.find((entry) => entry.messages.some((item) => item.id === messageId));
     const index = conversation ? conversation.messages.findIndex((entry) => entry.id === messageId) : -1;
@@ -9163,10 +9323,11 @@ async function sendMessage() {
     let response;
     if (useDemo) response = await demoReply(run, content, Boolean(attachments.length), streamEnabled);
     else response = settings.chatImageTools ? await requestChatAgent(run, streamEnabled) : await requestChat(run, streamEnabled);
-    if (streamEnabled || settings.chatImageTools) finalizeStreamingMessage(run, response.content, response.reasoning);
+    if (streamEnabled || settings.chatImageTools) finalizeStreamingMessage(run, response.content, response.reasoning, response.sources);
     else {
       const message = createMessage('assistant', response.content);
       if (response.reasoning) message.reasoning = response.reasoning;
+      if (response.sources?.length) message.sources = response.sources;
       addMessage(message, conversationId);
     }
     if (run.stopped) showToast('已暂停生成');
@@ -9241,7 +9402,7 @@ async function requestChatAgent(run, streamEnabled) {
   try {
     return await runImageAgent({
       fetch: apiFetch,
-      settings: { ...settings, chatBaseUrl: buildApiEndpoint(settings.chatBaseUrl, '/chat/completions') },
+      settings: { ...settings, chatBaseUrl: chatEndpoint(settings) },
       messages: await buildRequestMessages(run.id, settings, run.contextMode),
       imageModels: modelCatalog.image,
       imageIds: conversation.messages.flatMap((message) => [...(message.imageIds || []), ...messageBatchImages(message).map((image) => image.id)]).filter((id) => { const image = storedImages.get(id); return image?.type === 'image' && image.mediaType !== 'video'; }),
@@ -9258,7 +9419,6 @@ async function requestChatAgent(run, streamEnabled) {
       },
       onStatus: (activity) => setAgentActivity(activity, run),
       preview: (id) => { const image = storedImages.get(id); if (!image?.src) throw new Error('图片已删除'); return imageStorage.previewDataUrl(image.src); },
-      onUnsupportedSearch: () => { conversation.chatContext.settings.chatWebSearch = false; if (state.activeConversationId === run.id) state.settings.chatWebSearch = false; persist(); showWarningToast('当前接口不支持联网参数, 已关闭联网并重试'); },
       generate: async (prompt, ids, parameters) => {
         if (!settings.imageApiKey || !settings.imageBaseUrl) throw new Error('请先配置生图接口和 API Key');
         const references = (ids || []).flatMap((id) => { const image = storedImages.get(id); return image?.src ? [{ imageId: id, data: image.src }] : []; });
@@ -9278,23 +9438,23 @@ async function requestChatAgent(run, streamEnabled) {
 
 async function requestChat(run, streamEnabled) {
   const settings = run.settings;
-  const endpoint = buildApiEndpoint(settings.chatBaseUrl, '/chat/completions');
+  const endpoint = chatEndpoint(settings);
+  const responses = settings.chatApiFormat === 'responses';
   if (run.stopped) throw createChatAbortError(run);
   const messages = await buildRequestMessages(run.id, settings, run.contextMode);
   if (run.stopped) throw createChatAbortError(run);
   await new Promise((resolve) => window.setTimeout(resolve, 0));
   if (run.stopped) throw createChatAbortError(run);
   const body = { model: settings.chatModel, messages: chatReasoningMessages(messages, settings), temperature: 0.7, stream: Boolean(streamEnabled) };
-  const webSearchRequested = Boolean(settings.chatWebSearch);
-  if (webSearchRequested) body.web_search_options = {};
   if (settings.reasoningEffort && settings.reasoningEffort !== 'auto') body.reasoning_effort = settings.reasoningEffort;
+  applyWebSearch(body, settings);
   let timeout;
   const sendRequest = async () => {
     const controller = run.controller;
     const timeoutMs = streamEnabled ? 300000 : 60000;
     timeout = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
-      return await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.chatApiKey}` }, body: JSON.stringify(body), signal: run.controller.signal }, settings);
+      return await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.chatApiKey}` }, body: JSON.stringify(responses ? toResponsesBody(body) : body), signal: run.controller.signal }, settings);
     } catch (error) {
       window.clearTimeout(timeout);
       timeout = 0;
@@ -9310,40 +9470,23 @@ async function requestChat(run, streamEnabled) {
     try { return await response.clone().json(); } catch { return null; }
   };
   try {
-    let response = await sendRequest();
-    let webSearchFallback = false;
-    if (!response.ok && webSearchRequested && [400, 404, 422].includes(response.status)) {
-      await readErrorPayload(response);
-      if (run.controller.signal.aborted) throw createChatAbortError(run);
-      clearRequestTimeout();
-      delete body.web_search_options;
-      const conversation = state.conversations.find(item => item.id === run.id);
-      if (conversation?.chatContext) conversation.chatContext.settings.chatWebSearch = false;
-      if (state.activeConversationId === run.id) {
-        state.settings.chatWebSearch = false;
-        $('#chatWebSearch').checked = false;
-      }
-      persist();
-      webSearchFallback = true;
-      response = await sendRequest();
-    }
+    const response = await sendRequest();
     if (streamEnabled) {
       if (!response.ok) {
         const payload = await readErrorPayload(response);
         throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
       }
-      if (webSearchFallback) showWarningToast('当前接口不支持 web_search_options，已关闭联网并按普通对话重试');
-      return await readChatStream(response, run);
+      return await readChatStream(response, run, responses);
     }
     await new Promise((resolve) => window.setTimeout(resolve, 0));
-    const payload = await response.json();
+    let payload = await response.json();
     if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
-    if (webSearchFallback) showWarningToast('当前接口不支持 web_search_options，已关闭联网并按普通对话重试');
+    if (responses) payload = fromResponsesOutput(payload);
     const assistantMessage = payload?.choices?.[0]?.message;
     const content = extractChatText(assistantMessage?.content);
     const reasoning = extractMessageReasoning(assistantMessage);
     if (!content.trim() && !reasoning.trim()) throw new Error('接口没有返回可显示的内容');
-    return { content, reasoning };
+    return { content, reasoning, sources: addUrlCitations([], assistantMessage?.annotations) };
   } catch (error) {
     if (error.name === 'AbortError') throw createChatAbortError(run);
     throw error;
@@ -9352,21 +9495,23 @@ async function requestChat(run, streamEnabled) {
   }
 }
 
-async function readChatStream(response, run) {
+async function readChatStream(response, run, responses = false) {
   if (response.headers?.get('content-type')?.includes('application/json') || !response.body?.getReader) {
-    const payload = await response.json();
+    let payload = await response.json();
+    if (responses) payload = fromResponsesOutput(payload);
     const assistantMessage = payload?.choices?.[0]?.message;
     const content = extractChatText(assistantMessage?.content);
     const reasoning = extractMessageReasoning(assistantMessage);
     if (!content.trim() && !reasoning.trim()) throw new Error('接口没有返回可显示的内容');
     updateStreamingMessage(run, content, true, reasoning);
-    return { content, reasoning };
+    return { content, reasoning, sources: addUrlCitations([], assistantMessage?.annotations) };
   }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let content = '';
   let reasoning = '';
+  const sources = [];
   const readLine = (line) => {
     const trimmed = line.trim();
     if (!trimmed.startsWith('data:')) return false;
@@ -9375,7 +9520,10 @@ async function readChatStream(response, run) {
     if (!data) return false;
     let payload;
     try { payload = JSON.parse(data); } catch { return false; }
+    if (responses) payload = fromResponsesEvent(payload);
+    if (!payload) return false;
     if (payload?.error?.message) throw new Error(payload.error.message);
+    for (const choice of payload?.choices || []) addUrlCitations(sources, (choice?.delta || choice?.message)?.annotations);
     const delta = extractStreamDelta(payload);
     const reasoningDelta = extractStreamReasoning(payload);
     if (delta || reasoningDelta) {
@@ -9408,7 +9556,7 @@ async function readChatStream(response, run) {
     if (error.name === 'AbortError') {
       if (run.stopped && (content.trim() || reasoning.trim())) {
         updateStreamingMessage(run, content, true, reasoning);
-        return { content, reasoning };
+        return { content, reasoning, sources };
       }
       throw createChatAbortError(run);
     }
@@ -9422,7 +9570,7 @@ async function readChatStream(response, run) {
     if (run.stopped) throw createChatAbortError(run);
     throw new Error('接口没有返回可显示的内容');
   }
-  return { content, reasoning };
+  return { content, reasoning, sources };
 }
 
 async function parseImageResponse(response, endpoint, isEdit) {
@@ -10255,6 +10403,7 @@ function enhanceCustomSelect(select) {
       menu.hidden = false;
       positionCustomSelectMenu(host, menu);
       trigger.setAttribute('aria-expanded', 'true');
+      hideCustomTooltip();
       menu.querySelector('.custom-select-option.selected')?.focus();
     } else {
       menu.hidden = true;
@@ -10757,13 +10906,15 @@ async function generatePolishResult() {
       }, true) : [];
       const generationSources = preparedReferences.slice(0, generationReferences.length).map((reference) => reference.data);
       const polishSources = preparedReferences.slice(generationReferences.length).map((reference) => reference.data);
-      const endpoint = buildApiEndpoint(state.settings.chatBaseUrl, '/chat/completions');
+      const endpoint = chatEndpoint(state.settings);
       const userContent = createPolishUserContent(source, instruction, generationSources, polishSources);
       const polishReferenceNote = polishRequestReferences.length ? '注：润色参考图不会出现在最终生成参数内，请勿在提示词中提及润色参考图，或使用“参考图中的…”、“as in the reference”等依赖润色参考图的表述；应将其中需要的视觉信息（主体、风格、构图、色彩等）直接用文字描述出来。此限制不影响会传入最终生图的生成参考图。' : '';
       const systemPrompt = [state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt, polishReferenceNote].filter(Boolean).join('\n\n');
-      const response = await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify({ model: state.settings.chatModel, stream: false, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }] }) });
-      const payload = await response.json();
+      const polishBody = { model: state.settings.chatModel, stream: false, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }] };
+      const response = await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(state.settings.chatApiFormat === 'responses' ? toResponsesBody(polishBody) : polishBody) });
+      let payload = await response.json();
       if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
+      if (state.settings.chatApiFormat === 'responses') payload = fromResponsesOutput(payload);
       const content = payload?.choices?.[0]?.message?.content;
       result = Array.isArray(content) ? content.map((part) => part.text || '').join('') : content || '';
       $('#polishStatus').textContent = '已生成建议';
@@ -11399,7 +11550,7 @@ function confirmClearReferences(label, references, clear) {
 }
 
 function getConnectionProfileFields(kind) {
-  if (kind === 'chat') return { baseUrl: $('#chatBaseUrl').value.trim(), apiKey: $('#chatApiKey').value.trim(), model: $('#chatModel').value.trim(), reasoningEffort: $('#reasoningEffort').value || 'auto' };
+  if (kind === 'chat') return { apiFormat: $('#chatApiFormat').value, baseUrl: $('#chatBaseUrl').value.trim(), apiKey: $('#chatApiKey').value.trim(), model: $('#chatModel').value.trim(), reasoningEffort: $('#reasoningEffort').value || 'auto' };
   return { imageProvider: $('#imageProvider').value, baseUrl: $('#imageBaseUrl').value.trim(), apiKey: $('#imageApiKey').value.trim(), model: $('#imageModel').value.trim(), countMode: $('#imageCountModeSetting').value || 'parameter', backgroundMode: $('#imageBackgroundModeSetting').value || 'parameter' };
 }
 
@@ -11409,7 +11560,9 @@ function setConnectionProfileFields(kind, profile) {
     $('#chatApiKey').value = profile.apiKey || '';
     $('#chatModel').value = profile.model || '';
     $('#reasoningEffort').value = profile.reasoningEffort || 'auto';
+    $('#chatApiFormat').value = profile.apiFormat || 'chat';
     syncCustomSelect($('#reasoningEffort'));
+    syncCustomSelect($('#chatApiFormat'));
     return;
   }
   $('#imageBaseUrl').value = profile.baseUrl || '';
@@ -11428,6 +11581,7 @@ function applyConnectionProfileToSettings(kind, profile) {
     state.settings.chatApiKey = profile.apiKey || '';
     state.settings.chatModel = profile.model || '';
     state.settings.reasoningEffort = profile.reasoningEffort || 'auto';
+    state.settings.chatApiFormat = profile.apiFormat || 'chat';
     $('#chatModelQuick').value = state.settings.chatModel;
     $('#reasoningEffortQuick').value = state.settings.reasoningEffort;
     syncCustomSelect($('#reasoningEffortQuick'));
@@ -11693,6 +11847,7 @@ function fillSettingsForm() {
   $('#imageAgentRetryLimit').value = state.settings.imageAgentRetryLimit;
   updateAgentRetryControls();
   $('#reasoningEffort').value = state.settings.reasoningEffort || 'auto';
+  $('#chatApiFormat').value = state.settings.chatApiFormat;
   $('#imagePrivacyMode').value = state.settings.imagePrivacyMode;
   $('#imagePrivacyMode').disabled = !state.settings.imagePrivacyEnabled;
   syncCustomSelects();
@@ -11770,7 +11925,7 @@ function saveSettings() {
     showErrorToast('代理地址尚未通过连接测试');
     return;
   }
-  state.settings = { theme: $('#themeSetting').value, imageProvider: $('#imageProvider').value, chatImageTools: Boolean(state.settings.chatImageTools), imageAgentInstruction: $('#imageAgentInstruction').value.trim(), imageAgentPreview: $('#imageAgentPreview').checked, imageAgentAutoParameters: $('#imageAgentAutoParameters').checked, chatHistoryImages: $('#chatHistoryImages').value, conversationSort: $('#conversationSort').value, chatImagePreview: $('#chatImagePreview').checked, chatSendReasoning: $('#chatSendReasoning').checked, imageAgentRetryErrors: $('#imageAgentRetryErrors').checked, imageAgentRetryMismatch: $('#imageAgentRetryMismatch').checked, imageAgentRetryLimit, chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim(), imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, imagePreventPromptRewrite: $('#imagePreventPromptRewrite').checked, persistInputContent: $('#persistInputContent').checked, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), chatStream: Boolean(state.settings.chatStream), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, imagePrivacyEnabled: $('#imagePrivacyEnabled').checked, imagePrivacyMode: $('#imagePrivacyMode').value, demoMode: $('#demoMode').checked, deleteRetriedRecordOnSuccess: $('#deleteRetriedRecordOnSuccess').checked, clearInputAfterSubmit: $('#clearInputAfterSubmit').checked, alwaysShowRetryButton: $('#alwaysShowRetryButton').checked };
+  state.settings = { theme: $('#themeSetting').value, imageProvider: $('#imageProvider').value, chatImageTools: Boolean(state.settings.chatImageTools), imageAgentInstruction: $('#imageAgentInstruction').value.trim(), imageAgentPreview: $('#imageAgentPreview').checked, imageAgentAutoParameters: $('#imageAgentAutoParameters').checked, chatHistoryImages: $('#chatHistoryImages').value, conversationSort: $('#conversationSort').value, chatImagePreview: $('#chatImagePreview').checked, chatSendReasoning: $('#chatSendReasoning').checked, imageAgentRetryErrors: $('#imageAgentRetryErrors').checked, imageAgentRetryMismatch: $('#imageAgentRetryMismatch').checked, imageAgentRetryLimit, chatApiFormat: $('#chatApiFormat').value, chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim(), imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, imagePreventPromptRewrite: $('#imagePreventPromptRewrite').checked, persistInputContent: $('#persistInputContent').checked, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), chatWebSearchMode: state.settings.chatWebSearchMode, chatStream: Boolean(state.settings.chatStream), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, imagePrivacyEnabled: $('#imagePrivacyEnabled').checked, imagePrivacyMode: $('#imagePrivacyMode').value, demoMode: $('#demoMode').checked, deleteRetriedRecordOnSuccess: $('#deleteRetriedRecordOnSuccess').checked, clearInputAfterSubmit: $('#clearInputAfterSubmit').checked, alwaysShowRetryButton: $('#alwaysShowRetryButton').checked };
   if (state.settings.persistInputContent) {
     saveImagePromptDraft($('#imagePrompt').value);
     if (state.activeConversationId)
@@ -12624,6 +12779,13 @@ function updateReasoningQuick() {
 
 function updateChatWebSearch() {
   state.settings.chatWebSearch = Boolean($('#chatWebSearch').checked);
+  $('#chatWebSearchMode').disabled = !state.settings.chatWebSearch;
+  syncCustomSelect($('#chatWebSearchMode'));
+  persist();
+}
+
+function updateChatWebSearchMode() {
+  state.settings.chatWebSearchMode = $('#chatWebSearchMode').value;
   persist();
 }
 
@@ -12999,6 +13161,7 @@ function bindEvents() {
   $('#chatModelQuick').addEventListener('blur', updateChatModelQuick);
   $('#reasoningEffortQuick').addEventListener('change', updateReasoningQuick);
   $('#chatWebSearch').addEventListener('change', updateChatWebSearch);
+  $('#chatWebSearchMode').addEventListener('change', updateChatWebSearchMode);
   $('#chatStream').addEventListener('change', updateChatStream);
   document.addEventListener('click', closeSidebarOnOutside);
   document.addEventListener('click', closeModelDropdowns);

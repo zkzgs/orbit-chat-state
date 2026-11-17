@@ -12,7 +12,7 @@ export function buildApiEndpoint(input: string, suffix: string) {
   if (!value) return ''
   if (value.endsWith(suffix)) return value
   const knownEndpoint =
-    /\/(chat\/completions|images\/generations|images\/edits)$/
+    /\/(chat\/completions|responses|images\/generations|images\/edits)$/
   if (knownEndpoint.test(value))
     return `${value.replace(knownEndpoint, '')}${suffix}`
   if (value.endsWith('/v1') || value.endsWith('/api'))
@@ -26,11 +26,21 @@ export function buildApiEndpoint(input: string, suffix: string) {
   return value
 }
 
+export function chatEndpoint(settings: {
+  chatBaseUrl: string
+  chatApiFormat: string
+}) {
+  return buildApiEndpoint(
+    settings.chatBaseUrl,
+    settings.chatApiFormat === 'responses' ? '/responses' : '/chat/completions',
+  )
+}
+
 export function buildModelsEndpoint(input: string) {
   const value = input
     .trim()
     .replace(/\/$/, '')
-    .replace(/\/(chat\/completions|images\/generations|models)$/, '')
+    .replace(/\/(chat\/completions|responses|images\/generations|models)$/, '')
   if (!value) return ''
   if (!/^https?:\/\//i.test(value)) return `${value}/models`
   const url = new URL(value)

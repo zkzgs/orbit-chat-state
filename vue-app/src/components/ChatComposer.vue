@@ -15,6 +15,11 @@ const ui = useInterfaceStore()
 const chat = useChatStore()
 const settings = useSettingsStore()
 const dropping = ref(false)
+const webSearchModes = [
+  { value: 'web_search_options', label: '参数' },
+  { value: 'web_search', label: '工具' },
+  { value: 'deepseek', label: 'DeepSeek' },
+]
 let dragDepth = 0
 function keydown(event: KeyboardEvent) {
   if (event.defaultPrevented) return
@@ -174,13 +179,23 @@ onUnmounted(() => {
         </button>
         <label
           class="search-toggle"
-          title="向对话接口发送 web_search_options；是否真正联网由接口和模型决定"
+          title="开启后按右侧联网方式发送联网参数；是否真正联网由接口和模型决定，不支持时直接显示接口报错"
           ><input
             v-model="workspace.state.settings.chatWebSearch"
             type="checkbox"
             id="chatWebSearch"
           /><span>联网搜索</span></label
         >
+        <label
+          class="quick-setting search-mode-setting"
+          title="联网方式：参数=web_search_options；工具=tools 里加 web_search；DeepSeek=tools 里加 deepseek_web_search 和 deepseek_read_url"
+          ><CustomSelect
+            v-model="workspace.state.settings.chatWebSearchMode"
+            id="chatWebSearchMode"
+            aria-label="联网方式"
+            :disabled="!workspace.state.settings.chatWebSearch"
+            :options="webSearchModes"
+        /></label>
         <label
           class="search-toggle"
           title="开启后边生成边显示回复；关闭则等完整回复后一次显示"
@@ -273,12 +288,22 @@ onUnmounted(() => {
             </button>
             <label
               class="search-toggle"
-              title="向对话接口发送 web_search_options；是否真正联网由接口和模型决定"
+              title="开启后按右侧联网方式发送联网参数；是否真正联网由接口和模型决定，不支持时直接显示接口报错"
               ><input
                 v-model="workspace.state.settings.chatWebSearch"
                 type="checkbox"
               /><span>联网搜索</span></label
             >
+            <label
+              class="quick-setting search-mode-setting"
+              title="联网方式：参数=web_search_options；工具=tools 里加 web_search；DeepSeek=tools 里加 deepseek_web_search 和 deepseek_read_url"
+              ><CustomSelect
+                v-model="workspace.state.settings.chatWebSearchMode"
+                id="chatWebSearchModeMenu"
+                aria-label="联网方式"
+                :disabled="!workspace.state.settings.chatWebSearch"
+                :options="webSearchModes"
+            /></label>
             <label
               class="search-toggle"
               title="开启后边生成边显示回复；关闭则等完整回复后一次显示"

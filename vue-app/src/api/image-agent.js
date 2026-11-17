@@ -292,13 +292,149 @@ export function agentWaitSeconds(step, now = Date.now()) {
   return Math.max(0, Math.round(((step.endedAt || now) - step.startedAt) / 1000))
 }
 
+// 只发送所选联网方式对应的字段; 是否支持由上游判断, 报错原样显示。
+export function applyWebSearch(body, settings) {
+  if (!settings.chatWebSearch) return body
+  const mode = settings.chatWebSearchMode
+  if (mode === 'web_search' || mode === 'deepseek')
+    body.tools = [
+      ...(body.tools || []),
+      ...(mode === 'web_search'
+        ? [{ type: 'web_search' }]
+        : [{ type: 'deepseek_web_search' }, { type: 'deepseek_read_url' }]),
+    ]
+  else body.web_search_options = {}
+  return body
+}
+
+// Responses 接口: 把 Chat Completions 请求体转换为 /responses 请求体。
+export function toResponsesBody(body) {
+  const { messages, tools, web_search_options, reasoning_effort, ...rest } = body
+  const input = []
+  const instructions = []
+  for (const message of messages) {
+    if (message.role === 'system' && typeof message.content === 'string') {
+      instructions.push(message.content)
+      continue
+    }
+    if (message.role === 'tool') {
+      input.push({
+        type: 'function_call_output',
+        call_id: message.tool_call_id,
+        output: message.content,
+      })
+      continue
+    }
+    const content =
+      typeof message.content === 'string'
+        ? message.content
+        : (message.content || []).map((part) =>
+            part.type === 'image_url'
+              ? { type: 'input_image', image_url: part.image_url.url }
+              : part.type === 'file'
+                ? { type: 'input_file', ...part.file }
+                : {
+                    type: message.role === 'assistant' ? 'output_text' : 'input_text',
+                    text: part.text,
+                  },
+          )
+    if (content?.length) input.push({ role: message.role, content })
+    for (const call of message.tool_calls || [])
+      input.push({
+        type: 'function_call',
+        call_id: call.id,
+        name: call.function.name,
+        arguments: call.function.arguments,
+      })
+  }
+  // Responses 没有 web_search_options, 参数方式改用 web_search 工具。
+  const list = [
+    ...(tools || []).map((tool) =>
+      tool.type === 'function' ? { type: 'function', ...tool.function } : tool,
+    ),
+    ...(web_search_options ? [{ type: 'web_search' }] : []),
+  ]
+  return {
+    ...rest,
+    ...(instructions.length ? { instructions: instructions.join('\n\n') } : {}),
+    input,
+    ...(list.length ? { tools: list } : {}),
+    ...(reasoning_effort
+      ? { reasoning: { effort: reasoning_effort, summary: 'auto' } }
+      : {}),
+  }
+}
+
+// 把 Responses 结果转换为 Chat Completions 的 message 结构。
+export function fromResponsesOutput(response) {
+  const message = { content: '', reasoning_content: '', tool_calls: [], annotations: [] }
+  for (const item of response?.output || []) {
+    if (item.type === 'message')
+      for (const part of item.content || []) {
+        message.content += part.text || ''
+        message.annotations.push(...(part.annotations || []))
+      }
+    if (item.type === 'reasoning')
+      message.reasoning_content += (item.summary?.length ? item.summary : item.content || [])
+        .map((part) => part.text || '')
+        .join('')
+    if (item.type === 'function_call')
+      message.tool_calls.push({
+        id: item.call_id,
+        type: 'function',
+        function: { name: item.name, arguments: item.arguments || '' },
+      })
+  }
+  return { choices: [{ message }], error: response?.error }
+}
+
+// 把 Responses 流式事件转换为 Chat Completions 的 delta 结构, 无关事件返回 null。
+export function fromResponsesEvent(event) {
+  const delta = (value) => ({ choices: [{ delta: value }] })
+  const type = event?.type
+  if (type === 'response.output_text.delta') return delta({ content: event.delta })
+  if (type === 'response.reasoning_summary_text.delta' || type === 'response.reasoning_text.delta')
+    return delta({ reasoning_content: event.delta })
+  if (type === 'response.output_text.annotation.added')
+    return delta({ annotations: [event.annotation] })
+  if (type === 'response.output_item.added' && event.item?.type === 'function_call')
+    return delta({
+      tool_calls: [
+        {
+          index: event.output_index,
+          id: event.item.call_id,
+          type: 'function',
+          function: { name: event.item.name, arguments: event.item.arguments || '' },
+        },
+      ],
+    })
+  if (type === 'response.function_call_arguments.delta')
+    return delta({ tool_calls: [{ index: event.output_index, function: { arguments: event.delta } }] })
+  if (type === 'response.completed')
+    return delta({ annotations: fromResponsesOutput(event.response).choices[0].message.annotations })
+  if (type === 'error') return { error: { message: event.message || event.error?.message || '对话请求失败' } }
+  if (type === 'response.failed' || type === 'response.incomplete')
+    return { error: { message: event.response?.error?.message || event.response?.incomplete_details?.reason || '对话请求失败' } }
+  return null
+}
+
+// 收集 url_citation 注释, 按 url 去重。
+export function addUrlCitations(sources, annotations) {
+  for (const item of Array.isArray(annotations) ? annotations : []) {
+    const cite = item?.type === 'url_citation' ? item.url_citation || item : null
+    const url = typeof cite?.url === 'string' ? cite.url : ''
+    if (/^https?:\/\//i.test(url) && !sources.some((source) => source.url === url))
+      sources.push({ url, title: String(cite.title || url) })
+  }
+  return sources
+}
+
 export async function requestToolChat(
   fetchApi,
   settings,
   messages,
   signal,
   onChunk,
-  onUnsupportedSearch,
   tools = [imageTool],
 ) {
   const body = {
@@ -309,31 +445,21 @@ export async function requestToolChat(
   }
   if (settings.reasoningEffort && settings.reasoningEffort !== 'auto')
     body.reasoning_effort = settings.reasoningEffort
-  if (settings.chatWebSearch) body.web_search_options = {}
-  const send = () =>
-    fetchApi(
-      settings.chatBaseUrl,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${settings.chatApiKey}`,
-        },
-        body: JSON.stringify(body),
-        signal,
+  applyWebSearch(body, settings)
+  const responses = settings.chatApiFormat === 'responses'
+  const response = await fetchApi(
+    settings.chatBaseUrl,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${settings.chatApiKey}`,
       },
-      settings,
-    )
-  let response = await send()
-  if (
-    !response.ok &&
-    body.web_search_options &&
-    [400, 404, 422].includes(response.status)
-  ) {
-    delete body.web_search_options
-    onUnsupportedSearch?.()
-    response = await send()
-  }
+      body: JSON.stringify(responses ? toResponsesBody(body) : body),
+      signal,
+    },
+    settings,
+  )
   if (!response.ok) {
     const raw = await response.text()
     let message = raw.slice(0, 500)
@@ -345,7 +471,9 @@ export async function requestToolChat(
   let content = '',
     reasoning = ''
   const calls = new Map()
+  const sources = []
   function consume(message, delta = false) {
+    addUrlCitations(sources, message?.annotations)
     const text =
       typeof message?.content === 'string'
         ? message.content
@@ -399,6 +527,8 @@ export async function requestToolChat(
       } catch {
         return
       }
+      if (responses) payload = fromResponsesEvent(payload)
+      if (!payload) return
       if (payload.error)
         throw new Error(payload.error.message || '对话请求失败')
       consume(
@@ -426,14 +556,15 @@ export async function requestToolChat(
       reader.releaseLock()
     }
   } else {
-    const payload = await response.json()
+    let payload = await response.json()
+    if (responses) payload = fromResponsesOutput(payload)
     if (payload.error) throw new Error(payload.error.message || '对话请求失败')
     consume(payload.choices?.[0]?.message)
   }
   const tool_calls = [...calls.values()]
   if (!content && !reasoning && !tool_calls.length)
     throw new Error('接口没有返回可显示的内容')
-  return { content, reasoning, tool_calls }
+  return { content, reasoning, tool_calls, sources }
 }
 
 export async function runImageAgent(options) {
@@ -484,6 +615,7 @@ export async function runImageAgent(options) {
     : '\n生图参数沿用用户的生图工作区配置, 不要自行设置 image_options。'
   let used = 0
   const steps = []
+  const sources = []
   const emitSteps = () => options.onSteps?.(steps)
   function startTextStep() {
     const step = { type: 'thinking', text: '' }
@@ -548,9 +680,10 @@ export async function runImageAgent(options) {
             emitSteps()
           }
         : undefined,
-      options.onUnsupportedSearch,
       index === rounds - 1 ? [] : tools,
     )
+    for (const source of result.sources)
+      if (!sources.some((item) => item.url === source.url)) sources.push(source)
     textStep.text = result.reasoning || textStep.text || ''
     for (const [toolIndex, call] of result.tool_calls.entries())
       upsertToolStep(call, toolIndex, toolSteps)
@@ -558,7 +691,7 @@ export async function runImageAgent(options) {
     if (!result.tool_calls.length) {
       if (result.content) steps.push({ type: 'summary', text: result.content })
       emitSteps()
-      return result
+      return { ...result, sources }
     }
     emitSteps()
     if (index === rounds - 1) throw new Error('已达到本轮图片工具调用上限')

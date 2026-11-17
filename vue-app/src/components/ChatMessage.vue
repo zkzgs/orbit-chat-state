@@ -215,6 +215,16 @@ function openStepImage(step: AgentStep, image: StoredImage, index: number) {
         class="message-text markdown-body"
         v-html="renderMarkdown(message.content)"
       ></div>
+      <div v-if="message.sources?.length" class="message-sources">
+        <span>来源</span>
+        <ol>
+          <li v-for="source in message.sources" :key="source.url">
+            <a :href="source.url" target="_blank" rel="noopener noreferrer">{{
+              source.title || source.url
+            }}</a>
+          </li>
+        </ol>
+      </div>
       <div v-if="message.error" class="message-error" role="alert">
         请求失败: {{ message.error }}
       </div>

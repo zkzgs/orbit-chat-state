@@ -236,7 +236,7 @@ function onTabKey(event: KeyboardEvent) {
               <span class="section-number">01</span>
               <div>
                 <strong>对话接口</strong
-                ><small>兼容 OpenAI Chat Completions 格式</small>
+                ><small>兼容 OpenAI Chat Completions / Responses 格式</small>
               </div>
             </div>
             <div class="profile-manager">
@@ -288,6 +288,19 @@ function onTabKey(event: KeyboardEvent) {
                 >选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。</small
               >
             </div>
+            <label class="field-label"
+              >接口格式<CustomSelect
+                v-model="settings.draft.chatApiFormat"
+                id="chatApiFormat"
+                :options="[
+                  { value: 'chat', label: 'Chat Completions' },
+                  { value: 'responses', label: 'Responses' },
+                ]"
+              /><small class="field-help"
+                >Chat Completions 请求 /chat/completions；Responses 请求
+                /responses</small
+              ></label
+            >
             <label class="field-label"
               >接口地址<input
                 v-model="settings.draft.chatBaseUrl"

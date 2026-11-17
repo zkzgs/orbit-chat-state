@@ -29,6 +29,7 @@ export function useTooltips() {
     // Avoid repeating the text of a visible label; retain icon-only help.
     if (
       target.matches('.settings-tabs button') ||
+      target.querySelector('.custom-select-trigger[aria-expanded="true"]') ||
       target.innerText.replace(/\s+/g, '') === text.replace(/\s+/g, '')
     ) {
       hide()

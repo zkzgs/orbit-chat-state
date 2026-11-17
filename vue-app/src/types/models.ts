@@ -77,6 +77,8 @@ export interface Settings {
   systemPrompt: string
   reasoningEffort: string
   chatWebSearch: boolean
+  chatWebSearchMode: 'web_search_options' | 'web_search' | 'deepseek'
+  chatApiFormat: 'chat' | 'responses'
   chatStream: boolean
   imagePolishInstruction: string
   imagePolishSystemPrompt: string
@@ -104,6 +106,7 @@ export interface ConnectionProfile {
   createdAt: number
   updatedAt: number
   reasoningEffort?: string
+  apiFormat?: 'chat' | 'responses'
   countMode?: string
   backgroundMode?: string
 }
@@ -155,6 +158,7 @@ export interface Message {
   role: 'user' | 'assistant' | 'system'
   content: string
   reasoning?: string
+  sources?: { url: string; title: string }[]
   imageIds: string[]
   mentionImageIds?: string[]
   createdAt: number
