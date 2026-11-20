@@ -1,3 +1,4 @@
+import { chooseDataScope } from './helpers/data-scope'
 import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
@@ -134,7 +135,7 @@ async function exportScope(page: Page, scope: string) {
   await page.locator('#exportWorkspace').click()
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.locator(`[data-data-scope="${scope}"]`).click(),
+    chooseDataScope(page, scope),
   ])
   const contents = await readFile((await download.path())!)
   return { download, contents, payload: readBackup(contents) }
@@ -300,9 +301,7 @@ for (const [version, url] of [
     await page.locator('#settings-tab-data').click()
     await page.locator('#exportWorkspace').click()
     const downloaded = page.waitForEvent('download')
-    await page
-      .locator('[data-data-scope="workspace"]')
-      .evaluate((button: HTMLButtonElement) => button.click())
+    await chooseDataScope(page, 'workspace')
     await expect(page.locator('#exportWorkspace')).toBeDisabled()
     await expect(page.locator('#exportWorkspace')).toHaveText('导出中')
     await page
@@ -396,7 +395,7 @@ for (const [version, url] of [
     await page.locator('#settings-tab-data').click()
     await page.locator('#exportWorkspace').click()
     page.once('dialog', (dialog) => dialog.dismiss())
-    await page.locator('[data-data-scope="all"]').click()
+    await chooseDataScope(page, 'all')
     await expect(page.locator('#exportWorkspace')).toBeEnabled()
     await page.evaluate(() => {
       const create = URL.createObjectURL
@@ -411,7 +410,7 @@ for (const [version, url] of [
     })
     await page.locator('#settings-tab-data').click()
     await page.locator('#exportWorkspace').click()
-    await page.locator('[data-data-scope="workspace"]').click()
+    await chooseDataScope(page, 'workspace')
     await expect(page.locator('#toast')).toContainText('导出失败: 模拟下载失败')
     await expect(page.locator('#exportWorkspace')).toBeEnabled()
     await page.locator('#closeToast').click()

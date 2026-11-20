@@ -1,3 +1,4 @@
+import { chooseDataScope } from './helpers/data-scope'
 import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync, mkdirSync } from 'node:fs'
@@ -337,7 +338,7 @@ for (const [version, url] of [
     await page.locator('#settings-tab-data').click()
     await page.locator('#exportWorkspace').click()
     const downloadPromise = page.waitForEvent('download')
-    await page.locator('[data-data-scope="config"]').click()
+    await chooseDataScope(page, 'config')
     const payload = readBackup(
       await readFile((await (await downloadPromise).path())!),
     )

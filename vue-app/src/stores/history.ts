@@ -357,7 +357,11 @@ export const useHistoryStore = defineStore('history', () => {
         .map((card) => card.key),
     )
   }
-  function openFavorite(imageIds: string[] = [], taskIds: string[] = []) {
+  function openFavorite(
+    imageIds: string[] = [],
+    taskIds: string[] = [],
+    append = false,
+  ) {
     imageIds = imageIds.flatMap((id) => {
       const image =
         workspace.imageMap.get(id) ||
@@ -388,17 +392,20 @@ export const useHistoryStore = defineStore('history', () => {
       .map((folder) => folder.id)
     Object.assign(ui.favorite, {
       open: true,
+      append,
       imageIds,
       taskIds,
-      selected: [
-        ...new Set(
-          hasExistingFavorite
-            ? saved
-            : workspace.favoriteFolders
-                .filter((folder) => folder.isDefault)
-                .map((folder) => folder.id),
-        ),
-      ],
+      selected: append
+        ? []
+        : [
+            ...new Set(
+              hasExistingFavorite
+                ? saved
+                : workspace.favoriteFolders
+                    .filter((folder) => folder.isDefault)
+                    .map((folder) => folder.id),
+            ),
+          ],
       name: '',
     })
   }
@@ -408,12 +415,22 @@ export const useHistoryStore = defineStore('history', () => {
     ui.favorite.imageIds.forEach((id) => {
       const image = workspace.imageMap.get(id)
       if (!image) return
-      workspace.setImageFavoriteFolders(id, [...ui.favorite.selected])
+      workspace.setImageFavoriteFolders(id, [
+        ...new Set([
+          ...(ui.favorite.append ? image.favoriteFolderIds || [] : []),
+          ...ui.favorite.selected,
+        ]),
+      ])
       changed.push(image)
     })
     workspace.tasks.forEach((task) => {
       if (ui.favorite.taskIds.includes(task.id)) {
-        task.favoriteFolderIds = [...ui.favorite.selected]
+        task.favoriteFolderIds = [
+          ...new Set([
+            ...(ui.favorite.append ? task.favoriteFolderIds || [] : []),
+            ...ui.favorite.selected,
+          ]),
+        ]
         changed.push(task)
       }
     })
@@ -422,6 +439,42 @@ export const useHistoryStore = defineStore('history', () => {
     selected.value = new Set()
     ui.favorite.open = false
     ui.notify('收藏夹已更新')
+  }
+  async function favoriteSelected() {
+    const items = cards.value.filter((card) => selected.value.has(card.key))
+    const imageIds = [
+      ...new Set(items.flatMap((card) => card.favoriteImageIds)),
+    ]
+    const taskIds = [
+      ...new Set(
+        items.filter((card) => card.kind === 'task').map((card) => card.taskId),
+      ),
+    ]
+    if (library.value !== 'favorites' || !folderId.value) {
+      openFavorite(imageIds, taskIds, true)
+      return
+    }
+    const current = folderId.value
+    const changed: (StoredImage | GenerationTask)[] = []
+    imageIds.forEach((id) => {
+      const image = workspace.imageMap.get(id)
+      if (!image) return
+      workspace.setImageFavoriteFolders(
+        id,
+        (image.favoriteFolderIds || []).filter((id) => id !== current),
+      )
+      changed.push(image)
+    })
+    workspace.tasks.forEach((task) => {
+      if (!taskIds.includes(task.id)) return
+      task.favoriteFolderIds = (task.favoriteFolderIds || []).filter(
+        (id) => id !== current,
+      )
+      changed.push(task)
+    })
+    await workspace.persistRecords(changed)
+    selected.value = new Set()
+    ui.notify('已从当前收藏夹移除')
   }
   async function removeFavorite() {
     ui.favorite.selected = []
@@ -596,6 +649,7 @@ export const useHistoryStore = defineStore('history', () => {
     selectAll,
     invertSelection,
     openFavorite,
+    favoriteSelected,
     saveFavorite,
     removeFavorite,
     createFolder,

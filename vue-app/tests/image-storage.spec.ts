@@ -1,3 +1,4 @@
+import { chooseDataScope } from './helpers/data-scope'
 import { readBackup } from './helpers/backup'
 import { expect, test, type Page } from '@playwright/test'
 import { createImageStorage } from '../src/storage/image-assets.js'
@@ -526,7 +527,7 @@ for (const [version, url, other] of [
     await page.locator('#exportWorkspace').click()
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      page.locator('[data-data-scope="workspace"]').click(),
+      chooseDataScope(page, 'workspace'),
     ])
     const backup = await readFile((await download.path())!)
     const payload = readBackup(backup)
@@ -546,7 +547,7 @@ for (const [version, url, other] of [
         await page.locator('#topbarSettings').click()
       await page.locator('#settings-tab-data').click()
       await page.locator('#resetLocalData').click()
-      await page.locator(`[data-data-scope="${scope}"]`).click()
+      await chooseDataScope(page, scope)
       await expect(page.locator('#settingsBackdrop')).toBeHidden()
     }
     await clear('image')

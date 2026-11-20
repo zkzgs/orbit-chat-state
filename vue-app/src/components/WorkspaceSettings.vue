@@ -285,7 +285,8 @@ function onTabKey(event: KeyboardEvent) {
                 </button>
               </div>
               <small class="profile-help"
-                >选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。</small
+                >选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。名称用
+                / 分组，可输入筛选。</small
               >
             </div>
             <label class="field-label"
@@ -303,21 +304,38 @@ function onTabKey(event: KeyboardEvent) {
             >
             <label class="field-label"
               >接口地址<input
-                v-model="settings.draft.chatBaseUrl"
+                :value="settings.draft.chatBaseUrl"
+                @input="
+                  settings.connectionEdited(
+                    'chat',
+                    'BaseUrl',
+                    ($event.target as HTMLInputElement).value,
+                  )
+                "
                 id="chatBaseUrl"
                 type="url"
                 placeholder="https://api.openai.com/v1"
-            /><small class="field-help"
+              /><small class="field-help"
                 >填写 API 根地址, 系统会自动追加对话请求路径</small
-            ></label>
+              ></label
+            >
             <div class="field-grid">
               <label class="field-label"
                 >API Key
                 <div class="input-with-action">
                   <input
                     :type="settings.showKey.chat ? 'text' : 'password'"
-                    v-model="settings.draft.chatApiKey"
+                    :value="settings.draft.chatApiKey"
+                    @input="
+                      settings.connectionEdited(
+                        'chat',
+                        'ApiKey',
+                        ($event.target as HTMLInputElement).value,
+                      )
+                    "
                     id="chatApiKey"
+                    autocomplete="new-password"
+                    name="orbit-chat-api-secret"
                     placeholder="sk-..."
                   /><button
                     class="show-key"
@@ -423,7 +441,8 @@ function onTabKey(event: KeyboardEvent) {
                 </button>
               </div>
               <small class="profile-help"
-                >选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。</small
+                >选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。名称用
+                / 分组，可输入筛选。</small
               >
             </div>
             <label class="field-label"
@@ -438,21 +457,38 @@ function onTabKey(event: KeyboardEvent) {
             /></label>
             <label class="field-label"
               >接口地址<input
-                v-model="settings.draft.imageBaseUrl"
+                :value="settings.draft.imageBaseUrl"
+                @input="
+                  settings.connectionEdited(
+                    'image',
+                    'BaseUrl',
+                    ($event.target as HTMLInputElement).value,
+                  )
+                "
                 id="imageBaseUrl"
                 type="url"
                 placeholder="https://api.openai.com/v1"
-            /><small class="field-help"
+              /><small class="field-help"
                 >填写 API 根地址, 系统会自动追加生图或改图请求路径</small
-            ></label>
+              ></label
+            >
             <div class="field-grid">
               <label class="field-label"
                 >API Key
                 <div class="input-with-action">
                   <input
                     :type="settings.showKey.image ? 'text' : 'password'"
-                    v-model="settings.draft.imageApiKey"
+                    :value="settings.draft.imageApiKey"
+                    @input="
+                      settings.connectionEdited(
+                        'image',
+                        'ApiKey',
+                        ($event.target as HTMLInputElement).value,
+                      )
+                    "
                     id="imageApiKey"
+                    autocomplete="new-password"
+                    name="orbit-image-api-secret"
                     placeholder="sk-..."
                   /><button
                     class="show-key"

@@ -190,6 +190,12 @@ async function handleCardAction(
         ><button id="historySelectAll" @click="history.selectAll">全选</button
         ><button id="historyInvertSelection" @click="history.invertSelection">
           反选</button
+        ><button id="historyFavoriteSelected" @click="history.favoriteSelected">
+          {{
+            history.library === 'favorites' && history.folderId
+              ? '从当前收藏夹移除'
+              : '收藏'
+          }}</button
         ><button id="historyDownloadSelected" @click="history.downloadSelected">
           下载</button
         ><button

@@ -10,7 +10,11 @@ import { workspaceArchive } from '../storage/archive'
 import { outputImageIds } from '../storage/workspace-archive.js'
 import { errorMessage, formatExportTimestamp } from '../utils/format'
 import { createDefaultSettings } from '../constants/workspace'
-import { createInitialState, normalizeFavoriteFolders } from '../storage/state'
+import {
+  saveState,
+  createInitialState,
+  normalizeFavoriteFolders,
+} from '../storage/state'
 import { clearProxyUrlHistory } from '../storage/proxy-url-history'
 import {
   collectImageIds,
@@ -25,7 +29,6 @@ import { chatDocuments } from '../api/chat-files.js'
 import {
   clearChatDrafts,
   clearImagePromptDraft,
-  clearInputDrafts,
 } from '../storage/input-drafts.js'
 import { imageStorage } from '../storage/database'
 
@@ -35,6 +38,8 @@ const scopeLabels: Record<DataScope, string> = {
   workspace: '全部工作区',
   config: '配置',
   all: '全部数据',
+  'chat-config': '对话、配置',
+  'image-config': '生图、配置',
 }
 const exportFilePrefixes: Record<DataScope, string> = {
   chat: 'orbit-chat-workspace',
@@ -42,6 +47,8 @@ const exportFilePrefixes: Record<DataScope, string> = {
   workspace: 'orbit-workspace',
   config: 'orbit-config',
   all: 'orbit-all-data',
+  'chat-config': 'orbit-chat-config',
+  'image-config': 'orbit-image-config',
 }
 
 async function importedImagesPersisted(
@@ -86,7 +93,7 @@ export function useWorkspaceData() {
   }
   async function exportScope(scope: DataScope) {
     if (ui.exporting) return
-    if (scope === 'config' || scope === 'all') {
+    if (['config', 'all', 'chat-config', 'image-config'].includes(scope)) {
       const label = scope === 'all' ? '全部数据' : '配置'
       if (
         !window.confirm(
@@ -95,9 +102,21 @@ export function useWorkspaceData() {
       )
         return
     }
-    const includeChat = ['chat', 'workspace', 'all'].includes(scope)
-    const includeImages = ['image', 'workspace', 'all'].includes(scope)
-    const includeConfig = scope === 'all' || scope === 'config'
+    const includeChat = ['chat', 'workspace', 'all', 'chat-config'].includes(
+      scope,
+    )
+    const includeImages = [
+      'image',
+      'workspace',
+      'all',
+      'image-config',
+    ].includes(scope)
+    const includeConfig = [
+      'config',
+      'all',
+      'chat-config',
+      'image-config',
+    ].includes(scope)
     ui.exporting = true
     Object.assign(exportProgress, {
       active: true,
@@ -154,6 +173,9 @@ export function useWorkspaceData() {
           .filter((item) => ids.has(item.id))
           .map((item) => ({
             ...item,
+            favoriteFolderIds: includeImages
+              ? item.favoriteFolderIds || []
+              : [],
             origin: outputs.has(item.id) ? 'generated' : 'upload',
           })),
         imageHistory,
@@ -208,14 +230,32 @@ export function useWorkspaceData() {
       dispose = archive.dispose
       const incoming = archive.payload as unknown as WorkspaceExport
       setImportProgress('已读取备份, 等待确认', 60, true)
-      const scope = ['chat', 'image', 'workspace', 'config', 'all'].includes(
-        incoming.scope,
-      )
+      const scope = [
+        'chat',
+        'image',
+        'workspace',
+        'config',
+        'all',
+        'chat-config',
+        'image-config',
+      ].includes(incoming.scope)
         ? incoming.scope
         : 'workspace'
-      const includeChat = ['chat', 'workspace', 'all'].includes(scope)
-      const includeImages = ['image', 'workspace', 'all'].includes(scope)
-      const includeConfig = scope === 'all' || scope === 'config'
+      const includeChat = ['chat', 'workspace', 'all', 'chat-config'].includes(
+        scope,
+      )
+      const includeImages = [
+        'image',
+        'workspace',
+        'all',
+        'image-config',
+      ].includes(scope)
+      const includeConfig = [
+        'config',
+        'all',
+        'chat-config',
+        'image-config',
+      ].includes(scope)
       if (includeConfig && !incoming.apiConfig)
         throw new Error('文件中没有配置')
       if (
@@ -241,7 +281,7 @@ export function useWorkspaceData() {
         includeChat ? [] : workspace.state.conversations,
         includeImages ? [] : workspace.batches,
         includeImages ? [] : workspace.tasks,
-        scope === 'all' ? undefined : workspace.state.settings,
+        includeConfig ? undefined : workspace.state.settings,
       )
       if (!includeImages) {
         workspace.imageDraftIds.forEach((id) => preserved.add(id))
@@ -249,6 +289,10 @@ export function useWorkspaceData() {
           .filter((item) => item.favoriteFolderIds?.length)
           .forEach((item) => preserved.add(item.id))
       }
+      if (!includeChat)
+        workspace.chatDraftIds.forEach((id) => preserved.add(id))
+      if (!includeConfig)
+        workspace.polishDraftIds.forEach((id) => preserved.add(id))
       const sourceImages = incoming.images || []
       if (includeImages && incoming.favoriteFolders) {
         const folders = merge
@@ -272,6 +316,7 @@ export function useWorkspaceData() {
         sourceImages,
         (progress) =>
           setImportProgress('正在匹配图片内容', 65 + Math.round(progress * 25)),
+        preserved,
       )
       const remap = combined.remap
       if (includeImages && incoming.favoriteFolders) {
@@ -314,6 +359,17 @@ export function useWorkspaceData() {
       if (includeChat) {
         chat.stopAll()
         if (!merge) chat.resetDraft()
+      }
+      if (!includeImages) {
+        const importedIds = new Set(
+          sourceImages.flatMap((item) => remap([item.id])),
+        )
+        combined.records.forEach((item) => {
+          if (importedIds.has(item.id))
+            item.favoriteFolderIds = [
+              ...(workspace.imageMap.get(item.id)?.favoriteFolderIds || []),
+            ]
+        })
       }
       workspace.images = combined.records
       if (includeChat) {
@@ -425,11 +481,22 @@ export function useWorkspaceData() {
             )
               ? requested
               : ''
+          const active = workspace.state.connectionProfiles[kind].find(
+            (item) =>
+              item.id === workspace.state.activeConnectionProfiles[kind],
+          )
+          const current = workspace.state.settings
+          if (
+            !(importedActive && Object.hasOwn(importedActive, kind)) &&
+            active &&
+            (active.baseUrl !==
+              current[kind === 'chat' ? 'chatBaseUrl' : 'imageBaseUrl'] ||
+              active.apiKey !==
+                current[kind === 'chat' ? 'chatApiKey' : 'imageApiKey'])
+          )
+            workspace.state.activeConnectionProfiles[kind] = ''
           workspace.modelCatalog[kind] = [
-            ...new Set([
-              ...(merge ? workspace.modelCatalog[kind] : []),
-              ...(config.modelCatalog?.[kind] || []),
-            ]),
+            ...new Set(config.modelCatalog?.[kind] || []),
           ]
         }
       }
@@ -446,6 +513,7 @@ export function useWorkspaceData() {
         ))
       )
         throw new Error('图片未能写入本地缓存, 请重试导入')
+      saveState(workspace.state)
       useSettingsStore().syncFromWorkspace()
       if (ui.polishOpen) usePromptTemplatesStore().syncPolishFromSettings()
       setImportProgress('导入完成', 100)
@@ -465,27 +533,27 @@ export function useWorkspaceData() {
     }
   }
   async function clearScope(scope: DataScope) {
+    const details: Partial<Record<DataScope, string>> = {
+      chat: '会删除对话及其未被生图工作区引用的图片。',
+      image: '会删除生图记录及其未被对话引用的图片。',
+      workspace: '会删除对话和生图记录, 保留接口配置。',
+      config: '会删除接口配置、模板和模型列表。',
+      all: '会删除对话、生图记录、图片缓存、接口配置和模板。',
+    }
     const detail =
-      scope === 'config'
-        ? '会删除接口配置、模板和模型列表。'
-        : scope === 'workspace'
-          ? '会删除对话和生图记录, 保留接口配置。'
-          : scope === 'chat'
-            ? '会删除对话及其未被生图工作区引用的图片。'
-            : scope === 'image'
-              ? '会删除生图记录及其未被对话引用的图片。'
-              : '会删除对话、生图记录、图片缓存、接口配置和模板。'
+      details[scope] ||
+      '只清除所选范围，保留其他范围及其引用的图片。确认后不可撤销。'
     if (!window.confirm(`清除${scopeLabels[scope]}?\n\n${detail}`)) return
     await workspace.initialize()
-    if (['chat', 'workspace', 'all'].includes(scope)) {
+    if (['chat', 'workspace', 'all', 'chat-config'].includes(scope)) {
       chat.stopAll()
-      chat.resetDraft()
+      chat.resetDraft(true)
       clearChatDrafts()
       const state = createInitialState()
       workspace.state.conversations = state.conversations
       workspace.state.activeConversationId = state.activeConversationId
     }
-    if (['image', 'workspace', 'all'].includes(scope)) {
+    if (['image', 'workspace', 'all', 'image-config'].includes(scope)) {
       workspace.generation++
       image.dispose()
       workspace.batches = []
@@ -502,8 +570,7 @@ export function useWorkspaceData() {
       ui.details.open = false
       useHistoryStore().setLibrary('history')
     }
-    if (scope === 'all' || scope === 'config') {
-      clearInputDrafts()
+    if (['config', 'all', 'chat-config', 'image-config'].includes(scope)) {
       clearProxyUrlHistory()
       usePromptTemplatesStore().dispose()
       Object.assign(workspace.state.settings, createDefaultSettings())
@@ -512,8 +579,14 @@ export function useWorkspaceData() {
       workspace.modelCatalog.chat = []
       workspace.modelCatalog.image = []
     }
+    if (scope === 'all') {
+      const templates = usePromptTemplatesStore()
+      templates.polish.references = []
+      templates.polish.generationReferences = []
+    }
     await workspace.collectUnusedImages()
     await workspace.saveAllImages()
+    useSettingsStore().syncFromWorkspace()
     ui.settingsOpen = false
     ui.notify(`${scopeLabels[scope]}已清除`)
   }

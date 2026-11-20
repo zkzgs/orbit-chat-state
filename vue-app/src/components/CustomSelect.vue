@@ -25,6 +25,27 @@ const emit = defineEmits<{
 const host = ref<HTMLDivElement | null>(null)
 const menu = ref<HTMLDivElement | null>(null)
 const open = ref(false)
+const query = ref('')
+const searchable = computed(() => /ProfileSelect|TemplateSelect/.test(props.id))
+const groups = computed(() => {
+  const result = new Map<string, SelectOption[]>()
+  props.options
+    .filter((option) =>
+      option.label
+        .toLocaleLowerCase()
+        .includes(query.value.trim().toLocaleLowerCase()),
+    )
+    .forEach((option) => {
+      const parts = option.label.split('/')
+      const group =
+        searchable.value && parts.length > 1
+          ? parts.slice(0, -1).join(' / ')
+          : ''
+      if (!result.has(group)) result.set(group, [])
+      result.get(group)!.push(option)
+    })
+  return [...result].map(([label, options]) => ({ label, options }))
+})
 const selected = computed(() =>
   props.options.find((option) => option.value === props.modelValue),
 )
@@ -78,13 +99,16 @@ function positionMenu() {
 async function showMenu() {
   if (props.disabled || open.value) return
   activeClose?.()
+  query.value = ''
   open.value = true
   activeClose = close
   await nextTick()
   positionMenu()
-  menu.value
-    ?.querySelector<HTMLButtonElement>('[aria-selected="true"]')
-    ?.focus()
+  if (searchable.value) menu.value?.querySelector('input')?.focus()
+  else
+    menu.value
+      ?.querySelector<HTMLButtonElement>('[aria-selected="true"]')
+      ?.focus()
 }
 
 function toggleMenu() {
@@ -120,8 +144,17 @@ function handleKeydown(event: KeyboardEvent) {
     ]
     const index = items.indexOf(document.activeElement as HTMLButtonElement)
     const step = event.key === 'ArrowDown' ? 1 : -1
-    items[(index + step + items.length) % items.length]?.focus()
-  } else if (event.key === 'Home' || event.key === 'End') {
+    items[
+      index < 0
+        ? step > 0
+          ? 0
+          : items.length - 1
+        : (index + step + items.length) % items.length
+    ]?.focus()
+  } else if (
+    (event.key === 'Home' || event.key === 'End') &&
+    !(event.target instanceof HTMLInputElement)
+  ) {
     event.preventDefault()
     const items = menu.value?.querySelectorAll<HTMLButtonElement>('button')
     items?.[event.key === 'Home' ? 0 : items.length - 1]?.focus()
@@ -181,18 +214,51 @@ onBeforeUnmount(() => {
       role="listbox"
       :hidden="!open"
     >
-      <button
-        v-for="option in options"
-        :key="option.value"
-        type="button"
-        class="custom-select-option"
-        role="option"
-        :aria-selected="option.value === modelValue"
-        :class="{ selected: option.value === modelValue }"
-        @click="choose(option.value)"
-      >
-        {{ option.label }}
-      </button>
+      <input
+        v-if="searchable"
+        v-model="query"
+        type="search"
+        autocomplete="off"
+        :name="`orbit-${id}-filter`"
+        placeholder="输入筛选模板"
+        aria-label="筛选模板"
+        @input="nextTick(positionMenu)"
+      />
+      <template v-for="group in groups" :key="group.label">
+        <div v-if="searchable && group.label" class="template-group-label">
+          {{ group.label }}
+        </div>
+        <button
+          v-for="option in group.options"
+          :key="option.value"
+          type="button"
+          class="custom-select-option"
+          role="option"
+          :aria-selected="option.value === modelValue"
+          :class="{ selected: option.value === modelValue }"
+          @click="choose(option.value)"
+        >
+          {{
+            searchable && group.label
+              ? option.label.split('/').at(-1)
+              : option.label
+          }}
+        </button>
+      </template>
+      <div v-if="!groups.length" class="template-group-label">无匹配模板</div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.template-group-label {
+  padding: 7px 10px 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.custom-select-menu > input[type='search'] {
+  width: calc(100% - 12px);
+  margin: 6px;
+  min-height: 30px;
+}
+</style>

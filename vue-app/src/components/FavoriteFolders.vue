@@ -139,7 +139,7 @@ function handleFolderRowClick(event: MouseEvent, folderId: string) {
             id="removeFavoriteFolderChoices"
             class="secondary-button"
             type="button"
-            :hidden="!canRemoveFavorite"
+            :hidden="ui.favorite.append || !canRemoveFavorite"
             @click="history.removeFavorite"
           >
             取消收藏
@@ -159,7 +159,7 @@ function handleFolderRowClick(event: MouseEvent, folderId: string) {
             type="button"
             @click="history.saveFavorite"
           >
-            保存
+            {{ ui.favorite.append ? '追加收藏' : '保存' }}
           </button>
         </div>
       </footer>

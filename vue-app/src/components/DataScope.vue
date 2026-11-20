@@ -1,9 +1,38 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useWorkspaceData } from '../composables/useWorkspaceData'
 import { useInterfaceStore } from '../stores/interface'
 const ui = useInterfaceStore()
 const data = useWorkspaceData()
+const selected = ref<string[]>([])
+watch(
+  () => ui.dataScope.open,
+  (open) => {
+    if (open)
+      selected.value =
+        ui.dataScope.action === 'export' ? ['chat', 'image', 'config'] : []
+  },
+)
+function confirmSelection() {
+  const [chat, image, config] = ['chat', 'image', 'config'].map((key) =>
+    selected.value.includes(key),
+  )
+  const scope =
+    chat && image && config
+      ? 'all'
+      : chat && image
+        ? 'workspace'
+        : chat && config
+          ? 'chat-config'
+          : image && config
+            ? 'image-config'
+            : chat
+              ? 'chat'
+              : image
+                ? 'image'
+                : 'config'
+  if (selected.value.length) void data.choose(scope)
+}
 const title = computed(() =>
   ui.dataScope.action === 'export' ? '选择导出范围' : '选择清除范围',
 )
@@ -44,42 +73,23 @@ const description = computed(() =>
       <div class="data-scope-body">
         <p id="dataScopeDescription">{{ description }}</p>
         <div class="data-scope-options">
-          <button
+          <label
+            v-for="option in [
+              { value: 'chat', label: '对话' },
+              { value: 'image', label: '生图' },
+              { value: 'config', label: '配置' },
+            ]"
+            :key="option.value"
             class="data-scope-option"
-            data-data-scope="chat"
-            @click="data.choose('chat')"
-            type="button"
           >
-            对话工作区</button
-          ><button
-            class="data-scope-option"
-            data-data-scope="image"
-            @click="data.choose('image')"
-            type="button"
-          >
-            生图工作区</button
-          ><button
-            class="data-scope-option"
-            data-data-scope="workspace"
-            @click="data.choose('workspace')"
-            type="button"
-          >
-            全部工作区</button
-          ><button
-            class="data-scope-option"
-            data-data-scope="config"
-            @click="data.choose('config')"
-            type="button"
-          >
-            配置</button
-          ><button
-            class="data-scope-option"
-            data-data-scope="all"
-            @click="data.choose('all')"
-            type="button"
-          >
-            全部数据
-          </button>
+            <input
+              type="checkbox"
+              v-model="selected"
+              :value="option.value"
+              :data-data-scope="option.value"
+            />
+            {{ option.label }}
+          </label>
         </div>
       </div>
       <div class="modal-footer">
@@ -92,6 +102,15 @@ const description = computed(() =>
             @click="ui.dataScope.open = false"
           >
             取消
+          </button>
+          <button
+            id="confirmDataScope"
+            class="primary-button"
+            type="button"
+            :disabled="!selected.length"
+            @click="confirmSelection"
+          >
+            确认
           </button>
         </div>
       </div>

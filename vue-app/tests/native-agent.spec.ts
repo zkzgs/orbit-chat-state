@@ -1,3 +1,4 @@
+import { chooseDataScope } from './helpers/data-scope'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { readBackup } from './helpers/backup'
@@ -269,7 +270,7 @@ for (const [version, url] of [
         await page.locator('#exportWorkspace').click()
         const [download] = await Promise.all([
           page.waitForEvent('download'),
-          page.locator('[data-data-scope="workspace"]').click(),
+          chooseDataScope(page, 'workspace'),
         ])
         const backup = await readFile((await download.path())!)
         const payload = readBackup(backup)
@@ -400,7 +401,7 @@ for (const [version, url] of [
     await page.locator('#exportWorkspace').click()
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      page.locator('[data-data-scope="image"]').click(),
+      chooseDataScope(page, 'image'),
     ])
     const payload = readBackup(await readFile((await download.path())!))
     expect(payload.images[0].src).toBe('data:video/webm;base64,' + encoded)

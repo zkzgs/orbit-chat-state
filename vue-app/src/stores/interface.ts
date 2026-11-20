@@ -44,6 +44,7 @@ export const useInterfaceStore = defineStore('interface', () => {
     index: 0,
   })
   const favorite = reactive({
+    append: false,
     open: false,
     imageIds: [] as string[],
     taskIds: [] as string[],

@@ -1,3 +1,4 @@
+import { chooseDataScope } from './helpers/data-scope'
 import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
@@ -172,7 +173,7 @@ for (const [version, url] of [
     await page.locator('#settings-tab-data').click()
     await page.locator('#exportWorkspace').click()
     const pending = page.waitForEvent('download')
-    await page.locator('[data-data-scope="image"]').click()
+    await chooseDataScope(page, 'image')
     const download = await pending
     const payload = readBackup(await readFile((await download.path())!))
     expect(
@@ -333,7 +334,7 @@ for (const [version, url] of [
     )
   })
 
-  test(`${version}: cover export/import preserves none and remaps explicit image IDs on merge`, async ({
+  test(`${version}: cover export/import preserves none and overwrites matching image identities on merge`, async ({
     page,
   }) => {
     await seed(page)
@@ -355,7 +356,7 @@ for (const [version, url] of [
     await page.locator('#settings-tab-data').click()
     await page.locator('#exportWorkspace').click()
     const pending = page.waitForEvent('download')
-    await page.locator('[data-data-scope="image"]').click()
+    await chooseDataScope(page, 'image')
     const download = await pending
     const payload = readBackup(await readFile((await download.path())!))
     expect(payload.favoriteFolders[0].coverImageId).toBe('c')
@@ -396,7 +397,7 @@ for (const [version, url] of [
         localStorage.getItem('orbit-image-favorite-folders-v1') || '[]',
       ),
     )
-    expect(folders[0].coverImageId).not.toBe('c')
+    expect(folders[0].coverImageId).toBe('c')
     expect(typeof folders[0].coverImageId).toBe('string')
     expect(folders[1].coverImageId).toBeNull()
   })

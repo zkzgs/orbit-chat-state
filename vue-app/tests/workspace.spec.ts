@@ -1,3 +1,4 @@
+import { chooseDataScope } from './helpers/data-scope'
 import { readBackup } from './helpers/backup'
 import { test, expect, type Dialog, type Page } from '@playwright/test'
 import { pathToFileURL } from 'node:url'
@@ -235,6 +236,7 @@ test('根目录单文件模型菜单、聊天请求状态和手机弹窗正常',
   )
   await page.locator('[data-view="chat"]').click()
   await page.locator('#chatModelQuick').focus()
+  await page.locator('[data-model-input="chatModelQuick"] .model-refresh').click()
   const modelOption = page.locator(
     '[data-model-dropdown="chat"][data-model-input="chatModelQuick"] .model-option',
   )
@@ -716,7 +718,7 @@ test('工作区导出和导入保留对话及图片历史', async ({ page }) => 
   await page.locator('#settings-tab-data').click()
   await page.locator('#exportWorkspace').click()
   const downloadPromise = page.waitForEvent('download')
-  await page.locator('[data-data-scope="workspace"]').click()
+  await chooseDataScope(page, 'workspace')
   const download = await downloadPromise
   const file = test.info().outputPath('workspace.zip')
   await download.saveAs(file)
@@ -1068,7 +1070,7 @@ test('清除生图工作区后运行中的任务不会重新写回', async ({ pa
   await page.locator('#settings-tab-data').click()
   await page.locator('#resetLocalData').click()
   page.once('dialog', (dialog) => dialog.accept())
-  await page.locator('[data-data-scope="image"]').click()
+  await chooseDataScope(page, 'image')
   await expect(page.locator('#toast')).toContainText('已清除')
   // 等待演示请求的原定完成时间, 验证已取消的任务不会写回历史
   await page.waitForTimeout(1200)
@@ -1453,7 +1455,7 @@ test('数据范围导出使用原版文案、敏感确认、文件名和结果�
   )
   const [chatDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.locator('[data-data-scope="chat"]').click(),
+    chooseDataScope(page, 'chat'),
   ])
   expect(chatDownload.suggestedFilename()).toMatch(
     /^orbit-chat-workspace-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.zip$/,
@@ -1471,7 +1473,7 @@ test('数据范围导出使用原版文案、敏感确认、文件名和结果�
   })
   const [configDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.locator('[data-data-scope="config"]').click(),
+    chooseDataScope(page, 'config'),
   ])
   expect(confirmation).toContain('API Key、接口地址和模板')
   expect(configDownload.suggestedFilename()).toMatch(
@@ -1504,7 +1506,7 @@ test('清除范围的说明、取消和对话清除行为保持原版规则', as
     confirmation = dialog.message()
     void dialog.dismiss()
   })
-  await page.locator('[data-data-scope="chat"]').click()
+  await chooseDataScope(page, 'chat')
   expect(confirmation).toContain('清除对话工作区?')
   expect(confirmation).toContain('未被生图工作区引用的图片')
   await expect(page.locator('.conversation-item')).toHaveCount(0)
@@ -1512,7 +1514,7 @@ test('清除范围的说明、取消和对话清除行为保持原版规则', as
   await page.locator('#settings-tab-data').click()
   await page.locator('#resetLocalData').click()
   page.once('dialog', (dialog) => void dialog.accept())
-  await page.locator('[data-data-scope="chat"]').click()
+  await chooseDataScope(page, 'chat')
   await expect(page.locator('.conversation-item')).toHaveCount(0)
   await expect(page.locator('#toast')).toContainText('对话工作区已清除')
   await page.locator('#topbarSettings').click()
@@ -1542,7 +1544,7 @@ for (const [version, url] of [
     await page.locator('#topbarSettings').click()
     await page.locator('#settings-tab-data').click()
     await page.locator('#resetLocalData').click()
-    await page.locator('[data-data-scope="all"]').click()
+    await chooseDataScope(page, 'all')
     await expect(page.locator('#toast')).toContainText('全部数据已清除')
     expect(dialogs).toHaveLength(1)
     expect(dialogs[0]).toContain('清除全部数据')

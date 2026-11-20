@@ -126,16 +126,6 @@ export function useWorkspace() {
       /* IndexedDB 禁用时仍可使用页面 */
     }
     templates.selectPrompt(workspace.state.settings.activeImagePromptTemplateId)
-    if (
-      workspace.state.settings.chatBaseUrl &&
-      workspace.state.settings.chatApiKey
-    )
-      void settings.loadModels('chat', false)
-    if (
-      workspace.state.settings.imageBaseUrl &&
-      workspace.state.settings.imageApiKey
-    )
-      void settings.loadModels('image', false)
   })
   onScopeDispose(() => {
     chat.dispose()

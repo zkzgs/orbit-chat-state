@@ -376,8 +376,9 @@ export const useChatStore = defineStore('chat', () => {
     stickToBottomTick.value += 1
     ui.notify('对话已复制')
   }
-  function resetDraft() {
-    if (workspace.state.activeConversationId)
+  function resetDraft(all = false) {
+    if (all) drafts.clear()
+    else if (workspace.state.activeConversationId)
       drafts.delete(workspace.state.activeConversationId)
     draft.value = ''
     attachments.value = []

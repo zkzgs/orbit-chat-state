@@ -1912,6 +1912,9 @@ video[hidden] {
 #lightboxVideo, #viewerVideo { width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; }
 #lightboxVideo[hidden], #viewerVideo[hidden] { display:none; }
 @media (hover:hover) and (pointer:fine) { [data-image-privacy="single"] video:not(:hover) { filter:blur(18px); opacity:.25; } [data-image-privacy="single"] video { transition:filter 100ms ease-out, opacity 100ms ease-out; } }
+
+.template-group-label { padding: 7px 10px 3px; color: var(--muted); font-size: 10px; }
+.custom-select-menu > input[type="search"] { width: calc(100% - 12px); margin: 6px; min-height: 30px; }
 </style>
 <script>try { const theme = localStorage.getItem('orbit-theme-v1'); document.documentElement.dataset.theme = theme === 'light' || (theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark'; } catch {}</script>
 </head>
@@ -2006,7 +2009,7 @@ video[hidden] {
               <div class="history-heading"><div><h3 id="imageHistoryTitle">生成记录 <span class="history-count">0</span></h3></div><div class="history-heading-actions"><div class="history-library-toggle" id="historyLibraryToggle"><button type="button" data-history-library="history" class="active">生成记录</button><button type="button" data-history-library="favorites">收藏夹</button></div><button class="secondary-button favorite-folder-back" id="favoriteFolderBack" type="button" hidden>返回收藏夹</button><button class="secondary-button favorite-folder-new" id="newFavoriteFolder" type="button" hidden>新建收藏夹</button><div class="history-view-toggle" id="historyViewToggle" hidden><button type="button" data-history-view="group" class="active">按组</button><button type="button" data-history-view="single">按单图</button></div></div></div>
               <div class="history-filterbar" id="historyFilterbar"><label class="history-search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg><input class="history-search" id="historySearch" type="search" placeholder="搜索提示词" autocomplete="off"></label><select class="history-filter-select" id="historyStatusFilter" aria-label="按状态筛选"><option value="all">全部状态</option><option value="success">已完成</option><option value="partial">部分完成</option><option value="error">失败</option><option value="running">进行中</option></select></div>
               <div class="image-history" id="imageHistory" aria-live="polite"></div>
-              <div class="history-selection-bar" id="historySelectionBar" hidden><span class="selection-count" id="historySelectionCount">已选择 0 项</span><div class="selection-actions"><div class="selection-action-group"><button type="button" class="selection-clear" id="historyClearSelection">取消选择</button><button type="button" id="historySelectAll">全选</button><button type="button" id="historyInvertSelection">反选</button></div><div class="selection-action-group selection-file-actions"><button type="button" id="historyDownloadSelected">下载</button><button type="button" class="danger-action" id="historyDeleteSelected">删除</button></div></div></div>
+              <div class="history-selection-bar" id="historySelectionBar" hidden><span class="selection-count" id="historySelectionCount">已选择 0 项</span><div class="selection-actions"><div class="selection-action-group"><button type="button" class="selection-clear" id="historyClearSelection">取消选择</button><button type="button" id="historySelectAll">全选</button><button type="button" id="historyInvertSelection">反选</button></div><div class="selection-action-group selection-file-actions"><button type="button" id="historyFavoriteSelected">收藏</button><button type="button" id="historyDownloadSelected">下载</button><button type="button" class="danger-action" id="historyDeleteSelected">删除</button></div></div></div>
             </section>
           </div>
         </div>
@@ -2126,7 +2129,7 @@ video[hidden] {
       <div class="modal-header"><h2 id="agentImageSettingsTitle">Agent 生图参数</h2><button class="icon-button" id="closeAgentImageSettings" type="button" aria-label="关闭">×</button></div>
       <div class="settings-scroll">
         <label class="toggle-row"><span><strong>由 AI 决定生图参数</strong></span><input id="agentImageAutoParameters" type="checkbox"><span class="toggle-ui"></span></label>
-        <label class="field-label">默认生图模型<input id="agentImageModel" type="text" list="agentImageModelOptions" autocomplete="off" placeholder="选择或输入模型名"><datalist id="agentImageModelOptions"></datalist><small class="field-help">自动模式下, AI 可从已获取模型中选择其他模型</small></label>
+        <label class="field-label">默认生图模型<input id="agentImageModel" type="search" name="orbit-agentImageModel-model" spellcheck="false" autocapitalize="off" list="agentImageModelOptions" autocomplete="off" placeholder="选择或输入模型名"><datalist id="agentImageModelOptions"></datalist><small class="field-help">自动模式下, AI 可从已获取模型中选择其他模型</small></label>
         <fieldset class="agent-parameter-grid" id="agentImageParameterFields"></fieldset>
       </div>
       <div class="modal-footer"><button class="secondary-button" id="cancelAgentImageSettings" type="button">取消</button><button class="primary-button" id="saveAgentImageSettings" type="button">保存</button></div>
@@ -2146,7 +2149,7 @@ video[hidden] {
       <div class="settings-layout"><nav class="settings-tabs" role="tablist" aria-label="设置模块" aria-orientation="vertical"><button id="settings-tab-chat" type="button" role="tab" data-settings-tab="chat" aria-controls="settings-panel-chat" aria-selected="true" tabindex="0" class="active"><span aria-hidden="true">01</span>对话接口</button><button id="settings-tab-image" type="button" role="tab" data-settings-tab="image" aria-controls="settings-panel-image" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">02</span>生图接口</button><button id="settings-tab-proxy" type="button" role="tab" data-settings-tab="proxy" aria-controls="settings-panel-proxy" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">03</span>请求代理</button><button id="settings-tab-chat-policy" type="button" role="tab" data-settings-tab="chat-policy" aria-controls="settings-panel-chat-policy" aria-selected="false" tabindex="-1"><span aria-hidden="true">04</span>对话策略</button><button id="settings-tab-images" type="button" role="tab" data-settings-tab="images" aria-controls="settings-panel-images" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">05</span>图片策略</button><button id="settings-tab-agent" type="button" role="tab" data-settings-tab="agent" aria-controls="settings-panel-agent" aria-selected="false" tabindex="-1"><span aria-hidden="true">06</span>生图 Agent</button><button id="settings-tab-prompts" type="button" role="tab" data-settings-tab="prompts" aria-controls="settings-panel-prompts" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">07</span>提示词偏好</button><button id="settings-tab-habits" type="button" role="tab" data-settings-tab="habits" aria-controls="settings-panel-habits" aria-selected="false" tabindex="-1"><span aria-hidden="true">08</span>操作习惯</button><button id="settings-tab-display" type="button" role="tab" data-settings-tab="display" aria-controls="settings-panel-display" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">09</span>外观与隐私</button><button id="settings-tab-data" type="button" role="tab" data-settings-tab="data" aria-controls="settings-panel-data" aria-selected="false" tabindex="-1" class=""><span aria-hidden="true">10</span>数据管理</button></nav><div class="settings-scroll">
         <div class="settings-section" id="settings-panel-chat" role="tabpanel" aria-labelledby="settings-tab-chat" data-settings-panel="chat" tabindex="0">
           <div class="section-title"><span class="section-number">01</span><div><strong>对话接口</strong><small>兼容 OpenAI Chat Completions / Responses 格式</small></div></div>
-          <div class="profile-manager"><label class="profile-select-label">对话接口模板<select id="chatProfileSelect" aria-label="选择对话接口模板"><option value="">临时配置（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveChatProfile" type="button">另存为</button><button class="secondary-button" id="updateChatProfile" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteChatProfile" type="button" title="删除当前对话模板" aria-label="删除当前对话模板" disabled>×</button></div><small class="profile-help">选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。</small></div>
+          <div class="profile-manager"><label class="profile-select-label">对话接口模板<select id="chatProfileSelect" aria-label="选择对话接口模板"><option value="">临时配置（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveChatProfile" type="button">另存为</button><button class="secondary-button" id="updateChatProfile" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteChatProfile" type="button" title="删除当前对话模板" aria-label="删除当前对话模板" disabled>×</button></div><small class="profile-help">选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。名称用 / 分组，可输入筛选。</small></div>
           <label class="field-label">接口格式<select id="chatApiFormat"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select><small class="field-help">Chat Completions 请求 /chat/completions；Responses 请求 /responses</small></label>
           <label class="field-label">接口地址<input id="chatBaseUrl" type="url" placeholder="https://api.openai.com/v1"><small class="field-help">填写 API 根地址, 系统会自动追加对话请求路径</small></label>
           <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="chatApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="chatApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="chatModel" list="chatModelOptions" type="text" placeholder="点击获取或手动输入模型"><datalist id="chatModelOptions"></datalist></label></div>
@@ -2154,7 +2157,7 @@ video[hidden] {
         </div>
         <div class="settings-section" id="settings-panel-image" role="tabpanel" aria-labelledby="settings-tab-image" data-settings-panel="image" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">02</span><div><strong>生图接口</strong><small>可以使用和对话不同的服务商或密钥</small></div></div>
-          <div class="profile-manager"><label class="profile-select-label">生图接口模板<select id="imageProfileSelect" aria-label="选择生图接口模板"><option value="">临时配置（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveImageProfile" type="button">另存为</button><button class="secondary-button" id="updateImageProfile" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteImageProfile" type="button" title="删除当前生图模板" aria-label="删除当前生图模板" disabled>×</button></div><small class="profile-help">选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。</small></div>
+          <div class="profile-manager"><label class="profile-select-label">生图接口模板<select id="imageProfileSelect" aria-label="选择生图接口模板"><option value="">临时配置（未保存）</option></select></label><div class="profile-actions"><button class="secondary-button" id="saveImageProfile" type="button">另存为</button><button class="secondary-button" id="updateImageProfile" type="button" disabled>更新</button><button class="secondary-button profile-delete" id="deleteImageProfile" type="button" title="删除当前生图模板" aria-label="删除当前生图模板" disabled>×</button></div><small class="profile-help">选择后立即切换。模板包含接口地址、Key、模型和已获取的模型列表。名称用 / 分组，可输入筛选。</small></div>
           <label class="field-label">接口协议<select id="imageProvider"><option value="openai">OpenAI 兼容</option><option value="xai">xAI / Grok 原生</option><option value="gemini">Gemini 原生</option></select></label>
           <label class="field-label">接口地址<input id="imageBaseUrl" type="url" placeholder="https://api.openai.com/v1"><small class="field-help">填写 API 根地址, 系统会自动追加生图或改图请求路径</small></label>
           <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="imageApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="imageApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="imageModel" list="imageModelOptions" type="text" placeholder="点击获取或手动输入模型"><datalist id="imageModelOptions"></datalist></label></div>
@@ -2219,8 +2222,8 @@ video[hidden] {
   <div class="modal-backdrop" id="dataScopeBackdrop" hidden>
     <section class="settings-modal data-scope-modal" role="dialog" aria-modal="true" aria-labelledby="dataScopeTitle">
       <div class="modal-header"><div><div class="eyebrow">Data scope</div><h2 id="dataScopeTitle">选择数据范围</h2></div><button class="icon-button" id="closeDataScope" aria-label="关闭">×</button></div>
-      <div class="data-scope-body"><p id="dataScopeDescription">请选择本次操作要处理的数据范围。</p><div class="data-scope-options"><button class="data-scope-option" data-data-scope="chat" type="button">对话工作区</button><button class="data-scope-option" data-data-scope="image" type="button">生图工作区</button><button class="data-scope-option" data-data-scope="workspace" type="button">全部工作区</button><button class="data-scope-option" data-data-scope="config" type="button">配置</button><button class="data-scope-option" data-data-scope="all" type="button">全部数据</button></div></div>
-      <div class="modal-footer"><span></span><div><button class="secondary-button" id="cancelDataScope" type="button">取消</button></div></div>
+      <div class="data-scope-body"><p id="dataScopeDescription">请选择本次操作要处理的数据范围。</p><div class="data-scope-options"><label class="data-scope-option"><input type="checkbox" data-data-scope="chat" value="chat"> 对话</label><label class="data-scope-option"><input type="checkbox" data-data-scope="image" value="image"> 生图</label><label class="data-scope-option"><input type="checkbox" data-data-scope="config" value="config"> 配置</label></div></div>
+      <div class="modal-footer"><span></span><div><button class="secondary-button" id="cancelDataScope" type="button">取消</button><button class="primary-button" id="confirmDataScope" type="button">确认</button></div></div>
     </section>
   </div>
 
@@ -2569,6 +2572,8 @@ let imageHistoryLibrary = 'history';
 let activeFavoriteFolderId = '';
 let favoriteCoverImageIndex = new Map();
 let historyViewBeforeFavorites = 'group';
+const modelRevision = { chat: 0, image: 0 };
+let favoriteDialogAppend = false;
 let favoriteDialogImageIds = [];
 let favoriteDialogTaskIds = [];
 let favoriteDialogSelectedFolderIds = new Set();
@@ -6024,7 +6029,9 @@ function findFavoriteImage(id) {
   return storedImages.get(id) || [...storedImages.values()].find((image) => image.type === 'image' && String(image.id) === String(id));
 }
 
-function openFavoriteFolderDialog(imageIds = [], taskIds = []) {
+function openFavoriteFolderDialog(imageIds = [], taskIds = [], append = false) {
+  favoriteDialogAppend = append;
+  $('#saveFavoriteFolderChoices').textContent = append ? '追加收藏' : '保存';
   imageIds = imageIds.map((id) => findFavoriteImage(id)?.id).filter((id) => id !== undefined);
   taskIds = taskIds.map((id) => imageTasks.find((task) => String(task.id) === String(id))?.id).filter((id) => id !== undefined);
   favoriteDialogImageIds = [...new Set(imageIds)].filter((id) => storedImages.get(id)?.type === 'image');
@@ -6038,13 +6045,14 @@ function openFavoriteFolderDialog(imageIds = [], taskIds = []) {
     const defaultFolder = favoriteFolders.find((folder) => folder.isDefault);
     if (defaultFolder) favoriteDialogSelectedFolderIds.add(defaultFolder.id);
   }
+  if (append) favoriteDialogSelectedFolderIds.clear();
   $('#favoriteDialogTitle').textContent = favoriteDialogImageIds.length ? `收藏 ${favoriteDialogImageIds.length} 张图片` : favoriteDialogTaskIds.length ? `收藏 ${favoriteDialogTaskIds.length} 条任务` : '管理收藏夹';
   renderFavoriteFolderChoices();
   $('#favoriteFolderBackdrop').hidden = false;
 }
 
 function renderFavoriteFolderChoices() {
-  $('#removeFavoriteFolderChoices').hidden = !(favoriteDialogImageIds.some((id) => storedImages.get(id)?.favoriteFolderIds?.length) || favoriteDialogTaskIds.some((id) => imageTasks.find((task) => task.id === id)?.favoriteFolderIds?.length));
+  $('#removeFavoriteFolderChoices').hidden = favoriteDialogAppend || !(favoriteDialogImageIds.some((id) => storedImages.get(id)?.favoriteFolderIds?.length) || favoriteDialogTaskIds.some((id) => imageTasks.find((task) => task.id === id)?.favoriteFolderIds?.length));
   const list = $('#favoriteFolderChoices');
   list.innerHTML = favoriteFolders.map((folder) => {
     const checked = favoriteDialogSelectedFolderIds.has(folder.id);
@@ -6079,13 +6087,13 @@ async function saveFavoriteFolderSelection() {
   favoriteDialogImageIds.forEach((id) => {
     const image = storedImages.get(id);
     if (!image) return;
-    image.favoriteFolderIds = favoriteFolders.filter((folder) => favoriteDialogSelectedFolderIds.has(folder.id)).map((folder) => folder.id);
+    image.favoriteFolderIds = [...new Set([...(favoriteDialogAppend ? image.favoriteFolderIds || [] : []), ...favoriteDialogSelectedFolderIds])];
     writes.push(saveImageHistory(createStoredImage(image)).catch(() => {}));
   });
   favoriteDialogTaskIds.forEach((id) => {
     const task = imageTasks.find((entry) => entry.id === id);
     if (!task) return;
-    task.favoriteFolderIds = favoriteFolders.filter((folder) => favoriteDialogSelectedFolderIds.has(folder.id)).map((folder) => folder.id);
+    task.favoriteFolderIds = [...new Set([...(favoriteDialogAppend ? task.favoriteFolderIds || [] : []), ...favoriteDialogSelectedFolderIds])];
     writes.push(saveImageHistory(createStoredImageTask(task)).catch(() => {}));
   });
   await Promise.all(writes);
@@ -6351,6 +6359,35 @@ function invertVisibleHistorySelection() {
   applyHistorySelection(nextSelection);
 }
 
+async function favoriteSelectedHistory() {
+  await imageHistoryReady;
+  const entries = getSelectedHistoryEntries();
+  const grouped = imageHistoryLibrary !== 'favorites' && imageHistoryView === 'group';
+  const imageIds = [...new Set((grouped ? entries.flatMap(entry => entry.batch ? getHistoryBatchImages(entry.batch) : []) : entries.map(entry => entry.image).filter(Boolean)).map(image => image.id))];
+  const taskIds = [...new Set(entries.filter(entry => entry.favoriteTaskOnly || !entry.image).map(entry => entry.task?.id).filter(Boolean))];
+  if (imageHistoryLibrary !== 'favorites' || !activeFavoriteFolderId) {
+    openFavoriteFolderDialog(imageIds, taskIds, true);
+    return;
+  }
+  const writes = [];
+  imageIds.forEach(id => {
+    const image = storedImages.get(id);
+    if (!image) return;
+    image.favoriteFolderIds = (image.favoriteFolderIds || []).filter(id => id !== activeFavoriteFolderId);
+    writes.push(saveImageHistory(createStoredImage(image)));
+  });
+  taskIds.forEach(id => {
+    const task = imageTasks.find(task => task.id === id);
+    if (!task) return;
+    task.favoriteFolderIds = (task.favoriteFolderIds || []).filter(id => id !== activeFavoriteFolderId);
+    writes.push(saveImageHistory(createStoredImageTask(task)));
+  });
+  await Promise.all(writes);
+  selectedHistoryKeys.clear();
+  renderImageHistory();
+  showToast('已从当前收藏夹移除');
+}
+
 async function downloadSelectedHistory() {
   const entries = getSelectedHistoryEntries();
   const grouped = imageHistoryLibrary !== 'favorites' && imageHistoryView === 'group';
@@ -6434,7 +6471,7 @@ function activeConversation() {
 function getReferencedImageIds(excludedBatchIds = new Set()) {
   const ids = new Set();
   state.conversations.forEach((conversation) => conversation.messages.forEach((message) => {
-    [...(message.imageIds || []), ...(message.mentionImageIds || [])].filter(Boolean).forEach((id) => ids.add(id));
+    [...(message.imageIds || []), ...(message.mentionImageIds || []), ...agentImageIds(message)].filter(Boolean).forEach((id) => ids.add(id));
   }));
   imageHistory.forEach((batch) => {
     if (excludedBatchIds.has(batch.id)) return;
@@ -6924,6 +6961,7 @@ function updateHistorySelectionBar() {
     : entries.length;
   const bar = $('#historySelectionBar');
   bar.hidden = entries.length === 0;
+  $('#historyFavoriteSelected').textContent = imageHistoryLibrary === 'favorites' && activeFavoriteFolderId ? '从当前收藏夹移除' : '收藏';
   $('#historySelectionCount').textContent = `已选择 ${imageCount} 张`;
 }
 
@@ -10174,12 +10212,15 @@ async function loadModels(kind, activeInput = null) {
     ? { proxyUrl: $('#proxyUrl').value.trim() || state.settings.proxyUrl, proxyEnabled: $('#proxyEnabled').checked }
     : state.settings;
   const provider = inSettings ? $('#imageProvider').value : state.settings.imageProvider;
+  const revision = modelRevision[kind];
   modelLoading[kind] = true;
   renderModelDropdown(kind, activeInput, true);
   try {
     if (!isChat && provider === 'gemini') {
       const settings = { ...state.settings, imageBaseUrl: baseUrl, imageApiKey: apiKey, imageProvider: provider, ...proxyConfig };
-      modelCatalog.image = await listGeminiModels(apiFetch, settings, AbortSignal.timeout(15000));
+      const models = await listGeminiModels(apiFetch, settings, AbortSignal.timeout(15000));
+      if (revision !== modelRevision[kind]) return;
+      modelCatalog.image = models;
     } else {
       const response = await apiFetch(endpoint, {
         headers: { Authorization: `Bearer ${apiKey}` },
@@ -10189,6 +10230,7 @@ async function loadModels(kind, activeInput = null) {
       if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
       const models = Array.isArray(payload?.data) ? payload.data.map((item) => item.id).filter(Boolean) : [];
       if (!models.length) throw new Error('接口没有返回可用模型列表');
+      if (revision !== modelRevision[kind]) return;
       modelCatalog[kind] = [...new Set(models)].sort();
     }
     const activeProfile = state.connectionProfiles[kind].find((profile) => profile.id === state.activeConnectionProfiles[kind]);
@@ -10209,6 +10251,11 @@ async function loadModels(kind, activeInput = null) {
 function enhanceModelInput(input, kind) {
   if (!input || input.dataset.modelEnhanced) return;
   input.dataset.modelEnhanced = 'true';
+  input.type = 'search';
+  input.name = `orbit-${input.id}-model`;
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  input.setAttribute('autocapitalize', 'off');
   input.removeAttribute('list');
   const host = input.closest('label') || input.parentElement;
   host.classList.add('model-combo-host');
@@ -10345,16 +10392,37 @@ function renderCustomSelectMenu(select) {
   const host = select.closest('.custom-select-host');
   const menu = host?.querySelector('.custom-select-menu');
   if (!menu) return;
-  menu.replaceChildren(...[...select.options].map((option) => {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'custom-select-option';
-    item.dataset.value = option.value;
-    item.textContent = option.textContent;
-    item.setAttribute('role', 'option');
-    item.setAttribute('aria-selected', option.value === select.value ? 'true' : 'false');
-    return item;
-  }));
+  const searchable = /ProfileSelect|TemplateSelect/.test(select.id);
+  let search = menu.querySelector('input');
+  if (searchable && !search) {
+    search = document.createElement('input');
+    search.type = 'search'; search.autocomplete = 'off'; search.name = `orbit-${select.id}-filter`;
+    search.placeholder = '输入筛选模板'; search.setAttribute('aria-label', '筛选模板');
+    search.addEventListener('input', () => { renderCustomSelectMenu(select); positionCustomSelectMenu(host, menu); });
+    menu.prepend(search);
+  }
+  const query = search?.value.trim().toLocaleLowerCase() || '';
+  const groups = new Map();
+  [...select.options].filter(option => option.textContent.toLocaleLowerCase().includes(query)).forEach(option => {
+    const parts = option.textContent.split('/');
+    const group = searchable && parts.length > 1 ? parts.slice(0, -1).join(' / ') : '';
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group).push(option);
+  });
+  const children = search ? [search] : [];
+  groups.forEach((options, group) => {
+    if (group) { const heading = document.createElement('div'); heading.className = 'template-group-label'; heading.textContent = group; children.push(heading); }
+    options.forEach(option => {
+      const item = document.createElement('button');
+      item.type = 'button'; item.className = 'custom-select-option'; item.dataset.value = option.value;
+      item.textContent = group ? option.textContent.split('/').at(-1) : option.textContent;
+      item.setAttribute('role', 'option'); item.setAttribute('aria-selected', String(option.value === select.value));
+      children.push(item);
+    });
+  });
+  if (!groups.size) { const empty = document.createElement('div'); empty.className = 'template-group-label'; empty.textContent = '无匹配模板'; children.push(empty); }
+  [...menu.children].forEach(child => { if (child !== search) child.remove(); });
+  children.forEach(child => { if (child !== search) menu.appendChild(child); });
   syncCustomSelect(select);
 }
 
@@ -10399,12 +10467,14 @@ function enhanceCustomSelect(select) {
     const willOpen = menu.hidden;
     closeCustomSelects(willOpen ? host : null);
     if (willOpen) {
+      const search = menu.querySelector('input');
+      if (search) search.value = '';
       renderCustomSelectMenu(select);
       menu.hidden = false;
       positionCustomSelectMenu(host, menu);
       trigger.setAttribute('aria-expanded', 'true');
       hideCustomTooltip();
-      menu.querySelector('.custom-select-option.selected')?.focus();
+      (menu.querySelector('input') || menu.querySelector('.custom-select-option.selected'))?.focus();
     } else {
       menu.hidden = true;
       trigger.setAttribute('aria-expanded', 'false');
@@ -10432,11 +10502,11 @@ function enhanceCustomSelect(select) {
       event.preventDefault();
       if (!options.length) return;
       const offset = event.key === 'ArrowDown' ? 1 : -1;
-      options[(currentIndex + offset + options.length) % options.length].focus();
-    } else if (event.key === 'Home' || event.key === 'End') {
+      options[currentIndex < 0 ? (offset > 0 ? 0 : options.length - 1) : (currentIndex + offset + options.length) % options.length].focus();
+    } else if ((event.key === 'Home' || event.key === 'End') && event.target.tagName !== 'INPUT') {
       event.preventDefault();
       options[event.key === 'Home' ? 0 : options.length - 1]?.focus();
-    } else if (event.key === 'Enter' || event.key === ' ') {
+    } else if ((event.key === 'Enter' || event.key === ' ') && event.target.tagName !== 'INPUT') {
       event.preventDefault();
       chooseCustomSelectOption(select, document.activeElement?.closest('.custom-select-option'));
     } else if (event.key === 'Escape' || event.key === 'Tab') {
@@ -11619,6 +11689,7 @@ function renderAllConnectionProfiles() {
 }
 
 function selectConnectionProfile(kind, profileId) {
+  modelRevision[kind]++;
   if (!profileId) {
     state.activeConnectionProfiles[kind] = '';
     modelCatalog[kind] = [];
@@ -11656,7 +11727,7 @@ function saveConnectionProfile(kind) {
   const existing = profiles.find((profile) => profile.name.toLowerCase() === cleanName.toLowerCase());
   if (existing && !window.confirm(`模板“${existing.name}”已存在，覆盖它吗?`)) return;
   const now = Date.now();
-  const profile = { id: existing?.id || createId(), name: cleanName, ...fields, models: modelCatalog[kind].length ? [...modelCatalog[kind]] : [...(existing?.models || [])], createdAt: existing?.createdAt || now, updatedAt: now };
+  const profile = { id: existing?.id || createId(), name: cleanName, ...fields, models: modelCatalog[kind].length ? [...modelCatalog[kind]] : existing?.baseUrl === fields.baseUrl && existing?.apiKey === fields.apiKey ? [...(existing.models || [])] : [], createdAt: existing?.createdAt || now, updatedAt: now };
   if (existing) profiles[profiles.indexOf(existing)] = profile;
   else profiles.push(profile);
   state.activeConnectionProfiles[kind] = profile.id;
@@ -11790,7 +11861,7 @@ function bindSettingsTabs() {
 }
 
 function settingsFormSnapshot() {
-  const controls = [...$('#settingsBackdrop').querySelectorAll('input, select, textarea')].map((control) => [
+  const controls = [...$('#settingsBackdrop').querySelectorAll('input, select, textarea')].filter(control => !control.name?.endsWith('-filter')).map((control) => [
     control.id,
     control.type === 'checkbox' ? control.checked : control.value,
   ]);
@@ -11867,6 +11938,7 @@ function fillSettingsForm() {
 }
 
 function refreshOpenSettingsAfterImport() {
+  modelRevision.chat++; modelRevision.image++;
   fillSettingsForm();
   if (!$('#settingsBackdrop').hidden) captureSettingsBaseline();
   if (!$('#promptPolishBackdrop').hidden) {
@@ -11885,6 +11957,7 @@ function openSettings() {
 }
 
 function closeSettings(force = false) {
+  modelRevision.chat++; modelRevision.image++;
   if (!force && settingsBaseline && settingsFormSnapshot() !== settingsBaseline.form) {
     if (window.confirm('设置已修改, 是否保存更改?')) {
       saveSettings();
@@ -11937,8 +12010,6 @@ function saveSettings() {
   closeSettings(true);
   render();
   showToast('设置已保存');
-  if (state.settings.chatApiKey && state.settings.chatBaseUrl) loadModels('chat');
-  if (state.settings.imageApiKey && state.settings.imageBaseUrl) loadModels('image');
 }
 
 function closeSidebarOnOutside(event) {
@@ -11981,7 +12052,7 @@ function cloneValue(value) {
 
 function getConversationImageIds(conversations = state.conversations) {
   const ids = new Set();
-  conversations.forEach((conversation) => conversation.messages.forEach((message) => [...(message.imageIds || []), ...(message.mentionImageIds || [])].filter(Boolean).forEach((id) => ids.add(id))));
+  conversations.forEach((conversation) => conversation.messages.forEach((message) => [...(message.imageIds || []), ...(message.mentionImageIds || []), ...agentImageIds(message)].filter(Boolean).forEach((id) => ids.add(id))));
   return ids;
 }
 
@@ -12009,16 +12080,18 @@ function getTemplateImageIds(settings = state.settings) {
 }
 
 function getExportScopeLabel(scope) {
-  return { chat: '对话工作区', image: '生图工作区', workspace: '全部工作区', config: '配置', all: '全部数据' }[scope] || '工作区';
+  return { chat: '对话工作区', image: '生图工作区', workspace: '全部工作区', config: '配置', all: '全部数据', 'chat-config': '对话、配置', 'image-config': '生图、配置' }[scope] || '工作区';
 }
 
 function getExportFilePrefix(scope) {
-  return { chat: 'orbit-chat-workspace', image: 'orbit-image-workspace', workspace: 'orbit-workspace', config: 'orbit-config', all: 'orbit-all-data' }[scope] || 'orbit-workspace';
+  return { chat: 'orbit-chat-workspace', image: 'orbit-image-workspace', workspace: 'orbit-workspace', config: 'orbit-config', all: 'orbit-all-data', 'chat-config': 'orbit-chat-config', 'image-config': 'orbit-image-config' }[scope] || 'orbit-workspace';
 }
 
 function chooseDataScope(action) {
   $('#dataScopeTitle').textContent = action === 'export' ? '选择导出范围' : '选择清除范围';
   $('#dataScopeDescription').textContent = action === 'export' ? '请选择要写入 ZIP 备份的数据范围。' : '请选择本次要清除的数据范围，确认后不可撤销。';
+  $$('[data-data-scope]').forEach(input => input.checked = action === 'export');
+  $('#confirmDataScope').disabled = action !== 'export';
   $('#dataScopeBackdrop').hidden = false;
   return new Promise((resolve) => { dataScopeResolver = resolve; });
 }
@@ -12035,70 +12108,58 @@ async function clearLocalData() {
   if (!scope) return;
   await imageHistoryReady;
   const label = scope === 'all' ? '全部数据' : getExportScopeLabel(scope);
-  if (!window.confirm(`清除${label}?\n\n${scope === 'config' ? '会删除接口配置、模板和模型列表。' : scope === 'workspace' ? '会删除对话和生图记录, 保留接口配置。' : scope === 'chat' ? '会删除对话及其未被生图工作区引用的图片。' : scope === 'image' ? '会删除生图记录及其未被对话引用的图片。' : '会删除对话、生图记录、图片缓存、接口配置和模板。'}`)) return;
-  if (scope !== 'config') compressedRequestImageCache.clear();
-  if (scope === 'image' || scope === 'workspace' || scope === 'all') {
-    localDataGeneration += 1;
-    imageTaskPersistTimers.forEach((timer) => window.clearTimeout(timer));
-    imageTaskPersistTimers.clear();
-  }
-  if (scope === 'chat' || scope === 'workspace' || scope === 'all') {
+  const detail = { chat: '会删除对话及其未被生图工作区引用的图片。', image: '会删除生图记录及其未被对话引用的图片。', workspace: '会删除对话和生图记录, 保留接口配置。', config: '会删除接口配置、模板和模型列表。', all: '会删除对话、生图记录、图片缓存、接口配置和模板。' }[scope] || '只清除所选范围，保留其他范围及其引用的图片。确认后不可撤销。';
+  if (!window.confirm(`清除${label}?\n\n${detail}`)) return;
+  const includeChat = ['chat', 'workspace', 'all', 'chat-config'].includes(scope);
+  const includeImages = ['image', 'workspace', 'all', 'image-config'].includes(scope);
+  const includeConfig = ['config', 'all', 'chat-config', 'image-config'].includes(scope);
+  if (includeChat || includeImages) compressedRequestImageCache.clear();
+  if (includeChat) {
     clearChatDrafts();
+    composerDrafts.clear();
     stopAllChatGeneration();
     $('#typingIndicator').hidden = true;
-  }
-  if (scope === 'all') {
-    clearInputDrafts();
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(FAVORITE_FOLDER_STORAGE_KEY);
-    clearProxyUrlHistory();
-    await clearStoredImages();
-    await chatDocuments.collect([]);
-    pendingChatFiles = [];
-    composerDrafts.clear();
-    renderChatFiles();
-    state = createInitialState();
-    modelCatalog.chat = [];
-    modelCatalog.image = [];
-    favoriteFolders = loadFavoriteFolders();
-    imageTasks = [];
-    stopImageTaskTimerIfIdle();
+    state.conversations = [];
+    state.activeConversationId = null;
+    ensureActiveConversation();
     pendingAttachments = [];
+    resetComposerDraft();
+  }
+  if (includeImages) {
+    localDataGeneration += 1;
+    imageTaskPersistTimers.forEach(timer => window.clearTimeout(timer));
+    imageTaskPersistTimers.clear();
+    imageHistory = [];
+    imageTasks = [];
+    storedImages.forEach(record => { if (record.type === 'image') record.favoriteFolderIds = []; });
+    favoriteFolders = normalizeFavoriteFolders([]);
+    saveFavoriteFolders();
+    activeFavoriteFolderId = '';
+    imageHistoryLibrary = 'history';
+    $('#historySearch').value = '';
+    $('#historyStatusFilter').value = 'all';
+    stopImageTaskTimerIfIdle();
     clearImageReferences();
+    selectedHistoryKeys.clear();
+    closeLightbox();
     setImagePromptText('');
-  } else if (scope === 'config') {
-    clearInputDrafts();
+    clearImagePromptDraft();
+  }
+  if (includeConfig) {
     clearProxyUrlHistory();
-    state.settings = { ...defaultState.settings, imageOptions: { ...defaultState.settings.imageOptions }, imagePolishTemplates: [] };
+    state.settings = cloneValue(defaultState.settings);
     state.connectionProfiles = { chat: [], image: [] };
     state.activeConnectionProfiles = { chat: '', image: '' };
     modelCatalog.chat = [];
     modelCatalog.image = [];
-    await removeUnreferencedImages();
-    await persistImageStore();
+  }
+  if (scope === 'all') {
+    clearInputDrafts();
+    polishReferences = [];
+    polishGenerationReferences = [];
+    await clearStoredImages();
+    await chatDocuments.collect([]);
   } else {
-    if (scope === 'chat' || scope === 'workspace') {
-      state.conversations = [];
-      state.activeConversationId = null;
-      ensureActiveConversation();
-      pendingAttachments = [];
-      resetComposerDraft();
-    }
-    if (scope === 'image' || scope === 'workspace') {
-      imageHistory = [];
-      imageTasks = [];
-      favoriteFolders = normalizeFavoriteFolders([]);
-      saveFavoriteFolders();
-      activeFavoriteFolderId = '';
-      imageHistoryLibrary = 'history';
-      $('#historySearch').value = '';
-      $('#historyStatusFilter').value = 'all';
-      stopImageTaskTimerIfIdle();
-      clearImageReferences();
-      selectedHistoryKeys.clear();
-      closeLightbox();
-      setImagePromptText('');
-    }
     await removeUnreferencedImages();
     await persistImageStore();
   }
@@ -12121,7 +12182,10 @@ async function exportWorkspace() {
   if (exportingWorkspace) return;
   const scope = await chooseDataScope('export');
   if (!scope) return;
-  if (scope === 'config' || scope === 'all') {
+  const includeChat = ['chat', 'workspace', 'all', 'chat-config'].includes(scope);
+  const includeImages = ['image', 'workspace', 'all', 'image-config'].includes(scope);
+  const includeConfig = ['config', 'all', 'chat-config', 'image-config'].includes(scope);
+  if (includeConfig) {
     if (!window.confirm(`${scope === 'all' ? '导出全部数据' : '导出配置'}会包含 API Key、接口地址和模板, 请确认文件保存位置安全`)) return;
   }
   exportingWorkspace = true;
@@ -12135,7 +12199,7 @@ async function exportWorkspace() {
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
     await imageHistoryReady;
     const outputs = outputImageIds({ images: [...storedImages.values()], conversations: state.conversations, imageHistory });
-    const exportImage = image => ({ ...createStoredImage(image), origin: outputs.has(image.id) ? 'generated' : 'upload' });
+    const exportImage = image => ({ ...createStoredImage(image), favoriteFolderIds: includeImages ? image.favoriteFolderIds || [] : [], origin: outputs.has(image.id) ? 'generated' : 'upload' });
     if (scope === 'config') {
       const imageIds = getTemplateImageIds();
       const workspace = { version: 11, scope, exportedAt: Date.now(), images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(exportImage), apiConfig: { settings: state.settings, connectionProfiles: state.connectionProfiles, activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } } };
@@ -12143,21 +12207,22 @@ async function exportWorkspace() {
       showToast('配置已导出');
       return;
     }
-    const conversations = scope === 'image' ? [] : state.conversations.filter(isRecordedConversation).map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
-    const batches = scope === 'chat' ? [] : imageHistory.map(createStoredBatch);
-    const tasks = scope === 'chat' ? [] : imageTasks.map(createStoredImageTask);
-    const imageIds = scope === 'chat' ? getConversationImageIds(conversations) : scope === 'image' ? getImageWorkspaceImageIds(batches, tasks) : new Set([...getConversationImageIds(conversations), ...getImageWorkspaceImageIds(batches, tasks)]);
-    if (scope === 'all') getTemplateImageIds().forEach((id) => imageIds.add(id));
+    const conversations = !includeChat ? [] : state.conversations.filter(isRecordedConversation).map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: [...(message.imageIds || [])] })) }));
+    const batches = !includeImages ? [] : imageHistory.map(createStoredBatch);
+    const tasks = !includeImages ? [] : imageTasks.map(createStoredImageTask);
+    const imageIds = new Set([...getConversationImageIds(conversations), ...getImageWorkspaceImageIds(batches, tasks)]);
+    if (includeConfig) getTemplateImageIds().forEach(id => imageIds.add(id));
+    if (includeImages) storedImages.forEach(image => { if (image.type === 'image' && image.favoriteFolderIds?.length) imageIds.add(image.id); });
     const draftReferenceIds = [];
-    if (scope !== 'chat') {
+    if (includeImages) {
       for (const reference of imageReferences) {
         const id = await saveImageResource(reference.data, 'draft-reference');
         if (id) { reference.imageId = id; draftReferenceIds.push(id); imageIds.add(id); }
       }
     }
-    const workspace = { version: 12, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: conversations.some((conversation) => conversation.id === state.activeConversationId) ? state.activeConversationId : conversations[0]?.id || null, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(exportImage), imageHistory: batches, imageTasks: tasks, ...(scope === 'chat' ? {} : { favoriteFolders }) };
-    if (scope === 'all') workspace.apiConfig = { settings: state.settings, connectionProfiles: state.connectionProfiles, activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
-    if (scope !== 'chat') workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
+    const workspace = { version: 12, scope, exportedAt: Date.now(), contextMode: state.contextMode, activeConversationId: conversations.some((conversation) => conversation.id === state.activeConversationId) ? state.activeConversationId : conversations[0]?.id || null, conversations, images: [...storedImages.values()].filter((image) => image.type === 'image' && image.src && imageIds.has(image.id)).map(exportImage), imageHistory: batches, imageTasks: tasks, ...(!includeImages ? {} : { favoriteFolders }) };
+    if (includeConfig) workspace.apiConfig = { settings: state.settings, connectionProfiles: state.connectionProfiles, activeConnectionProfiles: { ...state.activeConnectionProfiles }, modelCatalog: { chat: [...modelCatalog.chat], image: [...modelCatalog.image] } };
+    if (includeImages) workspace.imageDraft = { prompt: $('#imagePrompt').value, referenceImageIds: draftReferenceIds, config: getImageConfig() };
     const label = getExportScopeLabel(scope);
     downloadFile(await createWorkspaceArchive(fflate, imageStorage, createJsonBlob, readWorkspaceJson, chatDocuments).exportFile(workspace, updateExportProgress), 'application/zip', `${getExportFilePrefix(scope)}-${formatExportTimestamp()}.zip`);
     showToast(`${label}已导出`);
@@ -12200,14 +12265,14 @@ async function persistImageStore() {
   }
 }
 
-async function mergeImageResources(baseRecords, sourceRecords, onProgress) {
+async function mergeImageResources(baseRecords, sourceRecords, onProgress, protectedIds = new Set()) {
   const records = new Map(baseRecords.map((record) => [record.id, record]));
   const idMap = new Map();
   const fingerprintIds = new Map();
   const fingerprint = (src) => imageStorage.fingerprint(src);
   const indexImage = (record, fingerprint) => {
     const ids = fingerprintIds.get(fingerprint) || [];
-    ids.push(record.id);
+    if (!ids.includes(record.id)) ids.push(record.id);
     fingerprintIds.set(fingerprint, ids);
   };
   for (let index = 0; index < baseRecords.length; index += 1) {
@@ -12227,7 +12292,8 @@ async function mergeImageResources(baseRecords, sourceRecords, onProgress) {
     const sameId = records.get(source.id);
     const sameIdKey = sameId && (sameId.fingerprint || await fingerprint(sameId.src));
     if (sameId && sameIdKey) sameId.fingerprint = sameIdKey;
-    let sameSource = sameId && sameIdKey === imageFingerprint ? sameId : null;
+    if (sameId && sameIdKey !== imageFingerprint && !protectedIds.has(source.id)) fingerprintIds.set(sameIdKey, (fingerprintIds.get(sameIdKey) || []).filter(id => id !== sameId.id));
+    let sameSource = sameId && (!protectedIds.has(source.id) || sameIdKey === imageFingerprint) ? sameId : null;
     if (!sameSource) {
       const id = (fingerprintIds.get(imageFingerprint) || [])[0];
       if (id) sameSource = records.get(id) || null;
@@ -12235,6 +12301,7 @@ async function mergeImageResources(baseRecords, sourceRecords, onProgress) {
     if (sameSource) {
       idMap.set(source.id, sameSource.id);
       records.set(sameSource.id, { ...source, id: sameSource.id, type: 'image', fingerprint: imageFingerprint, ...(sameSource.origin === 'generated' || sameSource.batchId ? { origin: 'generated' } : {}) });
+      indexImage({ id: sameSource.id }, imageFingerprint);
     } else {
       let id = source.id;
       if (records.has(id)) id = createId();
@@ -12441,7 +12508,7 @@ async function importWorkspace(file) {
     disposeArchive = archive.dispose;
     const payload = archive.payload;
     updateImportProgress('已读取备份, 等待确认', 60, true);
-    const scope = ['chat', 'image', 'workspace', 'config', 'all'].includes(payload.scope) ? payload.scope : 'workspace';
+    const scope = ['chat', 'image', 'workspace', 'config', 'all', 'chat-config', 'image-config'].includes(payload.scope) ? payload.scope : 'workspace';
     const sourceImages = Array.isArray(payload.images) ? payload.images : [];
     let validImageCount = 0;
     sourceImages.forEach((image) => {
@@ -12461,7 +12528,7 @@ async function importWorkspace(file) {
       messages: (Array.isArray(source.messages) ? source.messages : []).map((message) => ({ ...message, imageIds: Array.isArray(message.imageIds) ? [...message.imageIds] : [] }))
     }));
     const hasApiConfig = payload.apiConfig && typeof payload.apiConfig === 'object';
-    if ((scope === 'config' || scope === 'all') && !hasApiConfig) throw new Error('文件中没有配置');
+    if ((['config', 'all', 'chat-config', 'image-config'].includes(scope)) && !hasApiConfig) throw new Error('文件中没有配置');
     if (!window.confirm(`导入${getExportScopeLabel(scope)}: ${sourceConversations.length} 个对话, ${sourceHistory.length} 条生图记录, ${sourceTasks.length} 条任务记录?`)) return;
     const modeInput = window.prompt('请选择导入方式:\n输入 "覆盖" 替换对应范围\n输入 "合并" 保留不同 ID 的项目, 同 ID 使用导入版本', '合并');
     if (modeInput === null) return;
@@ -12471,14 +12538,15 @@ async function importWorkspace(file) {
     updateImportProgress('正在匹配图片内容', 65);
     const favoriteFolderIdMap = new Map();
     let importedFavoriteFolders = favoriteFolders;
-    if (Array.isArray(payload.favoriteFolders) && ['image', 'workspace', 'all'].includes(scope)) {
+    if (Array.isArray(payload.favoriteFolders) && ['image', 'workspace', 'all', 'image-config'].includes(scope)) {
       if (merge) {
         const folders = favoriteFolders.map((folder) => ({ ...folder }));
         sourceFavoriteFolders.forEach((folder) => {
-          const matchingFolder = folders.find((entry) => entry.id === folder.id && entry.name === folder.name)
+          const matchingFolder = folders.find((entry) => entry.id === folder.id)
             || folders.find((entry) => entry.name.toLocaleLowerCase() === folder.name.toLocaleLowerCase());
           if (matchingFolder) {
-            matchingFolder.hidden = Boolean(matchingFolder.hidden || folder.hidden);
+            const incomingFolder = payload.favoriteFolders.find(entry => entry.id === folder.id) || folder;
+            Object.assign(matchingFolder, incomingFolder, { id: matchingFolder.id, name: folder.name });
             favoriteFolderIdMap.set(folder.id, matchingFolder.id);
             return;
           }
@@ -12496,17 +12564,31 @@ async function importWorkspace(file) {
       });
     }
     const templateImageIds = getTemplateImageIds();
-    const preservedIds = scope === 'all' ? new Set() : scope === 'chat' ? new Set([...getImageWorkspaceImageIds(), ...templateImageIds]) : scope === 'image' ? new Set([...getConversationImageIds(), ...templateImageIds]) : scope === 'workspace' ? templateImageIds : new Set(storedImages.keys());
+    const preservedIds = new Set([...(['chat', 'workspace', 'all', 'chat-config'].includes(scope) ? [] : getConversationImageIds()), ...(['image', 'workspace', 'all', 'image-config'].includes(scope) ? [] : getImageWorkspaceImageIds()), ...(['config', 'all', 'chat-config', 'image-config'].includes(scope) ? [] : templateImageIds)]);
+    if (!['image', 'workspace', 'all', 'image-config'].includes(scope)) {
+      storedImages.forEach(image => { if (image.type === 'image' && image.favoriteFolderIds?.length) preservedIds.add(image.id); });
+      imageReferences.forEach(reference => { const id = reference.imageId || findStoredImageBySource(reference.data)?.id; if (id) preservedIds.add(id); });
+    }
+    if (!['chat', 'workspace', 'all', 'chat-config'].includes(scope)) {
+      pendingAttachments.forEach(image => { if (image.imageId) preservedIds.add(image.imageId); });
+      composerDrafts.forEach(draft => draft.attachments.forEach(image => { if (image.imageId) preservedIds.add(image.imageId); }));
+    }
+    if (!['config', 'all', 'chat-config', 'image-config'].includes(scope)) [...polishReferences, ...polishGenerationReferences].forEach(reference => { const id = reference.imageId || findStoredImageBySource(reference.data)?.id; if (id) preservedIds.add(id); });
     const baseRecords = merge || scope === 'config' ? [...storedImages.values()].filter((record) => record.type === 'image') : [...storedImages.values()].filter((record) => preservedIds.has(record.id));
-    const mergedImages = await mergeImageResources(baseRecords, sourceImages, (progress) => updateImportProgress('正在匹配图片内容', 65 + Math.round(progress * 25)));
-    if (Array.isArray(payload.favoriteFolders) && ['image', 'workspace', 'all'].includes(scope)) {
+    const mergedImages = await mergeImageResources(baseRecords, sourceImages, (progress) => updateImportProgress('正在匹配图片内容', 65 + Math.round(progress * 25)), preservedIds);
+    if (!['image', 'workspace', 'all', 'image-config'].includes(scope)) sourceImages.forEach(source => {
+      const id = mergedImages.idMap.get(source.id) || source.id;
+      const image = mergedImages.records.get(id);
+      if (image) image.favoriteFolderIds = [...(storedImages.get(id)?.favoriteFolderIds || [])];
+    });
+    if (Array.isArray(payload.favoriteFolders) && ['image', 'workspace', 'all', 'image-config'].includes(scope)) {
       sourceFavoriteFolders.forEach((source) => {
         if (!Object.hasOwn(source, 'coverImageId')) return;
         const target = importedFavoriteFolders.find((folder) => folder.id === favoriteFolderIdMap.get(source.id));
         if (target) target.coverImageId = typeof source.coverImageId === 'string' ? (mergedImages.idMap.get(source.coverImageId) || source.coverImageId) : null;
       });
     }
-    if (scope === 'config' || scope === 'all') {
+    if (['config', 'all', 'chat-config', 'image-config'].includes(scope)) {
       const importedSettings = payload.apiConfig.settings;
       if (importedSettings && typeof importedSettings === 'object') {
         const importedPromptTemplates = normalizeImagePromptTemplates(importedSettings.imagePromptTemplates).map((template) => ({ ...template, referenceImageIds: remapImageIds(template.referenceImageIds, mergedImages.idMap) }));
@@ -12530,12 +12612,15 @@ async function importWorkspace(file) {
         const requested = Object.prototype.hasOwnProperty.call(importedActive, kind)
           ? (importedActive[kind] || '')
           : (merge ? state.activeConnectionProfiles[kind] : '');
-        result[kind] = state.connectionProfiles[kind].some((profile) => profile.id === requested) ? requested : '';
+        const active = state.connectionProfiles[kind].find(profile => profile.id === requested);
+        const hasImportedActive = Object.prototype.hasOwnProperty.call(importedActive, kind);
+        const matchesConnection = active && active.baseUrl === state.settings[`${kind}BaseUrl`] && active.apiKey === state.settings[`${kind}ApiKey`];
+        result[kind] = active && (hasImportedActive || matchesConnection) ? requested : '';
         return result;
       }, { chat: '', image: '' });
       if (payload.apiConfig.modelCatalog && typeof payload.apiConfig.modelCatalog === 'object') {
-        modelCatalog.chat = merge ? [...new Set([...modelCatalog.chat, ...(payload.apiConfig.modelCatalog.chat || [])])] : (Array.isArray(payload.apiConfig.modelCatalog.chat) ? [...new Set(payload.apiConfig.modelCatalog.chat)] : []);
-        modelCatalog.image = merge ? [...new Set([...modelCatalog.image, ...(payload.apiConfig.modelCatalog.image || [])])] : (Array.isArray(payload.apiConfig.modelCatalog.image) ? [...new Set(payload.apiConfig.modelCatalog.image)] : []);
+        modelCatalog.chat = (Array.isArray(payload.apiConfig.modelCatalog.chat) ? [...new Set(payload.apiConfig.modelCatalog.chat)] : []);
+        modelCatalog.image = (Array.isArray(payload.apiConfig.modelCatalog.image) ? [...new Set(payload.apiConfig.modelCatalog.image)] : []);
       }
       if (scope === 'config') {
         storedImages = mergedImages.records;
@@ -12550,9 +12635,9 @@ async function importWorkspace(file) {
         return;
       }
     }
-    if (['chat', 'workspace', 'all'].includes(scope)) await chatDocuments.restore(sourceConversations, imageStorage);
+    if (['chat', 'workspace', 'all', 'chat-config'].includes(scope)) await chatDocuments.restore(sourceConversations, imageStorage);
     const mapBatch = (batch) => ({ ...batch, imageIds: remapImageIds(batch.imageIds, mergedImages.idMap), referenceImageIds: remapImageIds(batch.referenceImageIds, mergedImages.idMap) });
-    const mapTask = (task) => ({ ...task, referenceImageIds: remapImageIds(task.referenceImageIds, mergedImages.idMap) });
+    const mapTask = (task) => ({ ...task, referenceImageIds: remapImageIds(task.referenceImageIds, mergedImages.idMap), favoriteFolderIds: [...new Set((task.favoriteFolderIds || []).map(id => favoriteFolderIdMap.get(id) || id))] });
     const batches = sourceHistory.map(mapBatch);
     const tasks = sourceTasks.map(mapTask);
     sourceConversations.forEach((conversation) => conversation.messages.forEach((message) => {
@@ -12560,13 +12645,13 @@ async function importWorkspace(file) {
       remapAgentMessage(message, (ids) => remapImageIds(ids, mergedImages.idMap));
     }));
     const conversations = sourceConversations.map((conversation) => ({ ...conversation, messages: conversation.messages.map((message) => ({ ...message, imageIds: remapImageIds(message.imageIds, mergedImages.idMap) })) }));
-    if (scope === 'chat' || scope === 'workspace' || scope === 'all') {
+    if (['chat', 'workspace', 'all', 'chat-config'].includes(scope)) {
       stopAllChatGeneration();
       state.conversations = merge ? mergeConversations(state.conversations, conversations) : conversations;
       state.activeConversationId = state.conversations.some((conversation) => conversation.id === payload.activeConversationId) ? payload.activeConversationId : merge ? state.activeConversationId : null;
       if (payload.contextMode === 'client' || payload.contextMode === 'single') state.contextMode = payload.contextMode;
     }
-    if (scope === 'image' || scope === 'workspace' || scope === 'all') {
+    if (['image', 'workspace', 'all', 'image-config'].includes(scope)) {
       imageHistory = merge ? mergeImageBatches(imageHistory, batches) : batches;
       imageTasks = merge ? [...new Map([...imageTasks, ...tasks].map((task) => [task.id, task])).values()].sort((left, right) => right.startedAt - left.startedAt) : tasks;
       if (Array.isArray(payload.favoriteFolders)) {
@@ -12926,6 +13011,23 @@ function bindEvents() {
   }
   syncNativeMediaControls();
   syncModalViewport();
+  ['chat', 'image'].forEach(kind => {
+    ['BaseUrl', 'ApiKey'].forEach(field => {
+      const input = $(`#${kind}${field}`);
+      input.addEventListener('focus', () => input.dataset.connectionValue = input.value.trim());
+      input.addEventListener('input', () => {
+        if (input.dataset.connectionValue === input.value.trim()) return;
+        input.dataset.connectionValue = input.value.trim();
+        modelRevision[kind]++;
+        $(`#${kind}Model`).value = '';
+        modelCatalog[kind] = [];
+        state.activeConnectionProfiles[kind] = '';
+        renderConnectionProfiles(kind);
+      });
+    });
+    $(`#${kind}ApiKey`).setAttribute('autocomplete', 'new-password');
+    $(`#${kind}ApiKey`).name = `orbit-${kind}-api-secret`;
+  });
   enhanceModelInput($('#chatModel'), 'chat');
   enhanceModelInput($('#chatModelQuick'), 'chat');
   enhanceModelInput($('#imageModel'), 'image');
@@ -12956,7 +13058,13 @@ function bindEvents() {
   $('#resetLocalData').addEventListener('click', clearLocalData);
   $('#closeDataScope').addEventListener('click', () => closeDataScope());
   $('#cancelDataScope').addEventListener('click', () => closeDataScope());
-  $$('.data-scope-option').forEach((button) => button.addEventListener('click', () => closeDataScope(button.dataset.dataScope)));
+  $$('[data-data-scope]').forEach(input => input.addEventListener('change', () => { $('#confirmDataScope').disabled = !$$('[data-data-scope]:checked').length; }));
+  $('#confirmDataScope').addEventListener('click', () => {
+    const selected = new Set($$('[data-data-scope]:checked').map(input => input.value));
+    if (!selected.size) return;
+    const chat = selected.has('chat'), image = selected.has('image'), config = selected.has('config');
+    closeDataScope(chat && image && config ? 'all' : chat && image ? 'workspace' : chat && config ? 'chat-config' : image && config ? 'image-config' : chat ? 'chat' : image ? 'image' : 'config');
+  });
   $('#closeToast').addEventListener('click', closeToast);
   $('#exportWorkspace').addEventListener('click', exportWorkspace);
   $('#importWorkspace').addEventListener('click', () => $('#workspaceImportFile').click());
@@ -13124,6 +13232,7 @@ function bindEvents() {
   });
   $('#historySelectAll').addEventListener('click', selectAllVisibleHistory);
   $('#historyInvertSelection').addEventListener('click', invertVisibleHistorySelection);
+  $('#historyFavoriteSelected').addEventListener('click', favoriteSelectedHistory);
   $('#historyDownloadSelected').addEventListener('click', downloadSelectedHistory);
   $('#historyClearSelection').addEventListener('click', () => applyHistorySelection(new Set()));
   $('#historyDeleteSelected').addEventListener('click', deleteSelectedHistory);
@@ -13229,8 +13338,6 @@ bindEvents();
 render();
 applyHashRoute();
 imageHistoryReady = loadImageHistory();
-if (state.settings.chatApiKey && state.settings.chatBaseUrl) loadModels('chat');
-if (state.settings.imageApiKey && state.settings.imageBaseUrl) loadModels('image');
 
 </script>
 </body>

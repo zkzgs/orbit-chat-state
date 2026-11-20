@@ -66,14 +66,15 @@ export async function mergeImages(
   base: StoredImage[],
   incoming: StoredImage[],
   onProgress?: (progress: number) => void,
+  protectedIds = new Set<string>(),
 ) {
   const records = new Map(base.map((item) => [item.id, item]))
   const idMap = new Map<string, string>()
   const fingerprint = (src: string) => imageStorage.fingerprint(src)
-const fingerprints = new Map<string, string[]>()
+  const fingerprints = new Map<string, string[]>()
   function indexImage(image: StoredImage, key: string) {
     const ids = fingerprints.get(key) || []
-    ids.push(image.id)
+    if (!ids.includes(image.id)) ids.push(image.id)
     fingerprints.set(key, ids)
   }
   for (let i = 0; i < base.length; i++) {
@@ -94,8 +95,21 @@ const fingerprints = new Map<string, string[]>()
     const sameIdKey =
       sameId && (sameId.fingerprint || (await fingerprint(sameId.src)))
     if (sameId && sameIdKey) sameId.fingerprint = sameIdKey
+    if (
+      sameId &&
+      sameIdKey &&
+      sameIdKey !== key &&
+      !protectedIds.has(source.id)
+    )
+      fingerprints.set(
+        sameIdKey,
+        (fingerprints.get(sameIdKey) || []).filter((id) => id !== sameId.id),
+      )
     // 指纹已覆盖全部字节, 相同指纹视为同一张图, 避免手机上再逐字节比对。
-    let same = sameId && sameIdKey === key ? sameId : undefined
+    let same =
+      sameId && (!protectedIds.has(source.id) || sameIdKey === key)
+        ? sameId
+        : undefined
     if (!same) {
       const id = (fingerprints.get(key) || [])[0]
       if (id) same = records.get(id)
@@ -112,7 +126,7 @@ const fingerprints = new Map<string, string[]>()
         : {}),
     }
     records.set(id, record)
-    if (!same) indexImage(record, key)
+    indexImage(record, key)
     if (i % 8 === 0) {
       onProgress?.(0.2 + ((i + 1) / Math.max(incoming.length, 1)) * 0.8)
       await new Promise((resolve) => window.setTimeout(resolve, 0))
@@ -134,15 +148,17 @@ export function mergeFolders(
   const folders = existing.map((item) => ({ ...item }))
   const idMap = new Map<string, string>()
   for (const folder of incoming) {
-    const same = folders.find(
-      (item) =>
-        item.name.toLocaleLowerCase() === folder.name.toLocaleLowerCase(),
-    )
+    const same =
+      folders.find((item) => item.id === folder.id) ||
+      folders.find(
+        (item) =>
+          item.name.toLocaleLowerCase() === folder.name.toLocaleLowerCase(),
+      )
     const id =
       same?.id ||
       (folders.some((item) => item.id === folder.id) ? createId() : folder.id)
     idMap.set(folder.id, id)
-    if (same) same.hidden = Boolean(same.hidden || folder.hidden)
+    if (same) Object.assign(same, folder, { id })
     if (!same) folders.push({ ...folder, id, isDefault: false })
   }
   return {

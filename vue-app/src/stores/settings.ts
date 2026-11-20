@@ -17,6 +17,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
   const ui = useInterfaceStore()
   const draft = reactive(cloneData(workspace.state.settings))
   let baseline = ''
+  const modelRevision = { chat: 0, image: 0 }
   const showKey = reactive({ chat: false, image: false })
   const loadingModels = reactive({ chat: false, image: false })
   const verifiedProxy = ref('')
@@ -28,6 +29,8 @@ export const useSettingsStore = defineStore('settings-form', () => {
       Boolean(verifiedProxy.value),
   )
   function syncFromWorkspace() {
+    modelRevision.chat++
+    modelRevision.image++
     Object.assign(draft, cloneData(workspace.state.settings))
     if (ui.settingsOpen) baseline = snapshot()
   }
@@ -49,6 +52,8 @@ export const useSettingsStore = defineStore('settings-form', () => {
     })
   }
   function close(force = false) {
+    modelRevision.chat++
+    modelRevision.image++
     if (!force && baseline && snapshot() !== baseline) {
       if (window.confirm('设置已修改, 是否保存更改?')) {
         save()
@@ -86,6 +91,23 @@ export const useSettingsStore = defineStore('settings-form', () => {
     rememberProxyUrl(draft.proxyUrl)
     close(true)
     ui.notify('设置已保存')
+  }
+  function connectionEdited(
+    kind: ApiKind,
+    field: 'BaseUrl' | 'ApiKey',
+    value: string,
+  ) {
+    const key = `${kind}${field}` as
+      'chatBaseUrl' | 'chatApiKey' | 'imageBaseUrl' | 'imageApiKey'
+    if (draft[key].trim() === value.trim()) {
+      draft[key] = value
+      return
+    }
+    draft[key] = value
+    modelRevision[kind]++
+    draft[kind === 'chat' ? 'chatModel' : 'imageModel'] = ''
+    workspace.modelCatalog[kind] = []
+    workspace.state.activeConnectionProfiles[kind] = ''
   }
   function invalidateProxy() {
     verifiedProxy.value = ''
@@ -131,14 +153,17 @@ export const useSettingsStore = defineStore('settings-form', () => {
       ui.notify('请先填写对应的接口地址和 API Key', 'error')
       return
     }
+    const revision = modelRevision[kind]
     loadingModels[kind] = true
     try {
       if (kind === 'image' && settings.imageProvider === 'gemini') {
-        workspace.modelCatalog.image = await listGeminiModels(
+        const models = await listGeminiModels(
           apiFetch,
           settings,
           AbortSignal.timeout(15000),
         )
+        if (revision !== modelRevision[kind]) return
+        workspace.modelCatalog.image = models
         const profile = workspace.state.connectionProfiles.image.find(
           (item) => item.id === workspace.state.activeConnectionProfiles.image,
         )
@@ -160,6 +185,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
       }
       if (!response.ok)
         throw new Error(payload.error?.message || `接口返回 ${response.status}`)
+      if (revision !== modelRevision[kind]) return
       workspace.modelCatalog[kind] = (payload.data || []).map((item) => item.id)
       const active = workspace.state.connectionProfiles[kind].find(
         (item) => item.id === workspace.state.activeConnectionProfiles[kind],
@@ -191,6 +217,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
         }
   }
   function selectProfile(kind: ApiKind, id: string) {
+    modelRevision[kind]++
     workspace.state.activeConnectionProfiles[kind] = id
     const profile = workspace.state.connectionProfiles[kind].find(
       (item) => item.id === id,
@@ -272,7 +299,10 @@ export const useSettingsStore = defineStore('settings-form', () => {
       ...profileFields,
       models: workspace.modelCatalog[kind].length
         ? [...workspace.modelCatalog[kind]]
-        : [...(existing?.models || [])],
+        : existing?.baseUrl === profileFields.baseUrl &&
+            existing?.apiKey === profileFields.apiKey
+          ? [...(existing.models || [])]
+          : [],
       createdAt: existing?.createdAt || now,
       updatedAt: now,
     }
@@ -323,6 +353,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
     close,
     save,
     invalidateProxy,
+    connectionEdited,
     testProxy,
     loadModels,
     selectProfile,

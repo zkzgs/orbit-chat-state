@@ -1,6 +1,13 @@
 export type WorkspaceView = 'chat' | 'image'
 export type ApiKind = 'chat' | 'image'
-export type DataScope = 'chat' | 'image' | 'workspace' | 'config' | 'all'
+export type DataScope =
+  | 'chat'
+  | 'image'
+  | 'workspace'
+  | 'config'
+  | 'all'
+  | 'chat-config'
+  | 'image-config'
 export type TaskStatus = 'running' | 'success' | 'partial' | 'error'
 export interface ImageOptions {
   mediaType?: 'image' | 'video'
@@ -117,13 +124,7 @@ export interface ChatFile {
   file?: File
 }
 export interface AgentStep {
-  type:
-    | 'thinking'
-    | 'tool_call'
-    | 'waiting'
-    | 'image'
-    | 'retry'
-    | 'summary'
+  type: 'thinking' | 'tool_call' | 'waiting' | 'image' | 'retry' | 'summary'
   text?: string
   name?: string
   prompt?: string

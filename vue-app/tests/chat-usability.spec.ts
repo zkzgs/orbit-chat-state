@@ -1,3 +1,4 @@
+import { chooseDataScope } from './helpers/data-scope'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { unzipSync } from 'fflate'
@@ -442,7 +443,7 @@ for (const [version, url] of [
     await page.locator('#exportWorkspace').click()
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      page.locator('[data-data-scope="chat"]').click(),
+      chooseDataScope(page, 'chat'),
     ])
     const buffer = await readFile((await download.path())!)
     const archive = unzipSync(buffer)
@@ -458,7 +459,7 @@ for (const [version, url] of [
       dialog.accept(dialog.type() === 'prompt' ? '合并' : undefined),
     )
     await page.locator('#resetLocalData').click()
-    await page.locator('[data-data-scope="chat"]').click()
+    await chooseDataScope(page, 'chat')
     const storedFiles = () =>
       page.evaluate(
         () =>
@@ -715,7 +716,7 @@ for (const [version, url] of [
       await page.locator('#exportWorkspace').click()
       const [download] = await Promise.all([
         page.waitForEvent('download'),
-        page.locator(`[data-data-scope="${scope}"]`).click(),
+        chooseDataScope(page, scope),
       ])
       const buffer = await readFile((await download.path())!)
       const manifest = JSON.parse(
@@ -772,7 +773,7 @@ for (const [version, url] of [
       await isolated.locator('#exportWorkspace').click()
       const [download] = await Promise.all([
         isolated.waitForEvent('download'),
-        isolated.locator('[data-data-scope="config"]').click(),
+        chooseDataScope(isolated, 'config'),
       ])
       const buffer = await readFile((await download.path())!)
       const manifest = JSON.parse(
@@ -934,7 +935,7 @@ for (const [version, url] of [
     await page.locator('#exportWorkspace').click()
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      page.locator('[data-data-scope="workspace"]').click(),
+      chooseDataScope(page, 'workspace'),
     ])
     const seen = await page.evaluate(
       () => (window as any).exportSeen as number[],

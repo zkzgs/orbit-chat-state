@@ -1,3 +1,4 @@
+import { chooseDataScope } from './helpers/data-scope'
 import { readBackup } from './helpers/backup'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
@@ -299,7 +300,7 @@ for (const [version, url] of [
           await page.locator('#exportWorkspace').click()
           const [exportDownload] = await Promise.all([
             page.waitForEvent('download'),
-            page.locator('[data-data-scope="workspace"]').click(),
+            chooseDataScope(page, 'workspace'),
           ])
           const exported = await readFile((await exportDownload.path())!)
           expect(readBackup(exported).images.find((image: any) => image.id === generated.id)?.src).toBe(generated.src)
