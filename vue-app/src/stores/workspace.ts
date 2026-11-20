@@ -30,15 +30,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const chatDraftIds = ref<string[]>([])
   const chatFileDraftIds = ref<string[]>([])
   const polishDraftIds = ref<string[]>([])
+  // The selected template is an update target, not proof that its saved
+  // credentials still match the current connection after a settings-only save.
+  function initialModels(kind: ApiKind) {
+    const profile = state.connectionProfiles[kind].find(
+      (item) => item.id === state.activeConnectionProfiles[kind],
+    )
+    return profile &&
+      profile.baseUrl.trim() === state.settings[`${kind}BaseUrl`].trim() &&
+      profile.apiKey.trim() === state.settings[`${kind}ApiKey`].trim()
+      ? [...(profile.models || [])]
+      : []
+  }
   const modelCatalog = reactive<Record<ApiKind, string[]>>({
-    chat:
-      state.connectionProfiles.chat.find(
-        (item) => item.id === state.activeConnectionProfiles.chat,
-      )?.models || [],
-    image:
-      state.connectionProfiles.image.find(
-        (item) => item.id === state.activeConnectionProfiles.image,
-      )?.models || [],
+    chat: initialModels('chat'),
+    image: initialModels('image'),
   })
   const ready = ref(false)
   let initialization: Promise<void> | undefined

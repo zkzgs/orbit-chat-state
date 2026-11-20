@@ -254,7 +254,7 @@ onBeforeUnmount(() => {
 .template-group-label {
   padding: 7px 10px 3px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .custom-select-menu > input[type='search'] {
   width: calc(100% - 12px);

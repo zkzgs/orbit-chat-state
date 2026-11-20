@@ -107,7 +107,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
     modelRevision[kind]++
     draft[kind === 'chat' ? 'chatModel' : 'imageModel'] = ''
     workspace.modelCatalog[kind] = []
-    workspace.state.activeConnectionProfiles[kind] = ''
+    // Keep the selected template as the explicit update target.
   }
   function invalidateProxy() {
     verifiedProxy.value = ''
@@ -167,7 +167,12 @@ export const useSettingsStore = defineStore('settings-form', () => {
         const profile = workspace.state.connectionProfiles.image.find(
           (item) => item.id === workspace.state.activeConnectionProfiles.image,
         )
-        if (profile) profile.models = [...workspace.modelCatalog.image]
+        if (
+          profile &&
+          profile.baseUrl.trim() === baseUrl.trim() &&
+          profile.apiKey.trim() === key.trim()
+        )
+          profile.models = [...workspace.modelCatalog.image]
         ui.notify(`已获取 ${workspace.modelCatalog.image.length} 个模型`)
         return
       }
@@ -190,7 +195,12 @@ export const useSettingsStore = defineStore('settings-form', () => {
       const active = workspace.state.connectionProfiles[kind].find(
         (item) => item.id === workspace.state.activeConnectionProfiles[kind],
       )
-      if (active) active.models = [...workspace.modelCatalog[kind]]
+      if (
+        active &&
+        active.baseUrl.trim() === baseUrl.trim() &&
+        active.apiKey.trim() === key.trim()
+      )
+        active.models = [...workspace.modelCatalog[kind]]
       ui.notify(`已获取 ${workspace.modelCatalog[kind].length} 个模型`)
     } catch (error) {
       ui.notify(errorMessage(error), 'error')
@@ -321,9 +331,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
       return
     }
     Object.assign(profile, fields(kind), {
-      models: workspace.modelCatalog[kind].length
-        ? [...workspace.modelCatalog[kind]]
-        : [...(profile.models || [])],
+      models: [...workspace.modelCatalog[kind]],
       updatedAt: Date.now(),
     })
     selectProfile(kind, profile.id)

@@ -112,6 +112,7 @@
 .conversation-title {
   flex: 1;
   min-width: 0;
+  font-size: 13px;
 }
 .conversation-title-track {
   display: inline-flex;
@@ -271,6 +272,7 @@
 }
 .agent-activity {
   min-width: 0;
+  font-size: 11px;
 }
 .agent-activity > :nth-child(2) {
   flex-shrink: 0;
@@ -285,6 +287,7 @@
 }
 .image-mention-origin {
   margin-left: auto;
+  font-size: 11px;
 }
 .image-mention-origin {
   display: inline-flex;
@@ -292,7 +295,7 @@
   padding: 1px 5px;
   border-radius: 4px;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.6;
 }
 .image-mention-origin[data-origin='input'] {
@@ -359,7 +362,7 @@
 }
 .chat-file > span:first-child {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .chat-file-name {
   overflow: hidden;
@@ -475,7 +478,8 @@
   .agent-activity {
     margin-left: 36px;
     flex-wrap: wrap;
-  }
+  font-size: 11px;
+}
   .agent-activity-prompt {
     flex-basis: 100%;
     padding-left: 21px;
@@ -508,7 +512,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.65;
   color: var(--muted-2);
 }

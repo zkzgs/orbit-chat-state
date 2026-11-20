@@ -214,6 +214,9 @@ for (const [version, url] of versions) {
         await input.fill(original)
         await expect(page.locator(`#${kind}Model`)).toHaveValue(`${kind}-old`)
         await input.fill(original + 'changed')
+        await expect(page.locator(`#${kind}ProfileSelect`)).toHaveValue(
+          kind === 'chat' ? 'old' : 'image',
+        )
         await expect(page.locator(`#${kind}Model`)).toHaveValue('')
         await page.locator(`#${kind}Model`).focus()
         await expect(

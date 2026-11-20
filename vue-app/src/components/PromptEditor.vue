@@ -32,6 +32,15 @@ const menu = useTemplateRef<HTMLDivElement>('menu')
 const wrap = useTemplateRef<HTMLDivElement>('wrap')
 const tooltip = ref<{ src: string; style: CSSProperties } | null>(null)
 const dropping = ref(false)
+const selectionActive = ref(false)
+function syncSelection() {
+  const element = input.value
+  selectionActive.value = Boolean(
+    element &&
+    document.activeElement === element &&
+    element.selectionStart !== element.selectionEnd,
+  )
+}
 useTextarea(input, model, () => props.autoResize, 260)
 function dragOver(event: DragEvent) {
   if (!event.dataTransfer?.types.includes('Files')) return
@@ -84,8 +93,23 @@ function showMentionPreview(index: number, event: MouseEvent) {
 
 function focus() {
   focused.value = true
+  syncSelection()
   updateCaret()
   emit('focus')
+}
+
+function updateCaretAndSelection() {
+  updateCaret()
+  syncSelection()
+}
+function onCaretKeyup(event: KeyboardEvent) {
+  syncSelection()
+  if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
+    updateCaret()
+}
+function onBlur() {
+  blur()
+  selectionActive.value = false
 }
 
 function scroll() {
@@ -96,7 +120,11 @@ defineExpose({ insertReference })
 </script>
 
 <template>
-  <div ref="wrap" class="image-prompt-wrap">
+  <div
+    ref="wrap"
+    class="image-prompt-wrap"
+    :class="{ 'has-text-selection': selectionActive }"
+  >
     <textarea
       :id="id"
       ref="input"
@@ -107,14 +135,12 @@ defineExpose({ insertReference })
       @dragover="dragOver"
       @dragleave="dropping = false"
       @drop="drop"
-      @input="updateCaret"
-      @click="updateCaret"
-      @keyup="
-        ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes($event.key) &&
-        updateCaret()
-      "
+      @input="updateCaretAndSelection"
+      @click="updateCaretAndSelection"
+      @select="syncSelection"
+      @keyup="onCaretKeyup"
       @focus="focus"
-      @blur="blur"
+      @blur="onBlur"
       @keydown="keydown"
       @compositionstart="compositionStart"
       @compositionend="compositionEnd"
