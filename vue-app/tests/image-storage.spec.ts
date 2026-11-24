@@ -26,6 +26,7 @@ async function seedLegacy(page: Page) {
           chatBaseUrl: 'https://storage.test/v1',
           chatApiKey: 'test',
           chatModel: 'test-chat',
+          chatHistoryImages: 'id',
           compressRequestImages: false,
           imagePromptTemplates: [
             {
@@ -139,6 +140,34 @@ async function stored(page: Page) {
     }
     db.close()
     return result
+  })
+}
+
+for (const version of ['Vue', '单 HTML']) {
+  test(`${version} 首次绑定空图片时清除 src`, async ({ page }) => {
+    let source = createImageStorage.toString()
+    if (version === '单 HTML') {
+      const html = await readFile(
+        new URL('../../index.html', import.meta.url),
+        'utf8',
+      )
+      const block = html.match(
+        /\/\/ BEGIN SHARED IMAGE STORAGE\n([\s\S]*?)\n\/\/ END SHARED IMAGE STORAGE/,
+      )
+      if (!block) throw new Error('找不到单 HTML 图片存储代码')
+      source = block[1]
+    }
+
+    const hasSource = await page.evaluate((source) => {
+      const create = new Function('return (' + source + ')')()
+      const storage = create({ storeName: 'generations' })
+      const image = document.createElement('img')
+      image.setAttribute('src', 'about:blank')
+      storage.bindImage(image, undefined)
+      return image.hasAttribute('src')
+    }, source)
+
+    expect(hasSource).toBe(false)
   })
 }
 
@@ -604,7 +633,7 @@ for (const [version, url, other] of [
       const body = request.postDataJSON()
       requests.push(body)
       const message =
-        body.tools && body.messages.at(-1).role !== 'tool'
+        body.tools && requests.length === 1
           ? {
               role: 'assistant',
               content: null,

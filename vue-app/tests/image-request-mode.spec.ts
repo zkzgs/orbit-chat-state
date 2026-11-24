@@ -12,6 +12,7 @@ async function openWorkspace(page: Page, url: string) {
           imageBaseUrl: 'https://mode.test/v1',
           imageApiKey: 'test-key',
           imageModel: 'gpt-image-2.6',
+          imagePreventPromptRewrite: false,
           demoMode: false,
         },
       }),
@@ -61,6 +62,15 @@ for (const [version, url] of [
           route.fulfill({ json: { data: [] } }),
         )
         await openWorkspace(page, url)
+        const referenceRow = page.locator('#imageView .reference-row')
+        const modelRow = page.locator('#imageView .image-model-quick')
+        await expect(modelRow).toHaveCSS('margin-top', '8px')
+        const referenceBounds = (await referenceRow.boundingBox())!
+        const modelBounds = (await modelRow.boundingBox())!
+        expect(
+          modelBounds.y - referenceBounds.y - referenceBounds.height,
+        ).toBeGreaterThanOrEqual(8)
+        expect(modelBounds.x + modelBounds.width).toBeLessThanOrEqual(width)
         const select = page.locator('#imageRequestType input:checked')
         const modeGroup = page.getByRole('radiogroup', { name: '请求接口' })
         await expect(modeGroup.getByRole('radio')).toHaveCount(2)

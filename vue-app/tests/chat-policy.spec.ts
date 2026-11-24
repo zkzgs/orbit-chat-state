@@ -95,7 +95,7 @@ for (const [version, url] of [
   test(
     version + ' 标题悬停才溢出时滚动, 宽度变化实时更新',
     async ({ page }) => {
-      await open(page, url)
+      await open(page, url, {}, true)
       await page.mouse.move(800, 300)
       const title = page.locator('.conversation-title')
       const idle = await title.evaluate((el) => {
@@ -870,8 +870,10 @@ for (const [version, url] of [
     async ({ page }) => {
       await page.setViewportSize({ width: 390, height: 550 })
       await open(page, url)
+      const more = page.locator('#toolbarMoreButton')
+      await more.click()
       await expect(page.locator('#agentImageSettings')).toBeDisabled()
-      await page.locator('#chatImageTools').check({ force: true })
+      await page.locator('#chatImageTools').locator('..').click()
       await page.locator('#agentImageSettings').click()
       await page.locator('#agentImageAutoParameters').locator('..').click()
       const box = await page.locator('#saveAgentImageSettings').boundingBox()
@@ -886,6 +888,8 @@ for (const [version, url] of [
           .locator('.custom-select-trigger'),
       ).toBeDisabled()
       await page.locator('#cancelAgentImageSettings').click()
+      if ((await more.getAttribute('aria-expanded')) === 'false')
+        await more.click()
       await page.locator('#agentImageSettings').click()
       await expect(page.locator('#agentImageAutoParameters')).not.toBeChecked()
     },

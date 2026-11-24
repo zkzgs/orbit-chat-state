@@ -5,7 +5,7 @@ export const PROXY_URL_HISTORY_LIMIT = 10
 const LEGACY_PRESET_DISMISSED_KEY = 'orbit-proxy-url-preset-dismissed-v1'
 export const DEFAULT_PROXY_URL_HISTORY = [
   'http://127.0.0.1:8787',
-  'https://orbit-proxy.zkzgs.workers.dev/7f2d9a4c81e0b563fa7290cd418be35',
+  'https://orbit-proxy.zkzgs.workers.dev',
 ]
 
 export const proxyUrlHistory = ref<string[]>([])

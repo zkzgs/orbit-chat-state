@@ -551,7 +551,8 @@ export function createImageStorage(options) {
 
   function bindImage(element, value, thumbnail = true) {
     const previous = bindings.get(element)
-    if (previous?.value === value && previous.thumbnail === thumbnail) return
+    if (previous && previous.value === value && previous.thumbnail === thumbnail)
+      return
     unbindImage(element)
     if (!value) {
       element.removeAttribute('src')
