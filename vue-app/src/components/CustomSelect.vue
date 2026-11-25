@@ -26,6 +26,16 @@ const host = ref<HTMLDivElement | null>(null)
 const menu = ref<HTMLDivElement | null>(null)
 const open = ref(false)
 const query = ref('')
+const expanded = ref(new Set<string>())
+function toggleGroup(label: string) {
+  const scrollTop = menu.value?.scrollTop ?? 0
+  if (expanded.value.has(label)) expanded.value.delete(label)
+  else expanded.value.add(label)
+  void nextTick(() => {
+    positionMenu()
+    if (menu.value) menu.value.scrollTop = scrollTop
+  })
+}
 const searchable = computed(() => /ProfileSelect|TemplateSelect/.test(props.id))
 const groups = computed(() => {
   const result = new Map<string, SelectOption[]>()
@@ -62,6 +72,7 @@ function positionMenu() {
   const element = host.value
   const popup = menu.value
   if (!element || !popup) return
+  const scrollTop = popup.scrollTop
   element.classList.remove('open-up')
   popup.style.maxHeight = 'none'
   popup.style.overflowY = 'hidden'
@@ -94,12 +105,14 @@ function positionMenu() {
     popup.style.maxHeight = `${Math.floor(availableHeight)}px`
     popup.style.overflowY = 'auto'
   }
+  popup.scrollTop = scrollTop
 }
 
 async function showMenu() {
   if (props.disabled || open.value) return
   activeClose?.()
   query.value = ''
+  expanded.value.clear()
   open.value = true
   activeClose = close
   await nextTick()
@@ -181,7 +194,7 @@ onBeforeUnmount(() => {
       class="custom-select-trigger"
       :disabled="disabled"
       :aria-label="ariaLabel"
-      aria-haspopup="listbox"
+    :aria-haspopup="searchable ? 'dialog' : 'listbox'"
       :aria-expanded="open"
       :aria-controls="`${id}-custom-menu`"
       @click.stop="toggleMenu"
@@ -211,7 +224,8 @@ onBeforeUnmount(() => {
       :id="`${id}-custom-menu`"
       ref="menu"
       class="custom-select-menu"
-      role="listbox"
+      :role="searchable ? 'dialog' : 'listbox'"
+      :aria-label="searchable ? ariaLabel || '选择模板' : undefined"
       :hidden="!open"
     >
       <input
@@ -224,18 +238,27 @@ onBeforeUnmount(() => {
         aria-label="筛选模板"
         @input="nextTick(positionMenu)"
       />
-      <template v-for="group in groups" :key="group.label">
-        <div v-if="searchable && group.label" class="template-group-label">
+      <template v-for="(group, index) in groups" :key="group.label">
+        <button
+          v-if="searchable && group.label"
+          type="button"
+          class="template-group-label"
+          :data-tone="index % 4"
+          :aria-expanded="Boolean(query.trim()) || expanded.has(group.label)"
+          @click="toggleGroup(group.label)"
+        >
           {{ group.label }}
-        </div>
+        </button>
+        <template v-if="!group.label || query.trim() || expanded.has(group.label)">
         <button
           v-for="option in group.options"
           :key="option.value"
           type="button"
           class="custom-select-option"
-          role="option"
-          :aria-selected="option.value === modelValue"
-          :class="{ selected: option.value === modelValue }"
+          :role="searchable ? undefined : 'option'"
+          :aria-selected="searchable ? undefined : option.value === modelValue"
+          :aria-current="searchable && option.value === modelValue ? 'true' : undefined"
+          :class="{ 'template-group-child': group.label, selected: option.value === modelValue }"
           @click="choose(option.value)"
         >
           {{
@@ -244,6 +267,7 @@ onBeforeUnmount(() => {
               : option.label
           }}
         </button>
+        </template>
       </template>
       <div v-if="!groups.length" class="template-group-label">无匹配模板</div>
     </div>
@@ -252,9 +276,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .template-group-label {
-  padding: 7px 10px 3px;
-  color: var(--muted);
-  font-size: 11px;
+  padding: 8px 10px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
 }
 .custom-select-menu > input[type='search'] {
   width: calc(100% - 12px);

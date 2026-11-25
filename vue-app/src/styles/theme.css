@@ -239,14 +239,15 @@
   margin-bottom: 14px;
 }
 .image-model-quick .quick-setting {
-  flex: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 190px);
+  max-width: 100%;
   min-width: 0;
 }
 .image-model-quick .quick-setting input {
   width: 100%;
 }
-.image-model-quick .model-combo-host {
-  flex: 1;
+.image-model-quick .model-input-host {
   min-width: 0;
 }
 

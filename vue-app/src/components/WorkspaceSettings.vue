@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useEventListener } from '../composables/useEventListener'
 import { useSettingsStore } from '../stores/settings'
+import ModelListSettings from './ModelListSettings.vue'
 import { useWorkspaceData } from '../composables/useWorkspaceData'
 import { inputFiles } from '../utils/events'
 import { useWorkspaceStore } from '../stores/workspace'
@@ -42,6 +43,9 @@ watch(
     if (!open) closeProxyHistory()
   },
 )
+watch([() => ui.settingsOpen, activeTab], ([open, tab]) => {
+  if (open && (tab === 'chat' || tab === 'image')) settings.ensureModels(tab)
+})
 function selectTab(id: string) {
   activeTab.value = id
   closeProxyHistory()
@@ -313,6 +317,7 @@ function onTabKey(event: KeyboardEvent) {
                   )
                 "
                 id="chatBaseUrl"
+                @change="settings.ensureModels('chat')"
                 type="url"
                 placeholder="https://api.openai.com/v1"
               /><small class="field-help"
@@ -334,6 +339,7 @@ function onTabKey(event: KeyboardEvent) {
                       )
                     "
                     id="chatApiKey"
+                    @change="settings.ensureModels('chat')"
                     autocomplete="new-password"
                     name="orbit-chat-api-secret"
                     placeholder="sk-..."
@@ -350,14 +356,15 @@ function onTabKey(event: KeyboardEvent) {
                 >模型<ModelInput
                   v-model="settings.draft.chatModel"
                   id="chatModel"
-                  placeholder="点击获取或手动输入模型"
+                  placeholder="选择或输入默认模型"
                   label="对话模型"
-                  :models="workspace.modelCatalog.chat"
-                  refresh
-                  :refreshing="settings.loadingModels.chat"
-                  @refresh="settings.loadModels('chat')"
+                  :loading="settings.loadingModels.chat"
+                  :empty-message="settings.modelStatus.chat"
+                  @retry="settings.loadModels('chat')"
+                  :models="workspace.modelChoices('chat', settings.draft)"
               /></label>
             </div>
+            <ModelListSettings v-if="ui.settingsOpen" kind="chat" v-model="settings.draft.chatCustomModels" />
             <label class="field-label"
               >思考程度
               <CustomSelect
@@ -448,7 +455,8 @@ function onTabKey(event: KeyboardEvent) {
             <label class="field-label"
               >接口协议<CustomSelect
                 id="imageProvider"
-                v-model="settings.draft.imageProvider"
+                :model-value="settings.draft.imageProvider"
+                @update:model-value="settings.providerEdited($event as typeof settings.draft.imageProvider)"
                 :options="[
                   { value: 'openai', label: 'OpenAI 兼容' },
                   { value: 'xai', label: 'xAI / Grok 原生' },
@@ -466,6 +474,7 @@ function onTabKey(event: KeyboardEvent) {
                   )
                 "
                 id="imageBaseUrl"
+                @change="settings.ensureModels('image')"
                 type="url"
                 placeholder="https://api.openai.com/v1"
               /><small class="field-help"
@@ -487,6 +496,7 @@ function onTabKey(event: KeyboardEvent) {
                       )
                     "
                     id="imageApiKey"
+                    @change="settings.ensureModels('image')"
                     autocomplete="new-password"
                     name="orbit-image-api-secret"
                     placeholder="sk-..."
@@ -503,14 +513,15 @@ function onTabKey(event: KeyboardEvent) {
                 >模型<ModelInput
                   v-model="settings.draft.imageModel"
                   id="imageModel"
-                  placeholder="点击获取或手动输入模型"
+                  placeholder="选择或输入默认模型"
                   label="生图模型"
-                  :models="workspace.modelCatalog.image"
-                  refresh
-                  :refreshing="settings.loadingModels.image"
-                  @refresh="settings.loadModels('image')"
+                  :loading="settings.loadingModels.image"
+                  :empty-message="settings.modelStatus.image"
+                  @retry="settings.loadModels('image')"
+                  :models="workspace.modelChoices('image', settings.draft)"
               /></label>
             </div>
+            <ModelListSettings v-if="ui.settingsOpen" kind="image" v-model="settings.draft.imageCustomModels" />
             <div class="field-grid">
               <label class="field-label"
                 >数量请求方式<CustomSelect

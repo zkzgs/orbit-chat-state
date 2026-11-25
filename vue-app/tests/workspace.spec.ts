@@ -38,7 +38,7 @@ async function chooseCustomSelect(page: Page, id: string, label: string) {
   await page.locator(`#${id}-custom-trigger`).click()
   await page
     .locator(`#${id}-custom-menu`)
-    .getByRole('option', { name: label, exact: true })
+    .getByRole(/ProfileSelect|TemplateSelect/.test(id) ? 'button' : 'option', { name: label, exact: true })
     .click()
 }
 
@@ -104,7 +104,7 @@ test('模型候选列表统一使用应用样式, 支持过滤和键盘选择', 
     localStorage.setItem(
       'orbit-chat-state-v1',
       JSON.stringify({
-        settings: { chatModel: 'gpt-6.1-sol' },
+        settings: { theme: 'dark', chatModel: 'gpt-6.1-sol', chatCustomModels: 'codex-auto-review\ngpt-5.6-sol\ngpt-6.1-sol\ngpt-6-sol' },
         connectionProfiles: {
           chat: [
             {
@@ -164,7 +164,7 @@ for (const [version, url] of [
   ['HTML', '/index.html'],
   ['Vue', '/vue-app/dist/index.html'],
 ])
-  test(version + ' 获取模型按钮固定在下拉列表底部', async ({ page }) => {
+  test(version + ' 接口模型列表滚动时获取按钮固定在设置中', async ({ page }) => {
     await page.route('https://models.test/v1/models', (route) =>
       route.fulfill({
         json: {
@@ -179,18 +179,12 @@ for (const [version, url] of [
       { chatBaseUrl: 'https://models.test/v1', chatApiKey: 'test-key' },
       url,
     )
-    await page.locator('[data-view="chat"]').click()
-    await page.locator('#chatModelQuick').click()
-    const dropdown =
-      version === 'HTML'
-        ? page.locator(
-            '[data-model-dropdown="chat"][data-model-input="chatModelQuick"]',
-          )
-        : page.locator('#chatModelQuick-options')
-    const refresh = dropdown.locator('.model-refresh')
-    await refresh.click()
-    const list = dropdown.locator('.model-options')
-    await expect(list.locator('.model-option')).toHaveCount(24)
+    await page.locator('#topbarSettings').click()
+    await page.locator('#settings-tab-chat').click()
+    await page.getByRole('button', { name: '选择模型' }).click()
+    const refresh = page.getByRole('button', { name: '获取模型' })
+    const list = page.locator('.model-source-options:visible')
+    await expect(list.getByRole('checkbox')).toHaveCount(24)
     const before = await refresh.boundingBox()
     await list.evaluate((element) => {
       element.scrollTop = element.scrollHeight
@@ -203,6 +197,71 @@ for (const [version, url] of [
       0,
     )
   })
+
+for (const [version, url] of [
+  ['HTML', '/index.html'],
+  ['Vue', '/vue-app/dist/index.html'],
+]) {
+  for (const kind of ['chat', 'image']) {
+    test(`${version} ${kind} 不展开选择模型也会加载并更新默认模型候选`, async ({ page }) => {
+      const baseUrl = 'https://auto-models.test/v1'
+      let requests = 0
+      let release!: () => void
+      const responseReady = new Promise<void>((resolve) => { release = resolve })
+      await page.route(`${baseUrl}/models`, async (route) => {
+        ++requests
+        await responseReady
+        await route.fulfill({ json: { data: [{ id: 'auto-model-one' }, { id: 'auto-model-two' }] } })
+      })
+      await openWorkspace(page, { [`${kind}BaseUrl`]: baseUrl }, url)
+      await page.locator('#topbarSettings').click()
+      if (kind === 'image') await page.locator('#settings-tab-image').click()
+      await page.locator(`#${kind}ApiKey`).fill('example-only')
+      const picker = page.locator('.model-source-picker:visible')
+      await expect(picker).toHaveCount(0)
+      const modelField = page.locator(`#${kind}Model`)
+      await modelField.click()
+      const dropdown = page.locator(version === 'Vue' ? `#${kind}Model-options` : `[data-model-input="${kind}Model"]:visible`)
+      await expect(modelField).toHaveAttribute('placeholder', '正在获取模型…')
+      await expect(dropdown.getByRole('status')).toHaveText('正在获取模型…')
+      await expect(dropdown.getByText('暂无匹配模型', { exact: false })).toHaveCount(0)
+      release()
+      await expect(dropdown.getByText('auto-model-two', { exact: true })).toBeVisible()
+      await expect(dropdown.getByRole('status')).toHaveCount(0)
+      await expect(page.getByText('未自定义，使用接口模型')).toHaveCount(0)
+      await expect(picker).toHaveCount(0)
+      await expect(page.locator(`#${kind}Model`)).toHaveValue('')
+      expect(requests).toBe(1)
+      const dialogs: string[] = []
+      page.on('dialog', (dialog) => { dialogs.push(dialog.message()); void dialog.dismiss() })
+      await page.locator('#closeSettings').click()
+      await expect(page.locator('#settingsBackdrop')).toBeHidden()
+      expect(dialogs).toEqual(['设置已修改, 是否保存更改?'])
+    })
+  }
+  test(`${version} 窄屏模型菜单在原处重试`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    const baseUrl = 'https://retry-models.test/v1'
+    let requests = 0
+    await page.route(`${baseUrl}/models`, (route) => ++requests === 1
+      ? route.fulfill({ status: 503, json: { error: { message: 'Unavailable' } } })
+      : route.fulfill({ json: { data: [{ id: 'retry-model' }] } }))
+    await openWorkspace(page, { chatBaseUrl: baseUrl, chatApiKey: 'example-only', theme: 'dark' }, url)
+    await page.locator('#topbarSettings').click()
+    await page.locator('#chatModel').click()
+    const dropdown = page.locator(version === 'Vue' ? '#chatModel-options' : '[data-model-input="chatModel"]:visible')
+    await expect(dropdown.getByRole('status')).toContainText('获取模型失败')
+    await dropdown.getByRole('button', { name: '重试' }).click()
+    const option = dropdown.getByText('retry-model', { exact: true })
+    await expect(option).toBeVisible()
+    const menuRect = (await dropdown.boundingBox())!
+    expect(menuRect.x).toBeGreaterThanOrEqual(0)
+    expect(menuRect.x + menuRect.width).toBeLessThanOrEqual(390)
+    await option.click()
+    await expect(page.locator('#chatModel')).toHaveValue('retry-model')
+    expect(requests).toBe(2)
+  })
+}
 
 test('根目录单文件模型菜单、聊天请求状态和手机弹窗正常', async ({ page }) => {
   const errors: string[] = []
@@ -231,12 +290,12 @@ test('根目录单文件模型菜单、聊天请求状态和手机弹窗正常',
       chatBaseUrl: 'https://chat.test/v1',
       chatApiKey: 'test-key',
       chatModel: 'gpt-6-sol',
+      chatCustomModels: 'codex-auto-review\ngpt-5.6-sol\ngpt-6-sol\ngpt-6.1-sol',
     },
     '/index.html',
   )
   await page.locator('[data-view="chat"]').click()
   await page.locator('#chatModelQuick').focus()
-  await page.locator('[data-model-input="chatModelQuick"] .model-refresh').click()
   const modelOption = page.locator(
     '[data-model-dropdown="chat"][data-model-input="chatModelQuick"] .model-option',
   )
@@ -1422,7 +1481,7 @@ test('尺寸面板只显示当前模式, 比例默认方形且取消不保存', 
 })
 
 test('生图下拉菜单保留自定义样式和键盘选择', async ({ page }) => {
-  await openWorkspace(page)
+  await openWorkspace(page, { theme: 'dark' })
   const control = page
     .locator('.select-control')
     .filter({ hasText: '输出透明度' })
@@ -1578,9 +1637,8 @@ test('接口模板校验、自动命名、同名覆盖、临时配置和删除�
   await page.locator('#chatBaseUrl').fill('https://api.orbit.test/v1')
   await page.locator('#chatApiKey').fill('local-test-key')
   await page.locator('#chatModel').fill('model-one')
-  await page.locator('#chatModel').click()
-  await page.locator('#chatModel-options .model-refresh').click()
-  await expect(page.locator('#toast')).toContainText('已获取 1 个模型')
+  await page.getByRole('button', { name: '选择模型' }).click()
+  await expect(page.locator('.model-source-picker:visible').getByText('model-one', { exact: true })).toBeVisible()
   page.once('dialog', (dialog) => {
     expect(dialog.defaultValue()).toBe('orbit.test')
     void dialog.accept('接口 A')
@@ -1617,13 +1675,7 @@ test('接口模板校验、自动命名、同名覆盖、临时配置和删除�
   )
   await expect(page.locator('#chatModel')).toHaveValue('model-two')
   await page.locator('#chatModel').click()
-  await expect(page.locator('#chatModel-options [role="option"]')).toHaveCount(
-    0,
-  )
-  await expect(page.locator('#chatModel-options')).toContainText(
-    '暂无匹配模型，可直接输入模型名',
-  )
-  await expect(page.locator('#toast')).toContainText('当前填写内容保留')
+  await expect(page.locator('#chatModel-options [role="option"]')).toHaveText('model-one')
   await chooseCustomSelect(page, 'chatProfileSelect', '接口 a')
   let confirmation = ''
   page.once('dialog', (dialog) => {
@@ -1646,20 +1698,18 @@ test('获取模型时按钮显示请求中状态并禁止重复点击', async ({
   })
   await openWorkspace(page)
   await page.locator('#topbarSettings').click()
-  for (const [tab, baseUrl, apiKey, modelInput] of [
-    ['#settings-tab-chat', '#chatBaseUrl', '#chatApiKey', '#chatModel'],
-    ['#settings-tab-image', '#imageBaseUrl', '#imageApiKey', '#imageModel'],
+  for (const [tab, baseUrl, apiKey] of [
+    ['#settings-tab-chat', '#chatBaseUrl', '#chatApiKey'],
+    ['#settings-tab-image', '#imageBaseUrl', '#imageApiKey'],
   ]) {
     await page.locator(tab).click()
     await page.locator(baseUrl).fill('https://models.test/v1')
     await page.locator(apiKey).fill('test-key')
-    const input = page.locator(modelInput)
-    await input.click()
-    const button = page.locator(`${modelInput}-options .model-refresh`)
-    await button.click()
+    await page.getByRole('button', { name: '选择模型' }).click()
+    const button = page.locator('.model-source-picker:visible').getByRole('button', { name: /获取/ })
     await expect(button).toHaveText('获取中...')
     await expect(button).toBeDisabled()
-    await expect(page.locator('#toast')).toContainText('已获取 1 个模型')
+    await expect(page.locator('.model-source-picker:visible').getByText('model-one', { exact: true })).toBeVisible()
     await expect(button).toHaveText('获取模型')
     await expect(button).toBeEnabled()
   }

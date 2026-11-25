@@ -620,6 +620,11 @@
   flex: none;
   width: 132px;
 }
+@media (min-width: 781px) {
+  .context-toolbar.toolbar-measuring .quick-setting #chatModelQuick {
+    width: 190px;
+  }
+}
 .chat-quick-settings > .search-toggle,
 .toolbar-agent-group > .search-toggle {
   margin-left: 0;

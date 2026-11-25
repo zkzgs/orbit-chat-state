@@ -123,12 +123,9 @@ for (const [version, url] of [
           expect(request.body.prompt).toContain('<IMAGE_0>')
         }
         const previous = modelLoads
-        await page.locator('#imageModelQuick').click()
-        const refreshButton =
-          version === 'HTML'
-            ? '[data-model-dropdown="image"][data-model-input="imageModelQuick"] .model-refresh'
-            : '#imageModelQuick-options .model-refresh'
-        await page.locator(refreshButton).click()
+        await page.locator('#topbarSettings').click()
+        await page.locator('#settings-tab-image').click()
+        await page.getByRole('button', { name: '选择模型' }).click()
         await expect.poll(() => modelLoads).toBeGreaterThan(previous)
         await page.reload()
         await expect(page.locator('.history-item.success')).toHaveCount(1)

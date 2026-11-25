@@ -1566,6 +1566,7 @@ select:not(:disabled):hover {
   color: var(--muted);
   font-size: 12px;
 }
+.configured-models-bar input,
 .field-label input,
 .field-label textarea {
   width: 100%;
@@ -1577,6 +1578,7 @@ select:not(:disabled):hover {
   color: var(--ink);
   font-size: 13px;
 }
+.configured-models-bar input:focus,
 .field-label input:focus,
 .field-label textarea:focus {
   border-color: rgba(var(--interaction-rgb, 116, 212, 203), 0.55);
@@ -1994,7 +1996,7 @@ select:not(:disabled):hover {
 }
 .data-scope-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 .data-scope-option {
@@ -3079,6 +3081,37 @@ select:not(:disabled):hover {
 .model-dropdown[hidden] {
   display: none;
 }
+.template-group-label[data-tone] { display: flex; align-items: center; gap: 8px; width: 100%; margin-block: 3px; border: 0; border-inline-start: 3px solid var(--group-tone); border-radius: 4px; background: color-mix(in srgb, var(--group-tone) 14%, transparent); text-align: start; overflow-wrap: anywhere; }
+.template-group-label[data-tone]::before { content: '▸'; }
+.template-group-label[aria-expanded='true']::before { content: '▾'; }
+.template-group-label[data-tone='0'] { --group-tone: #39a99d; }
+.template-group-label[data-tone='1'] { --group-tone: #8c79db; }
+.template-group-label[data-tone='2'] { --group-tone: #c48b37; }
+.template-group-label[data-tone='3'] { --group-tone: #5296e3; }
+.custom-select-option.template-group-child { padding-inline-start: 24px; }
+.configured-models { display: grid; gap: 6px; min-width: 0; }
+.configured-models-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.configured-models-bar strong { margin-right: auto; }
+.configured-models-bar input { flex: 1; width: auto; min-width: min(120px, 100%); }
+.model-source-toolbar { align-items: stretch; }
+.model-source-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.model-input-loading::placeholder { color: var(--ink); opacity: 1; }
+.model-menu-status { display: flex; align-items: center; gap: 8px; padding: 8px; color: var(--ink); font-size: 13px; font-weight: 600; }
+.model-menu-status button { margin-inline-start: auto; }
+.model-spinner { flex: none; width: 13px; height: 13px; border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: 50%; }
+@media (prefers-reduced-motion: no-preference) { .model-spinner { animation: model-spinner-turn .8s linear infinite; } }
+@keyframes model-spinner-turn { to { transform: rotate(360deg); } }
+.model-source-picker { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; }
+.model-source-options { max-height: 210px; overflow-y: auto; }
+.model-source-options label, .configured-model-items li { display: flex; align-items: center; gap: 8px; padding: 4px; }
+.model-source-options input { flex: none; width: auto; }
+.configured-model-items span, .model-source-options span { overflow-wrap: anywhere; min-width: 0; }
+.configured-model-items { list-style: none; margin: 0; padding: 0; }
+.configured-model-items li { justify-content: space-between; border-bottom: 1px solid var(--line); }
+.model-input-host { min-width: 0; }
+@media (min-width: 781px) {
+  .quick-setting #chatModelQuick { width: 190px; }
+}
 .model-options {
   min-height: 0;
   flex: 1 1 auto;
@@ -3096,8 +3129,8 @@ select:not(:disabled):hover {
   color: var(--muted);
   font-size: 12px;
   text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .model-option:hover,
 .model-option:focus,
@@ -5428,26 +5461,6 @@ select:not(:disabled):hover {
   }
 }
 
-.model-refresh {
-  flex: 0 0 auto;
-  width: 100%;
-  min-height: 34px;
-  margin-top: 4px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--cyan);
-  text-align: left;
-  font-size: 11px;
-}
-.model-refresh:hover:not(:disabled) {
-  background: rgba(var(--shade-rgb, 255, 255, 255), 0.06);
-}
-.model-refresh:disabled {
-  cursor: wait;
-  opacity: 0.7;
-}
 .agent-activity {
   display: flex;
   align-items: center;

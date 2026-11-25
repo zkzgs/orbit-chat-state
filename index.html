@@ -152,6 +152,7 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
 .quick-setting { display: flex; align-items: center; gap: 4px; color: var(--muted-2); font-size: 12px; }
 .quick-setting input, .quick-setting select { height: 27px; min-width: 0; padding: 0 7px; border: 1px solid var(--line); border-radius: 4px; outline: 0; background: var(--color-101a28, #101a28); color: var(--muted); font-size: 12px; }
 .quick-setting input { width: 132px; }
+@media (min-width: 781px) { .quick-setting #chatModelQuick { width: 190px; } }
 .quick-setting select { width: 70px; }
 .quick-setting input:focus, .quick-setting select:focus { border-color: rgba(var(--interaction-rgb, 116, 212, 203), .55); color: var(--ink); }
 .composer-box { padding: 12px 13px 9px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--panel-soft); box-shadow: 0 10px 32px rgba(0,0,0,.12); transition: .2s ease; }
@@ -204,9 +205,6 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
 .image-mention-token.invalid { background: rgba(255,150,150,.19); color: var(--danger, var(--color-ff8f8f, #ff8f8f)); }
 .image-mention-menu { position: absolute; z-index: 12; min-width: 145px; max-width: min(230px, 100%); max-height: 215px; overflow-y: auto; padding: 5px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--color-162235, #162235); box-shadow: 0 12px 28px rgba(0,0,0,.35); }
 .image-mention-menu[hidden], .image-mention-tooltip[hidden] { display: none; }
-.model-refresh { flex: 0 0 auto; width: 100%; min-height: 34px; margin-top: 4px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--cyan); text-align: left; font-size: 11px; }
-.model-refresh:hover:not(:disabled) { background: rgba(var(--shade-rgb, 255, 255, 255), .06); }
-.model-refresh:disabled { cursor: wait; opacity: .7; }
 .agent-activity { display: flex; align-items: center; gap: 8px; margin: 15px 0 0 42px; color: var(--cyan); font-size: 11px; }
 .agent-activity[hidden] { display: none; }
 .agent-activity-spinner { width: 13px; height: 13px; flex: 0 0 13px; border: 2px solid rgba(var(--interaction-rgb, 116, 212, 203), .22); border-top-color: var(--cyan); border-radius: 50%; animation: conversation-spin .8s linear infinite; }
@@ -286,7 +284,7 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
 .data-scope-modal { width: min(460px, 100%); }
 .data-scope-body { padding: 20px 25px 24px; }
 .data-scope-body p { margin: 0 0 14px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.data-scope-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.data-scope-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .data-scope-option { min-height: 42px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: rgba(var(--shade-rgb, 255, 255, 255), .025); color: var(--muted); text-align: center; font-size: 13px;
   display: flex;
   align-items: center;
@@ -1218,14 +1216,15 @@ select:not(:disabled):hover { border-color: rgba(var(--interaction-rgb, 116, 212
   margin-bottom: 14px;
 }
 .image-model-quick .quick-setting {
-  flex: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 190px);
+  max-width: 100%;
   min-width: 0;
 }
 .image-model-quick .quick-setting input {
   width: 100%;
 }
-.image-model-quick .model-combo-host {
-  flex: 1;
+.image-model-quick .model-input-host {
   min-width: 0;
 }
 
@@ -1866,6 +1865,11 @@ video[hidden] {
   flex: none;
   width: 132px;
 }
+@media (min-width: 781px) {
+  .context-toolbar.toolbar-measuring .quick-setting #chatModelQuick {
+    width: 190px;
+  }
+}
 .chat-quick-settings > .search-toggle,
 .toolbar-agent-group > .search-toggle {
   margin-left: 0;
@@ -1964,7 +1968,37 @@ video[hidden] {
 #lightboxVideo[hidden], #viewerVideo[hidden] { display:none; }
 @media (hover:hover) and (pointer:fine) { [data-image-privacy="single"] video:not(:hover) { filter:blur(18px); opacity:.25; } [data-image-privacy="single"] video { transition:filter 100ms ease-out, opacity 100ms ease-out; } }
 
-.template-group-label { padding: 7px 10px 3px; color: var(--muted); font-size: 11px; }
+.template-group-label { padding: 8px 10px; color: var(--ink); font-size: 13px; font-weight: 650; }
+.template-group-label[data-tone] { display: flex; align-items: center; gap: 8px; width: 100%; margin-block: 3px; border: 0; border-inline-start: 3px solid var(--group-tone); border-radius: 4px; background: color-mix(in srgb, var(--group-tone) 14%, transparent); text-align: start; overflow-wrap: anywhere; }
+.template-group-label[data-tone]::before { content: '▸'; }
+.template-group-label[aria-expanded='true']::before { content: '▾'; }
+[data-tone='0'] { --group-tone: #39a99d; }
+[data-tone='1'] { --group-tone: #8c79db; }
+[data-tone='2'] { --group-tone: #c48b37; }
+[data-tone='3'] { --group-tone: #5296e3; }
+.custom-select-option.template-group-child { padding-inline-start: 24px; }
+.model-dropdown .model-option { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+.configured-models { display: grid; gap: 6px; min-width: 0; }
+.configured-models-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.configured-models-bar strong { margin-right: auto; }
+.configured-models-bar input { flex: 1; width: auto; min-width: min(120px, 100%); padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; background: var(--color-0d1725, #0d1725); color: var(--ink); font-size: 13px; }
+.configured-models-bar input:focus { border-color: rgba(var(--interaction-rgb, 116, 212, 203), .55); }
+.model-source-toolbar { align-items: stretch; }
+.model-source-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.model-input-loading::placeholder { color: var(--ink); opacity: 1; }
+.model-menu-status { display: flex; align-items: center; gap: 8px; padding: 8px; color: var(--ink); font-size: 13px; font-weight: 600; }
+.model-menu-status button { margin-inline-start: auto; }
+.model-spinner { flex: none; width: 13px; height: 13px; border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: 50%; }
+@media (prefers-reduced-motion: no-preference) { .model-spinner { animation: model-spinner-turn .8s linear infinite; } }
+@keyframes model-spinner-turn { to { transform: rotate(360deg); } }
+.model-source-picker { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; }
+.model-source-options { max-height: 210px; overflow-y: auto; }
+.model-source-options label, .configured-model-items li { display: flex; align-items: center; gap: 8px; padding: 4px; }
+.model-source-options input { flex: none; width: auto; }
+.configured-model-items span, .model-source-options span { overflow-wrap: anywhere; min-width: 0; }
+.configured-model-items { list-style: none; margin: 0; padding: 0; }
+.configured-model-items li { justify-content: space-between; border-bottom: 1px solid var(--line); }
+.configured-models [hidden] { display: none !important; }
 .custom-select-menu > input[type="search"] { width: calc(100% - 12px); margin: 6px; min-height: 30px; }
 
 /* Keep checkbox and label centered as one group in every scope dialog. */
@@ -2228,6 +2262,7 @@ video[hidden] {
           <label class="field-label">接口地址<input id="chatBaseUrl" type="url" placeholder="https://api.openai.com/v1"><small class="field-help">填写 API 根地址, 系统会自动追加对话请求路径</small></label>
           <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="chatApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="chatApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="chatModel" list="chatModelOptions" type="text" placeholder="点击获取或手动输入模型"><datalist id="chatModelOptions"></datalist></label></div>
           <label class="field-label">思考程度 <select id="reasoningEffort"><option value="auto">自动, 由模型决定</option><option value="none">关闭 · none</option><option value="minimal">最小 · minimal</option><option value="low">轻度 · low</option><option value="medium">中 · medium</option><option value="high">高 · high</option><option value="xhigh">极高 · xhigh</option><option value="max">Ultra · max</option></select><small class="field-help">官方取值按模型而异, 不支持的取值会被接口拒绝。自动模式不发送此字段</small></label>
+          <section class="configured-models" data-configured-models="chat" aria-label="对话模型列表"></section>
         </div>
         <div class="settings-section" id="settings-panel-image" role="tabpanel" aria-labelledby="settings-tab-image" data-settings-panel="image" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">02</span><div><strong>生图接口</strong><small>可以使用和对话不同的服务商或密钥</small></div></div>
@@ -2236,6 +2271,7 @@ video[hidden] {
           <label class="field-label">接口地址<input id="imageBaseUrl" type="url" placeholder="https://api.openai.com/v1"><small class="field-help">填写 API 根地址, 系统会自动追加生图或改图请求路径</small></label>
           <div class="field-grid"><label class="field-label">API Key<div class="input-with-action"><input id="imageApiKey" type="password" placeholder="sk-..."><button class="show-key" data-target="imageApiKey" type="button">显示</button></div></label><label class="field-label">模型<input id="imageModel" list="imageModelOptions" type="text" placeholder="点击获取或手动输入模型"><datalist id="imageModelOptions"></datalist></label></div>
           <div class="field-grid"><label class="field-label">数量请求方式<select id="imageCountModeSetting"><option value="parameter">单次请求，使用 n 参数</option><option value="parallel">并发请求，每次 n=1</option></select><small class="field-help">官方标准是 n；并发是客户端策略，会把一批请求关联到同一条记录。</small></label><label class="field-label">透明背景实现<select id="imageBackgroundModeSetting"><option value="parameter">使用 background 参数</option><option value="prompt">兼容模式，仅提示透明</option></select><small class="field-help">优先使用 background 参数；兼容模式只为透明背景追加提示词，不会把“不透明”写进关键词。</small></label></div>
+          <section class="configured-models" data-configured-models="image" aria-label="生图模型列表"></section>
         </div>
         <div class="settings-section" id="settings-panel-proxy" role="tabpanel" aria-labelledby="settings-tab-proxy" data-settings-panel="proxy" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">03</span><div><strong>请求代理</strong><small>用于访问不支持浏览器跨域的接口</small></div></div>
@@ -2567,6 +2603,8 @@ const defaultState = {
     chatBaseUrl: '',
     chatApiKey: '',
     chatModel: '',
+    chatCustomModels: '',
+    imageCustomModels: '',
     imageBaseUrl: '',
     imageApiKey: '',
     imageModel: '',
@@ -2666,12 +2704,17 @@ let nativeControlsSignature = '';
 let importingWorkspace = false;
 let settingsBaseline = null;
 const modelLoading = { chat: false, image: false };
+const modelStatus = { chat: '', image: '' };
 let importProgressValue = 0;
 let verifiedProxyUrl = '';
 const modelCatalog = {
   chat: [...(state.connectionProfiles.chat.find((profile) => profile.id === state.activeConnectionProfiles.chat && profile.baseUrl.trim() === state.settings.chatBaseUrl.trim() && profile.apiKey.trim() === state.settings.chatApiKey.trim())?.models || [])],
   image: [...(state.connectionProfiles.image.find((profile) => profile.id === state.activeConnectionProfiles.image && profile.baseUrl.trim() === state.settings.imageBaseUrl.trim() && profile.apiKey.trim() === state.settings.imageApiKey.trim())?.models || [])]
 };
+for (const kind of ['chat', 'image']) {
+  const cached = state.settings[`${kind}FetchedModels`];
+  if (Array.isArray(cached)) modelCatalog[kind] = cached.filter(id => typeof id === 'string' && id.trim());
+}
 
 const IMAGE_DB_NAME = 'orbit-chat-images-v1';
 const IMAGE_STORE_NAME = 'generations';
@@ -8010,7 +8053,7 @@ function openAgentImageSettings() {
   if (!state.settings.chatImageTools) return;
   agentImageDraft = { ...getImageConfig() };
   $('#agentImageModel').value = state.settings.imageModel;
-  $('#agentImageModelOptions').replaceChildren(...modelCatalog.image.map((model) => new Option(model, model)));
+  $('#agentImageModelOptions').replaceChildren(...modelChoices('image').map((model) => new Option(model, model)));
   $('#agentImageAutoParameters').checked = Boolean(state.settings.imageAgentAutoParameters);
   const grid = $('#agentImageParameterFields');
   grid.replaceChildren();
@@ -10269,8 +10312,120 @@ async function downloadBatch(batch, images = getHistoryBatchImages(batch)) {
   for (const image of images) await downloadImageOriginal(image, batch);
 }
 
-async function loadModels(kind, activeInput = null) {
-  if (modelLoading[kind]) return;
+function configuredModelIds(kind, inSettings = false) {
+  const text = inSettings ? $(`#${kind}CustomModels`).value : state.settings[`${kind}CustomModels`];
+  return typeof text === 'string' ? [...new Set(text.split(/\r?\n/).map(line => line.trim()).filter(Boolean))] : [];
+}
+
+function modelChoices(kind, inSettings = false) {
+  const custom = configuredModelIds(kind, inSettings);
+  return custom.length ? custom : modelCatalog[kind];
+}
+
+function renderConfiguredModels(kind) {
+  const host = $(`[data-configured-models="${kind}"]`);
+  const list = host.querySelector('.configured-model-items');
+  const items = configuredModelIds(kind, true);
+  list.replaceChildren(...items.map(id => {
+    const row = document.createElement('li');
+    const name = document.createElement('span');
+    name.textContent = id;
+    const remove = document.createElement('button');
+    remove.type = 'button'; remove.className = 'secondary-button'; remove.textContent = '移除';
+    remove.setAttribute('aria-label', `移除 ${id}`);
+    remove.onclick = () => setConfiguredModels(kind, items.filter(item => item !== id));
+    row.append(name, remove);
+    return row;
+  }));
+}
+
+function setupConfiguredModels(kind) {
+  const host = $(`[data-configured-models="${kind}"]`);
+  host.innerHTML = `<input type="hidden" id="${kind}CustomModels">
+    <div class="configured-models-bar"><strong>模型列表</strong><button type="button" class="secondary-button" data-model-pick>选择模型</button><button type="button" class="secondary-button" data-model-manual>手动添加</button></div>
+    <div class="model-source-picker" hidden><div class="configured-models-bar model-source-toolbar"><input type="search" aria-label="搜索接口模型" placeholder="搜索接口模型" name="${kind}-models-filter"><div class="model-source-actions"><button type="button" class="secondary-button" data-model-fetch>获取模型</button><button type="button" class="secondary-button" data-model-select-all>全选</button><button type="button" class="secondary-button" data-model-clear-all>全不选</button></div></div>
+    <div class="model-source-options"></div><div class="configured-models-bar"><button type="button" class="secondary-button" data-model-cancel>取消</button><button type="button" class="secondary-button" data-model-apply>应用</button></div></div>
+    <div class="configured-models-bar" data-model-manual-form hidden><input type="text" aria-label="模型 ID" placeholder="填写实际请求的模型 ID" name="${kind}-manual-model-filter" spellcheck="false"><button type="button" class="secondary-button">添加</button></div>
+    <ul class="configured-model-items"></ul>`;
+  const picker = host.querySelector('.model-source-picker');
+  const manual = host.querySelector('[data-model-manual-form]');
+  const search = picker.querySelector('input');
+  const input = manual.querySelector('input');
+  const options = picker.querySelector('.model-source-options');
+  const refresh = host.querySelector('[data-model-fetch]');
+  const selectAll = host.querySelector('[data-model-select-all]');
+  const clearAll = host.querySelector('[data-model-clear-all]');
+  let picked = new Set();
+  const syncActions = () => {
+    selectAll.disabled = modelCatalog[kind].every(id => picked.has(id));
+    clearAll.disabled = !modelCatalog[kind].some(id => picked.has(id));
+  };
+  selectAll.onclick = () => { modelCatalog[kind].forEach(id => picked.add(id)); host.refreshSource(); };
+  clearAll.onclick = () => { modelCatalog[kind].forEach(id => picked.delete(id)); host.refreshSource(); };
+  host.refreshSource = () => {
+    syncActions();
+    const input = $(`#${kind}Model`);
+    input.placeholder = modelLoading[kind] ? '正在获取模型…' : '选择或输入默认模型';
+    input.classList.toggle('model-input-loading', modelLoading[kind]);
+    const menu = $(`[data-model-input="${kind}Model"]:not([hidden])`);
+    if (menu) renderModelDropdown(kind, input, menu.dataset.showAll === 'true');
+    refresh.disabled = modelLoading[kind];
+    refresh.textContent = modelLoading[kind] ? '获取中...' : '获取模型';
+    const query = search.value.trim().toLowerCase();
+    options.replaceChildren(...modelCatalog[kind].filter(id => id.toLowerCase().includes(query)).map(id => {
+      const row = document.createElement('label');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox'; checkbox.checked = picked.has(id); checkbox.name = `${kind}-source-model-filter`;
+      checkbox.onchange = () => { if (checkbox.checked) picked.add(id); else picked.delete(id); syncActions(); };
+      const text = document.createElement('span'); text.textContent = id;
+      row.append(checkbox, text);
+      return row;
+    }));
+    if (!options.childElementCount) {
+      const status = document.createElement('div');
+      status.className = 'model-menu-status';
+      status.setAttribute('role', 'status');
+      status.textContent = modelLoading[kind] ? '正在获取模型…' : modelStatus[kind] || '没有匹配的模型';
+      options.append(status);
+    }
+  };
+  host.resetPicker = () => { picker.hidden = true; manual.hidden = true; input.value = ''; };
+  host.querySelector('[data-model-pick]').onclick = () => {
+    if (!picker.hidden) { picker.hidden = true; return; }
+    manual.hidden = true; search.value = ''; picker.hidden = false;
+    picked = new Set(configuredModelIds(kind, true));
+    host.refreshSource();
+  };
+  host.querySelector('[data-model-manual]').onclick = () => { picker.hidden = true; manual.hidden = !manual.hidden; if (!manual.hidden) input.focus(); };
+  const add = () => {
+    const id = input.value.trim();
+    if (!id || /[\r\n]/.test(id)) return;
+    setConfiguredModels(kind, [...configuredModelIds(kind, true), id]);
+    host.resetPicker();
+  };
+  manual.querySelector('button').onclick = add;
+  input.onkeydown = event => { if (event.key === 'Enter') { event.preventDefault(); add(); } };
+  search.oninput = host.refreshSource;
+  refresh.onclick = () => loadModels(kind);
+  host.querySelector('[data-model-cancel]').onclick = () => { picker.hidden = true; };
+  host.querySelector('[data-model-apply]').onclick = () => { setConfiguredModels(kind, [...picked]); picker.hidden = true; };
+}
+
+function setConfiguredModels(kind, items) {
+  $(`#${kind}CustomModels`).value = [...new Set(items)].join('\n');
+  renderConfiguredModels(kind);
+}
+
+const modelRequest = { chat: -1, image: -1 };
+
+function ensureModels(kind) {
+  if ($('#settingsBackdrop').hidden || modelCatalog[kind].length || modelStatus[kind]) return;
+  void loadModels(kind, true);
+}
+
+async function loadModels(kind, automatic = false) {
+  const revision = modelRevision[kind];
+  if (modelRequest[kind] === revision) return;
   const isChat = kind === 'chat';
   const inSettings = !$('#settingsBackdrop').hidden;
   const baseUrl = inSettings
@@ -10279,18 +10434,34 @@ async function loadModels(kind, activeInput = null) {
   const apiKey = inSettings
     ? (isChat ? $('#chatApiKey').value : $('#imageApiKey').value).trim()
     : (isChat ? state.settings.chatApiKey : state.settings.imageApiKey);
-  const endpoint = buildModelsEndpoint(baseUrl);
-  if (!endpoint || !apiKey) {
-    showErrorToast('请先填写对应的接口地址和 API Key');
+  const host = $(`[data-configured-models="${kind}"]`);
+  if (!baseUrl || !apiKey) {
+    if (automatic) return;
+    modelStatus[kind] = '请先填写对应的接口地址和 API Key';
+    host.refreshSource();
+    showErrorToast(modelStatus[kind]);
     return;
+  }
+  if (automatic) {
+    try {
+      const url = new URL(baseUrl);
+      const savedBase = state.settings[`${kind}BaseUrl`];
+      if (!['https:', 'http:'].includes(url.protocol)) return;
+      if (apiKey === state.settings[`${kind}ApiKey`].trim() && savedBase && url.origin !== new URL(savedBase).origin) {
+        modelStatus[kind] = '接口域名已变更，请确认后手动获取模型';
+        host.refreshSource();
+        return;
+      }
+    } catch { return; }
   }
   const proxyConfig = inSettings
     ? { proxyUrl: $('#proxyUrl').value.trim() || state.settings.proxyUrl, proxyEnabled: $('#proxyEnabled').checked }
     : state.settings;
   const provider = inSettings ? $('#imageProvider').value : state.settings.imageProvider;
-  const revision = modelRevision[kind];
+  modelRequest[kind] = revision;
   modelLoading[kind] = true;
-  renderModelDropdown(kind, activeInput, true);
+  modelStatus[kind] = '';
+  host.refreshSource();
   try {
     if (!isChat && provider === 'gemini') {
       const settings = { ...state.settings, imageBaseUrl: baseUrl, imageApiKey: apiKey, imageProvider: provider, ...proxyConfig };
@@ -10298,36 +10469,42 @@ async function loadModels(kind, activeInput = null) {
       if (revision !== modelRevision[kind]) return;
       modelCatalog.image = models;
     } else {
-      const response = await apiFetch(endpoint, {
+      const response = await apiFetch(buildModelsEndpoint(baseUrl), {
         headers: { Authorization: `Bearer ${apiKey}` },
         signal: AbortSignal.timeout(15000),
       }, proxyConfig);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
-      const models = Array.isArray(payload?.data) ? payload.data.map((item) => item.id).filter(Boolean) : [];
-      if (!models.length) throw new Error('接口没有返回可用模型列表');
+      const models = Array.isArray(payload?.data) ? payload.data.map((item) => item?.id).filter(id => typeof id === 'string' && id.trim()) : [];
       if (revision !== modelRevision[kind]) return;
       modelCatalog[kind] = [...new Set(models)].sort();
     }
     const activeProfile = state.connectionProfiles[kind].find((profile) => profile.id === state.activeConnectionProfiles[kind]);
-    if (activeProfile && activeProfile.baseUrl.trim() === baseUrl.trim() && activeProfile.apiKey.trim() === apiKey.trim()) {
+    if (!automatic && activeProfile && activeProfile.baseUrl.trim() === baseUrl.trim() && activeProfile.apiKey.trim() === apiKey.trim() && (isChat || (activeProfile.imageProvider || 'openai') === provider)) {
       activeProfile.models = [...modelCatalog[kind]];
       activeProfile.updatedAt = Date.now();
       persist();
     }
-    showToast(`已获取 ${modelCatalog[kind].length} 个模型`);
+    if (!modelCatalog[kind].length) modelStatus[kind] = '接口未返回可用模型';
+    if (!automatic) showToast(`已获取 ${modelCatalog[kind].length} 个模型`);
   } catch (error) {
-    showErrorToast(error.message || '获取模型失败, 也可以直接手动填写模型名');
+    if (revision === modelRevision[kind]) {
+      modelStatus[kind] = '获取模型失败';
+      if (!automatic) showErrorToast(error.message || '获取模型失败, 也可以直接手动填写模型名');
+    }
   } finally {
-    modelLoading[kind] = false;
-    renderModelDropdown(kind, activeInput, true);
+    if (modelRequest[kind] === revision) {
+      modelRequest[kind] = -1;
+      modelLoading[kind] = false;
+      host.refreshSource();
+    }
   }
 }
 
 function enhanceModelInput(input, kind) {
   if (!input || input.dataset.modelEnhanced) return;
   input.dataset.modelEnhanced = 'true';
-  input.type = 'search';
+  input.type = 'text';
   input.name = `orbit-${input.id}-model`;
   input.autocomplete = 'off';
   input.spellcheck = false;
@@ -10355,7 +10532,7 @@ function positionModelDropdown(input, dropdown) {
   const desiredHeight = Math.min(210, dropdown.scrollHeight);
   const opensUpward = spaceBelow < desiredHeight && spaceAbove > spaceBelow;
   const availableHeight = opensUpward ? spaceAbove : spaceBelow;
-  const width = Math.max(1, Math.min(rect.width, window.innerWidth - 16));
+  const width = Math.min(Math.max(rect.width, 360), window.innerWidth - 16);
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
 
   dropdown.style.left = `${left}px`;
@@ -10380,14 +10557,29 @@ function renderModelDropdown(kind, activeInput = null, showAll = false) {
     const dropdown = $(`[data-model-dropdown="${kind}"][data-model-input="${inputId}"]`);
     if (!input || !dropdown) return;
     const query = showAll ? '' : input.value.trim().toLowerCase();
-    const models = modelCatalog[kind].filter((model) => !query || model.toLowerCase().includes(query)).sort();
-    const options = models.length ? models.slice(0, 80).map((model) => `<button type="button" class="model-option" data-model-value="${escapeHtml(model)}" title="${escapeHtml(model)}">${escapeHtml(model)}</button>`).join('') : '<div class="model-option">暂无匹配模型，可直接输入模型名</div>';
-    dropdown.innerHTML = `<div class="model-options">${options}</div><button type="button" class="model-refresh" ${modelLoading[kind] ? 'disabled' : ''}>${modelLoading[kind] ? '获取中...' : '获取模型'}</button>`;
+    input.title = input.value;
+    const models = modelChoices(kind, !$('#settingsBackdrop').hidden).filter((model) => !query || model.toLowerCase().includes(query)).sort();
+    const settingsField = inputId === `${kind}Model`;
+    const loading = settingsField && modelLoading[kind];
+    const status = settingsField && modelStatus[kind];
+    const options = models.length ? models.map((model) => `<button type="button" class="model-option" data-model-value="${escapeHtml(model)}" title="${escapeHtml(model)}">${escapeHtml(model)}</button>`).join('') : '';
+    const feedback = loading ? '<div class="model-menu-status" role="status"><span class="model-spinner" aria-hidden="true"></span>正在获取模型…</div>' : options ? '' : status ? `<div class="model-menu-status" role="status">${escapeHtml(status)}${status === '获取模型失败' ? '<button type="button" class="secondary-button" data-retry-models>重试</button>' : ''}</div>` : '<div class="model-option" role="status">暂无匹配模型，可直接输入模型名</div>';
+    dropdown.innerHTML = `<div class="model-options">${options}${feedback}</div>`;
+    const retry = dropdown.querySelector('[data-retry-models]');
+    if (retry) {
+      retry.onmousedown = event => event.preventDefault();
+      retry.onclick = event => {
+        event.stopPropagation();
+        void loadModels(kind);
+      };
+    }
+    dropdown.dataset.showAll = String(showAll);
     dropdown.hidden = activeInput !== input;
     if (!dropdown.hidden) positionModelDropdown(input, dropdown);
     dropdown.querySelectorAll('.model-option[data-model-value]').forEach((button) => button.addEventListener('mousedown', (event) => {
       event.preventDefault();
       input.value = button.dataset.modelValue;
+      input.title = input.value;
       if ($('#settingsBackdrop').hidden) {
         if (kind === 'chat') state.settings.chatModel = input.value;
         else {
@@ -10398,9 +10590,6 @@ function renderModelDropdown(kind, activeInput = null, showAll = false) {
       }
       dropdown.hidden = true;
     }));
-    const refresh = dropdown.querySelector('.model-refresh');
-    refresh.addEventListener('mousedown', (event) => event.preventDefault());
-    refresh.addEventListener('click', () => loadModels(kind, input));
   });
 }
 
@@ -10425,7 +10614,9 @@ function syncCustomSelect(select) {
   host.querySelectorAll('.custom-select-option').forEach((option) => {
     const selectedState = option.dataset.value === select.value;
     option.classList.toggle('selected', selectedState);
-    option.setAttribute('aria-selected', selectedState ? 'true' : 'false');
+    if (option.getAttribute('role') === 'option') option.setAttribute('aria-selected', String(selectedState));
+    else if (selectedState) option.setAttribute('aria-current', 'true');
+    else option.removeAttribute('aria-current');
   });
 }
 
@@ -10440,6 +10631,7 @@ function closeCustomSelects(except = null) {
 }
 
 function positionCustomSelectMenu(host, menu) {
+  const scrollTop = menu.scrollTop;
   host.classList.remove('open-up');
   menu.style.maxHeight = 'none';
   menu.style.overflowY = 'hidden';
@@ -10462,6 +10654,7 @@ function positionCustomSelectMenu(host, menu) {
   const needsScroll = contentHeight > availableHeight + 1;
   menu.style.maxHeight = needsScroll ? `${Math.floor(availableHeight)}px` : 'none';
   menu.style.overflowY = needsScroll ? 'auto' : 'hidden';
+  menu.scrollTop = scrollTop;
 }
 
 function renderCustomSelectMenu(select) {
@@ -10486,13 +10679,35 @@ function renderCustomSelectMenu(select) {
     groups.get(group).push(option);
   });
   const children = search ? [search] : [];
+  let tone = 0;
   groups.forEach((options, group) => {
-    if (group) { const heading = document.createElement('div'); heading.className = 'template-group-label'; heading.textContent = group; children.push(heading); }
+    if (group) {
+      const expanded = Boolean(query) || menu.expandedGroups?.has(group);
+      const heading = document.createElement('button');
+      heading.type = 'button'; heading.className = 'template-group-label'; heading.dataset.tone = String(tone++ % 4);
+      heading.textContent = group; heading.setAttribute('aria-expanded', String(Boolean(expanded)));
+      heading.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const scrollTop = menu.scrollTop;
+        menu.expandedGroups ||= new Set();
+        if (menu.expandedGroups.has(group)) menu.expandedGroups.delete(group);
+        else menu.expandedGroups.add(group);
+        const index = [...menu.querySelectorAll('button.template-group-label')].indexOf(heading);
+        renderCustomSelectMenu(select);
+        positionCustomSelectMenu(host, menu);
+        menu.querySelectorAll('button.template-group-label')[index]?.focus({ preventScroll: true });
+        menu.scrollTop = scrollTop;
+      });
+      children.push(heading);
+      if (!expanded) return;
+    }
     options.forEach(option => {
       const item = document.createElement('button');
       item.type = 'button'; item.className = 'custom-select-option'; item.dataset.value = option.value;
+      if (group) item.classList.add('template-group-child');
       item.textContent = group ? option.textContent.split('/').at(-1) : option.textContent;
-      item.setAttribute('role', 'option'); item.setAttribute('aria-selected', String(option.value === select.value));
+      if (!searchable) { item.setAttribute('role', 'option'); item.setAttribute('aria-selected', String(option.value === select.value)); }
+      else if (option.value === select.value) item.setAttribute('aria-current', 'true');
       children.push(item);
     });
   });
@@ -10525,14 +10740,16 @@ function enhanceCustomSelect(select) {
   const trigger = document.createElement('button');
   trigger.type = 'button';
   trigger.className = 'custom-select-trigger';
-  trigger.setAttribute('aria-haspopup', 'listbox');
+  const searchable = /ProfileSelect|TemplateSelect/.test(select.id);
+  trigger.setAttribute('aria-haspopup', searchable ? 'dialog' : 'listbox');
   const valueNode = document.createElement('span');
   valueNode.className = 'custom-select-value';
   trigger.appendChild(valueNode);
   const menu = document.createElement('div');
   menu.className = 'custom-select-menu';
   menu.hidden = true;
-  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('role', searchable ? 'dialog' : 'listbox');
+  if (searchable) menu.setAttribute('aria-label', select.getAttribute('aria-label') || '选择模板');
   menu.id = `${select.id}-custom-menu`;
   trigger.setAttribute('aria-controls', menu.id);
   host.insertBefore(trigger, select);
@@ -10545,6 +10762,7 @@ function enhanceCustomSelect(select) {
     if (willOpen) {
       const search = menu.querySelector('input');
       if (search) search.value = '';
+      menu.expandedGroups = new Set();
       renderCustomSelectMenu(select);
       menu.hidden = false;
       positionCustomSelectMenu(host, menu);
@@ -10572,7 +10790,7 @@ function enhanceCustomSelect(select) {
     if (option) chooseCustomSelectOption(select, option);
   });
   menu.addEventListener('keydown', (event) => {
-    const options = [...menu.querySelectorAll('.custom-select-option')];
+    const options = [...menu.querySelectorAll('button')];
     const currentIndex = options.indexOf(document.activeElement);
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
@@ -10582,7 +10800,7 @@ function enhanceCustomSelect(select) {
     } else if ((event.key === 'Home' || event.key === 'End') && event.target.tagName !== 'INPUT') {
       event.preventDefault();
       options[event.key === 'Home' ? 0 : options.length - 1]?.focus();
-    } else if ((event.key === 'Enter' || event.key === ' ') && event.target.tagName !== 'INPUT') {
+    } else if ((event.key === 'Enter' || event.key === ' ') && event.target.closest('.custom-select-option')) {
       event.preventDefault();
       chooseCustomSelectOption(select, document.activeElement?.closest('.custom-select-option'));
     } else if (event.key === 'Escape' || event.key === 'Tab') {
@@ -11696,11 +11914,15 @@ function confirmClearReferences(label, references, clear) {
 }
 
 function getConnectionProfileFields(kind) {
-  if (kind === 'chat') return { apiFormat: $('#chatApiFormat').value, baseUrl: $('#chatBaseUrl').value.trim(), apiKey: $('#chatApiKey').value.trim(), model: $('#chatModel').value.trim(), reasoningEffort: $('#reasoningEffort').value || 'auto' };
-  return { imageProvider: $('#imageProvider').value, baseUrl: $('#imageBaseUrl').value.trim(), apiKey: $('#imageApiKey').value.trim(), model: $('#imageModel').value.trim(), countMode: $('#imageCountModeSetting').value || 'parameter', backgroundMode: $('#imageBackgroundModeSetting').value || 'parameter' };
+  const customModels = $(`#${kind}CustomModels`).value.trim();
+  if (kind === 'chat') return { customModels, apiFormat: $('#chatApiFormat').value, baseUrl: $('#chatBaseUrl').value.trim(), apiKey: $('#chatApiKey').value.trim(), model: $('#chatModel').value.trim(), reasoningEffort: $('#reasoningEffort').value || 'auto' };
+  return { customModels, imageProvider: $('#imageProvider').value, baseUrl: $('#imageBaseUrl').value.trim(), apiKey: $('#imageApiKey').value.trim(), model: $('#imageModel').value.trim(), countMode: $('#imageCountModeSetting').value || 'parameter', backgroundMode: $('#imageBackgroundModeSetting').value || 'parameter' };
 }
 
 function setConnectionProfileFields(kind, profile) {
+  $(`#${kind}CustomModels`).value = profile.customModels || '';
+  $(`[data-configured-models="${kind}"]`).resetPicker();
+  renderConfiguredModels(kind);
   if (kind === 'chat') {
     $('#chatBaseUrl').value = profile.baseUrl || '';
     $('#chatApiKey').value = profile.apiKey || '';
@@ -11722,6 +11944,7 @@ function setConnectionProfileFields(kind, profile) {
 }
 
 function applyConnectionProfileToSettings(kind, profile) {
+  state.settings[`${kind}CustomModels`] = profile.customModels || '';
   if (kind === 'chat') {
     state.settings.chatBaseUrl = profile.baseUrl || '';
     state.settings.chatApiKey = profile.apiKey || '';
@@ -11760,12 +11983,16 @@ function renderAllConnectionProfiles() {
 
 function selectConnectionProfile(kind, profileId) {
   modelRevision[kind]++;
+  modelStatus[kind] = '';
   if (!profileId) {
     state.activeConnectionProfiles[kind] = '';
     modelCatalog[kind] = [];
+    $(`[data-configured-models="${kind}"]`).refreshSource();
+    state.settings[`${kind}FetchedModels`] = [];
     persist();
     renderConnectionProfiles(kind);
     showToast('已切换到临时配置，当前填写内容保留');
+    ensureModels(kind);
     return;
   }
   const profile = state.connectionProfiles[kind].find((item) => item.id === profileId);
@@ -11774,10 +12001,13 @@ function selectConnectionProfile(kind, profileId) {
   setConnectionProfileFields(kind, profile);
   applyConnectionProfileToSettings(kind, profile);
   modelCatalog[kind] = Array.isArray(profile.models) ? [...profile.models] : [];
+  $(`[data-configured-models="${kind}"]`).refreshSource();
+  state.settings[`${kind}FetchedModels`] = [...modelCatalog[kind]];
   persist();
   renderConnectionProfiles(kind);
   renderConnection();
   showToast(`已切换到“${profile.name}”`);
+  ensureModels(kind);
 }
 
 function getSuggestedProfileName(kind) {
@@ -11911,6 +12141,7 @@ function selectSettingsTab(id, focus = false) {
   $$('#settingsBackdrop [data-settings-panel]').forEach((panel) => panel.hidden = panel.dataset.settingsPanel !== id);
   $('#settingsBackdrop .settings-scroll').scrollTop = 0;
   closeProxyHistoryMenu();
+  if (id === 'chat' || id === 'image') ensureModels(id);
   if (focus) { button.focus(); button.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
 }
 function bindSettingsTabs() {
@@ -11940,7 +12171,6 @@ function settingsFormSnapshot() {
     settings: state.settings,
     profiles: state.connectionProfiles,
     activeProfiles: state.activeConnectionProfiles,
-    models: modelCatalog,
   });
 }
 
@@ -11961,6 +12191,13 @@ function captureSettingsBaseline() {
 }
 
 function fillSettingsForm() {
+  for (const kind of ['chat', 'image']) {
+    modelStatus[kind] = '';
+    $(`#${kind}CustomModels`).value = state.settings[`${kind}CustomModels`] || '';
+    $(`[data-configured-models="${kind}"]`).resetPicker();
+    renderConfiguredModels(kind);
+    $(`[data-configured-models="${kind}"]`).refreshSource();
+  }
   $('#chatBaseUrl').value = state.settings.chatBaseUrl;
   $('#chatApiKey').value = state.settings.chatApiKey;
   $('#chatModel').value = state.settings.chatModel;
@@ -12024,6 +12261,7 @@ function openSettings() {
   selectSettingsTab(activeSettingsTab);
   $('#settingsBackdrop').hidden = false;
   captureSettingsBaseline();
+  if (activeSettingsTab === 'chat' || activeSettingsTab === 'image') ensureModels(activeSettingsTab);
 }
 
 function closeSettings(force = false) {
@@ -12065,6 +12303,10 @@ function saveSettings() {
     return;
   }
   state.settings = { theme: $('#themeSetting').value, imageProvider: $('#imageProvider').value, chatImageTools: Boolean(state.settings.chatImageTools), imageAgentInstruction: $('#imageAgentInstruction').value.trim(), imageAgentPreview: $('#imageAgentPreview').checked, imageAgentAutoParameters: $('#imageAgentAutoParameters').checked, chatHistoryImages: $('#chatHistoryImages').value, conversationSort: $('#conversationSort').value, chatImagePreview: $('#chatImagePreview').checked, chatSendReasoning: $('#chatSendReasoning').checked, imageAgentRetryErrors: $('#imageAgentRetryErrors').checked, imageAgentRetryMismatch: $('#imageAgentRetryMismatch').checked, imageAgentRetryLimit, chatApiFormat: $('#chatApiFormat').value, chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim(), imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, imagePreventPromptRewrite: $('#imagePreventPromptRewrite').checked, persistInputContent: $('#persistInputContent').checked, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), chatWebSearchMode: state.settings.chatWebSearchMode, chatStream: Boolean(state.settings.chatStream), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, imagePrivacyEnabled: $('#imagePrivacyEnabled').checked, imagePrivacyMode: $('#imagePrivacyMode').value, demoMode: $('#demoMode').checked, deleteRetriedRecordOnSuccess: $('#deleteRetriedRecordOnSuccess').checked, clearInputAfterSubmit: $('#clearInputAfterSubmit').checked, alwaysShowRetryButton: $('#alwaysShowRetryButton').checked };
+  for (const kind of ['chat', 'image']) {
+    state.settings[`${kind}CustomModels`] = $(`#${kind}CustomModels`).value.trim();
+    state.settings[`${kind}FetchedModels`] = [...modelCatalog[kind]];
+  }
   if (state.settings.persistInputContent) {
     saveImagePromptDraft($('#imagePrompt').value);
     if (state.activeConversationId)
@@ -13085,15 +13327,22 @@ function bindEvents() {
   syncNativeMediaControls();
   syncModalViewport();
   ['chat', 'image'].forEach(kind => {
+    setupConfiguredModels(kind);
     ['BaseUrl', 'ApiKey'].forEach(field => {
       const input = $(`#${kind}${field}`);
       input.addEventListener('focus', () => input.dataset.connectionValue = input.value.trim());
+      input.addEventListener('change', () => ensureModels(kind));
       input.addEventListener('input', () => {
         if (input.dataset.connectionValue === input.value.trim()) return;
         input.dataset.connectionValue = input.value.trim();
         modelRevision[kind]++;
         $(`#${kind}Model`).value = '';
+        $(`#${kind}CustomModels`).value = '';
         modelCatalog[kind] = [];
+        modelStatus[kind] = '';
+        $(`[data-configured-models="${kind}"]`).resetPicker();
+        $(`[data-configured-models="${kind}"]`).refreshSource();
+        renderConfiguredModels(kind);
         // Keep the selected template as the explicit update target.
         renderConnectionProfiles(kind);
       });
@@ -13102,6 +13351,17 @@ function bindEvents() {
     $(`#${kind}ApiKey`).name = `orbit-${kind}-api-secret`;
   });
   enhanceModelInput($('#chatModel'), 'chat');
+  for (const kind of ['chat', 'image']) $(`#${kind}Model`).placeholder = '选择或输入默认模型';
+  $('#imageProvider').addEventListener('change', () => {
+    modelRevision.image++;
+    $('#imageModel').value = '';
+    modelCatalog.image = [];
+    modelStatus.image = '';
+    $('[data-configured-models="image"]').resetPicker();
+    $('[data-configured-models="image"]').refreshSource();
+    setConfiguredModels('image', []);
+    ensureModels('image');
+  });
   enhanceModelInput($('#chatModelQuick'), 'chat');
   enhanceModelInput($('#imageModel'), 'image');
   enhanceModelInput($('#imageModelQuick'), 'image');

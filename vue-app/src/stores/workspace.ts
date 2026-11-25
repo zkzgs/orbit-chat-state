@@ -33,6 +33,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   // The selected template is an update target, not proof that its saved
   // credentials still match the current connection after a settings-only save.
   function initialModels(kind: ApiKind) {
+    const cached = state.settings[`${kind}FetchedModels`]
+    if (Array.isArray(cached)) return cached.filter((id) => typeof id === 'string' && id.trim())
     const profile = state.connectionProfiles[kind].find(
       (item) => item.id === state.activeConnectionProfiles[kind],
     )
@@ -269,6 +271,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     chatFileDraftIds,
     polishDraftIds,
     modelCatalog,
+    modelChoices(kind: ApiKind, settings = state.settings) {
+      const text = kind === 'chat' ? settings.chatCustomModels : settings.imageCustomModels
+      const custom = typeof text === 'string' ? [...new Set(text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean))] : []
+      return custom.length ? custom : modelCatalog[kind]
+    },
     ready,
     generation,
     activeConversation,

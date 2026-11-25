@@ -71,9 +71,13 @@ export interface Settings {
   chatBaseUrl: string
   chatApiKey: string
   chatModel: string
+  chatCustomModels?: string
+  chatFetchedModels?: string[]
   imageBaseUrl: string
   imageApiKey: string
   imageModel: string
+  imageCustomModels?: string
+  imageFetchedModels?: string[]
   imageOptions: ImageOptions
   imageCountMode: string
   imageBackgroundMode: string
@@ -110,6 +114,7 @@ export interface ConnectionProfile {
   apiKey: string
   model: string
   models: string[]
+  customModels?: string
   createdAt: number
   updatedAt: number
   reasoningEffort?: string

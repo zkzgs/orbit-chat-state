@@ -6,13 +6,11 @@ import {
 } from '../api/image-agent.js'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useInterfaceStore } from '../stores/interface'
-import { useSettingsStore } from '../stores/settings'
 import CustomSelect from './CustomSelect.vue'
 import ModelInput from './ModelInput.vue'
 
 const workspace = useWorkspaceStore()
 const ui = useInterfaceStore()
-const settings = useSettingsStore()
 const automatic = ref(false)
 const model = ref('')
 const draft = reactive<Record<string, string | number>>({})
@@ -117,11 +115,8 @@ function save() {
             <ModelInput
               id="agentImageModel"
               v-model="model"
-              :models="workspace.modelCatalog.image"
+              :models="workspace.modelChoices('image')"
               label="Agent 生图模型"
-              refresh
-              :refreshing="settings.loadingModels.image"
-              @refresh="settings.loadModels('image', false)"
             />
             <small class="field-help"
               >自动模式下, AI 可从已获取模型中选择其他模型</small

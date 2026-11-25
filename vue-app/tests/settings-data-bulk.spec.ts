@@ -191,12 +191,22 @@ async function template(page: Page, id: string, value: string) {
 }
 
 for (const [version, url] of versions) {
-  test(`${version}: API edits clear models without fetching; templates preserve model and list`, async ({
+  test(`${version}: clear scope keeps three options on one row`, async ({ page }) => {
+    await seed(page, url)
+    await settings(page, 'data')
+    await page.locator('#resetLocalData').click()
+    const options = page.locator('#dataScopeBackdrop .data-scope-option')
+    await expect(options).toHaveText(['对话', '生图', '配置'])
+    for (const width of [576, 320]) {
+      await page.setViewportSize({ width, height: 844 })
+      const boxes = await Promise.all((await options.all()).map((option) => option.boundingBox()))
+      expect(boxes.every((box) => box && box.y === boxes[0]?.y && box.x + box.width <= width)).toBe(true)
+    }
+  })
+  test(`${version}: API edits clear old models; templates preserve model and list`, async ({
     page,
   }) => {
-    let requests = 0
     await page.route('https://old.example/**', (route) => {
-      requests++
       return route.fulfill({ json: { data: [{ id: 'fetched' }] } })
     })
     await seed(page, url)
@@ -241,14 +251,11 @@ for (const [version, url] of versions) {
       'image-old',
     )
     await page.locator('#settingsTitle').click()
-    expect(requests).toBe(0)
     await page.locator('#settings-tab-chat').click()
     await template(page, 'chatProfileSelect', 'new')
     await expect(page.locator('#chatModel')).toHaveValue('chat-new')
-    await page.locator('#chatModel').focus()
-    await expect(page.locator('.model-dropdown:visible')).toContainText(
-      'chat-new',
-    )
+    await page.getByRole('button', { name: '选择模型' }).click()
+    await expect(page.getByRole('checkbox', { name: 'chat-new' })).toBeVisible()
     await page.locator('#settingsTitle').click()
     await page.locator('#saveSettings').click()
     await page.reload()
@@ -263,23 +270,25 @@ for (const [version, url] of versions) {
       release = resolve
     })
     await page.route('https://old.example/v1/models', async (route) => {
+      if (route.request().headers().authorization === 'Bearer changed-key') {
+        await route.fulfill({ json: { data: [{ id: 'replacement-model' }] } })
+        return
+      }
       await gate
       await route.fulfill({ json: { data: [{ id: 'stale-model' }] } })
     })
     await seed(page, url)
     await settings(page, 'chat')
-    await page.locator('#chatModel').focus()
+    await page.getByRole('button', { name: '选择模型' }).click()
     const request = page.waitForRequest('https://old.example/v1/models')
-    await page.locator('.model-dropdown:visible .model-refresh').click()
+    await page.getByRole('button', { name: '获取模型' }).click()
     await request
     await page.locator('#chatApiKey').fill('changed-key')
     release()
-    await page.locator('#chatModel').focus()
-    await expect(
-      page.locator('.model-dropdown:visible .model-refresh'),
-    ).not.toBeDisabled()
+    await expect(page.getByRole('checkbox', { name: 'stale-model' })).toHaveCount(0)
     await expect(page.locator('#chatModel')).toHaveValue('')
     await page.locator('#chatModel').focus()
+    await expect(page.locator('.model-dropdown:visible')).toContainText('replacement-model')
     await expect(page.locator('.model-dropdown:visible')).not.toContainText(
       'stale-model',
     )
@@ -291,7 +300,7 @@ for (const [version, url] of versions) {
   })
   test(`${version}: grouped templates support typed filtering and plain names`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await seed(page, url)
     await settings(page, 'chat')
     const host = page.locator('#chatProfileSelect').locator('..'),
@@ -301,13 +310,29 @@ for (const [version, url] of versions) {
       '站点 / 分组',
       '站点 / 其他',
     ])
+    const group = host.getByRole('button', { name: '站点 / 其他' })
+    const otherGroup = host.getByRole('button', { name: '站点 / 分组' })
+    for (const theme of ['light', 'dark']) {
+      await page.locator('html').evaluate((el, theme) => el.setAttribute('data-theme', theme), theme)
+      expect(await group.evaluate((el) => getComputedStyle(el).borderInlineStartColor)).not.toBe(
+        await otherGroup.evaluate((el) => getComputedStyle(el).borderInlineStartColor),
+      )
+      await expect(group).toHaveCSS('font-size', '13px')
+    }
+    await expect(group).toHaveAttribute('aria-expanded', 'false')
+    await expect(host.getByRole('button', { name: '新模板', exact: true })).toHaveCount(0)
+    await group.press('Enter')
+    await expect(group).toHaveAttribute('aria-expanded', 'true')
+    await expect(host.getByRole('button', { name: '新模板', exact: true })).toBeVisible()
+    await group.press('Enter')
+    await expect(group).toHaveAttribute('aria-expanded', 'false')
     await search.pressSequentially('新模板')
-    await expect(host.getByRole('option')).toHaveCount(1)
-    await host.getByRole('option').click()
+    await expect(host.locator('.custom-select-option')).toHaveCount(1)
+    await host.getByRole('button', { name: '新模板', exact: true }).click()
     await expect(page.locator('#chatModel')).toHaveValue('chat-new')
     await host.locator('.custom-select-trigger').click()
     await search.fill('普通模板')
-    await host.getByRole('option', { name: '普通模板' }).click()
+    await host.getByRole('button', { name: '普通模板', exact: true }).click()
     await expect(page.locator('#chatModel')).toHaveValue('chat-old')
     await host.locator('.custom-select-trigger').click()
     await search.fill('no match')
@@ -319,10 +344,10 @@ for (const [version, url] of versions) {
     const imageHost = page.locator('#imageProfileSelect').locator('..')
     await imageHost.locator('.custom-select-trigger').click()
     await imageHost.getByRole('searchbox').fill('生图')
-    await expect(imageHost.getByRole('option')).toHaveCount(1)
+    await expect(imageHost.locator('.custom-select-option')).toHaveCount(1)
     await page.setViewportSize({ width: 420, height: 860 })
     await page.screenshot({
-      path: `/workspace/screens/orbit-six-${version}-templates.png`,
+      path: testInfo.outputPath('templates.png'),
     })
   })
   test(`${version}: noncredential model fields keep API secrets masked`, async ({
@@ -330,7 +355,7 @@ for (const [version, url] of versions) {
   }) => {
     await seed(page, url)
     await settings(page, 'chat')
-    await expect(page.locator('#chatModel')).toHaveAttribute('type', 'search')
+    await expect(page.locator('#chatModel')).toHaveAttribute('type', 'text')
     await expect(page.locator('#chatModel')).toHaveAttribute(
       'autocomplete',
       'off',
@@ -350,9 +375,160 @@ for (const [version, url] of versions) {
     await page.locator('[data-target="chatApiKey"]').click()
     await expect(page.locator('#chatApiKey')).toHaveAttribute('type', 'text')
   })
+  test(`${version}: curated models leave the API catalog intact and stay with their template`, async ({ page }) => {
+    const long = 'provider/very-long-model-identifier-for-narrow-viewports-2026'
+    await seed(page, url)
+    await settings(page, 'chat')
+    await page.route('https://old.example/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'upstream-only' }, { id: long }] } }))
+    await page.getByRole('button', { name: '选择模型' }).click()
+    await page.getByRole('button', { name: '获取模型' }).click()
+    const search = page.getByRole('searchbox', { name: '搜索接口模型' })
+    await expect(search).toHaveCSS('border-top-left-radius', '5px')
+    await expect(search).toHaveCSS('padding-left', '10px')
+    await expect(page.getByRole('checkbox', { name: 'upstream-only' })).toBeVisible()
+    await page.getByRole('button', { name: '全选', exact: true }).click()
+    await expect(page.getByRole('checkbox', { name: 'upstream-only' })).toBeChecked()
+    await expect(page.getByRole('checkbox', { name: long })).toBeChecked()
+    await page.getByRole('button', { name: '全不选', exact: true }).click()
+    await expect(page.getByRole('checkbox', { name: 'upstream-only' })).not.toBeChecked()
+    await expect(page.getByRole('checkbox', { name: long })).not.toBeChecked()
+    await search.fill('very-long')
+    await page.getByRole('checkbox', { name: long }).check()
+    await page.getByRole('button', { name: '应用' }).click()
+    await page.getByRole('button', { name: '手动添加' }).click()
+    await page.getByRole('textbox', { name: '模型 ID' }).fill('local-model')
+    await page.getByRole('button', { name: '添加', exact: true }).click()
+    await page.getByRole('button', { name: '选择模型' }).click()
+    await expect(page.getByRole('checkbox', { name: 'upstream-only' })).not.toBeChecked()
+    await expect(page.getByRole('checkbox', { name: long })).toBeChecked()
+    await page.getByRole('button', { name: '取消', exact: true }).first().click()
+    await page.locator('#chatModel').click()
+    const menu = page.locator('.model-dropdown:visible')
+    await expect(menu.locator('.model-option[data-model-value], button.model-option')).toHaveText(['local-model', long])
+    await expect(menu.getByRole('button', { name: '获取模型' })).toHaveCount(0)
+    await page.locator('#settingsTitle').click()
+    await page.locator('#updateChatProfile').click()
+    await page.locator('#saveSettings').click()
+    await page.reload()
+    await page.setViewportSize({ width: 390, height: 860 })
+    await page.locator('[data-view="chat"]').click()
+    const quick = page.locator('#chatModelQuick')
+    await quick.click()
+    const option = menu.getByRole('button', { name: long, exact: true }).or(menu.getByRole('option', { name: long, exact: true }))
+    await expect(option).toBeVisible()
+    await expect(option).toHaveCSS('white-space', 'normal')
+    const box = (await menu.boundingBox())!
+    expect(box.width).toBeGreaterThanOrEqual(350)
+    expect(box.x + box.width).toBeLessThanOrEqual(390)
+    await option.click()
+    await expect(quick).toHaveValue(long)
+    await expect(quick).toHaveAttribute('type', 'text')
+    await settings(page, 'chat')
+    await template(page, 'chatProfileSelect', 'new')
+    await expect(page.getByRole('region', { name: '对话模型列表' }).getByRole('button', { name: /^移除 / })).toHaveCount(0)
+    await template(page, 'chatProfileSelect', 'old')
+    await expect(page.getByRole('button', { name: `移除 ${long}` })).toBeVisible()
+  })
+  test(`${version}: image model list falls back to the interface and keeps a compact field`, async ({ page }) => {
+    await seed(page, url)
+    await settings(page, 'image')
+    await page.getByRole('button', { name: '手动添加' }).click()
+    await page.getByRole('textbox', { name: '模型 ID' }).fill('preferred-image')
+    await page.getByRole('button', { name: '添加', exact: true }).click()
+    await page.locator('#saveSettings').click()
+    const quick = page.locator('#imageModelQuick')
+    const options = page.locator('.model-dropdown:visible button.model-option')
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      const input = (await quick.boundingBox())!
+      const row = (await page.locator('.image-model-quick').boundingBox())!
+      expect(input.width).toBeCloseTo(190, 0)
+      expect(input.width).toBeLessThan(row.width - 50)
+      expect(input.x + input.width).toBeLessThanOrEqual(width)
+    }
+    await quick.click()
+    await expect(options).toHaveText(['preferred-image'])
+    await options.click()
+    await expect(quick).toHaveValue('preferred-image')
+    await settings(page, 'image')
+    await page.getByRole('button', { name: '移除 preferred-image' }).click()
+    await page.locator('#saveSettings').click()
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await quick.click()
+    await expect(options).toHaveText(['image-extra', 'image-old'])
+    await expect(quick).toHaveValue('preferred-image')
+  })
+  test(`${version}: model toolbar stays grouped and feedback follows the default model field`, async ({ page }) => {
+    await seed(page, url)
+    await settings(page, 'chat')
+    const section = page.getByRole('region', { name: '对话模型列表' })
+    const toggle = section.getByRole('button', { name: '选择模型' })
+    const model = page.locator('#chatModel')
+    let finish!: () => void
+    const pending = new Promise<void>((resolve) => { finish = resolve })
+    await page.route('https://old.example/v1/models', async (route) => {
+      await pending
+      await route.fulfill({ json: { data: [{ id: 'fresh-model' }] } })
+    })
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await toggle.click()
+    const toolbar = section.locator('.model-source-toolbar')
+    const buttons = toolbar.getByRole('button')
+    const search = toolbar.getByRole('searchbox')
+    await expect(buttons).toHaveCount(3)
+    const searchBox = (await search.boundingBox())!
+    for (const button of await buttons.all()) {
+      const box = (await button.boundingBox())!
+      expect(box.x).toBeGreaterThan(searchBox.x + searchBox.width - 1)
+      expect(Math.abs(box.y - searchBox.y)).toBeLessThan(3)
+    }
+    await toolbar.getByRole('button', { name: '获取模型' }).click()
+    try {
+      await toggle.click()
+      await expect(toolbar).toBeHidden()
+      await model.click()
+      await expect(page.locator('.model-dropdown:visible').getByRole('status')).toHaveText('正在获取模型…')
+    } finally { finish() }
+    await expect(page.locator('.model-dropdown:visible').getByRole('status')).toHaveCount(0)
+    await page.route('https://old.example/v1/models', (route) => route.fulfill({ status: 500, json: { error: { message: '测试错误' } } }))
+    await toggle.click()
+    await page.setViewportSize({ width: 390, height: 900 })
+    for (const button of await buttons.all()) {
+      const box = (await button.boundingBox())!
+      expect(box.x + box.width).toBeLessThanOrEqual(390)
+    }
+    await toolbar.getByRole('button', { name: '获取模型' }).click()
+    await toggle.click()
+    await expect(toolbar).toBeHidden()
+  })
+  test(`${version}: expanding a scrolled template group keeps scroll position`, async ({ page }) => {
+    await seed(page, url)
+    await page.evaluate(() => {
+      const key = 'orbit-chat-state-v1'
+      const data = JSON.parse(localStorage.getItem(key)!)
+      const original = data.connectionProfiles.chat[0]
+      data.connectionProfiles.chat.push(...Array.from({ length: 32 }, (_, i) => ({ ...original, id: `scroll-${i}`, name: `滚动组 ${String(i).padStart(2, '0')}/模板` })))
+      localStorage.setItem(key, JSON.stringify(data))
+    })
+    await page.reload()
+    await settings(page, 'chat')
+    const host = page.locator('#chatProfileSelect').locator('..')
+    await host.locator('.custom-select-trigger').click()
+    const menu = host.locator('.custom-select-menu')
+    const group = host.getByRole('button', { name: /滚动组 20$/ })
+    await group.scrollIntoViewIfNeeded()
+    const before = await menu.evaluate((el) => el.scrollTop)
+    expect(before).toBeGreaterThan(100)
+    await group.click()
+    await expect(group).toHaveAttribute('aria-expanded', 'true')
+    expect(Math.abs(await menu.evaluate((el) => el.scrollTop) - before)).toBeLessThan(3)
+    await group.click()
+    await expect(group).toHaveAttribute('aria-expanded', 'false')
+    expect(Math.abs(await menu.evaluate((el) => el.scrollTop) - before)).toBeLessThan(3)
+  })
   test(`${version}: export initially selects all, clear initially selects none`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await seed(page, url)
     await settings(page, 'data')
     await page.locator('#exportWorkspace').click()
@@ -365,7 +541,7 @@ for (const [version, url] of versions) {
     await expect(page.locator('#confirmDataScope')).toBeDisabled()
     await page.setViewportSize({ width: 420, height: 860 })
     await page.screenshot({
-      path: `/workspace/screens/orbit-six-${version}-scopes.png`,
+      path: testInfo.outputPath('scopes.png'),
     })
   })
   for (const scope of scopes) {

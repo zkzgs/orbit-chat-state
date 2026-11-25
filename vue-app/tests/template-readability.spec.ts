@@ -1,5 +1,4 @@
 import { test, expect, type Page } from '@playwright/test'
-import { mkdir } from 'node:fs/promises'
 
 const versions = [
   ['HTML', '/index.html'],
@@ -152,8 +151,8 @@ for (const [version, url] of versions) {
       await expect(page.locator(`#${kind}ApiKey`)).toHaveValue('fake-old')
       await expect(page.locator(`#${kind}Model`)).toHaveValue(`${kind}-old`)
     })
-    for (const fetchModels of [false, true]) {
-      test(`${version}: ${kind} edit and update retains same ID, fresh cache, switch and reload (fetch=${fetchModels})`, async ({
+    for (const openPicker of [false, true]) {
+      test(`${version}: ${kind} edit and update retains same ID, fresh cache, switch and reload (picker=${openPicker})`, async ({
         page,
       }) => {
         let requests = 0
@@ -168,17 +167,17 @@ for (const [version, url] of versions) {
         await expect(page.locator(`#${kind}ProfileSelect`)).toHaveValue(kind)
         await expect(page.locator(`#${kind}Model`)).toHaveValue('')
         await assertNoOldModels(page, kind)
-        if (fetchModels) {
-          await page.locator(`#${kind}Model`).focus()
-          await page.locator('.model-dropdown:visible .model-refresh').click()
-          await expect(page.locator('.model-dropdown:visible')).toContainText(
-            'fresh-model',
-          )
+        if (openPicker) {
+          await page.getByRole('button', { name: '选择模型' }).click()
+          await expect(page.getByRole('checkbox', { name: 'fresh-model' })).toBeVisible()
           await page.locator('#settingsTitle').click()
           // Fetching for edited credentials must not poison the still-saved old template.
           expect(
             (await savedState(page)).connectionProfiles[kind][0].models,
           ).toEqual([`${kind}-old`])
+        } else {
+          await page.locator(`#${kind}Model`).click()
+          await expect(page.locator('.model-dropdown:visible')).toContainText('fresh-model')
         }
         await page.locator(`#${kind}Model`).fill('manual-new')
         await page
@@ -197,7 +196,7 @@ for (const [version, url] of versions) {
           baseUrl: 'https://new.example/v1',
           apiKey: 'fake-new',
           model: 'manual-new',
-          models: fetchModels ? ['fresh-model'] : [],
+          models: ['fresh-model'],
           createdAt: 1,
         })
         await page
@@ -215,14 +214,14 @@ for (const [version, url] of versions) {
         await expect(page.locator(`#${kind}Model`)).toHaveValue('manual-new')
         await page.locator(`#${kind}Model`).fill('')
         await assertNoOldModels(page, kind)
-        expect(requests).toBe(fetchModels ? 1 : 0)
+        expect(requests).toBe(1)
       })
     }
   }
   for (const width of [1440, 420, 360]) {
     test(`${version}: readable fonts and centered scope cards at ${width}px`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       await page.setViewportSize({ width, height: 960 })
       await seed(page, url)
       const errors: string[] = []
@@ -238,10 +237,9 @@ for (const [version, url] of versions) {
         'font-size',
         '13px',
       )
-      await mkdir('/workspace/screens/orbit-compact/after', { recursive: true })
       const shot = (name: string) =>
         page.screenshot({
-          path: `/workspace/screens/orbit-compact/after/${version.toLowerCase()}-${width}-${name}.png`,
+          path: testInfo.outputPath(`${name}.png`),
         })
       await expect
         .poll(() =>
@@ -360,7 +358,7 @@ for (const [version, url] of versions) {
     ]) {
       test(`${version}: native focused selection stays legible without mirror double-paint (${theme}/${view})`, async ({
         page,
-      }) => {
+      }, testInfo) => {
         await page.setViewportSize({ width: 1000, height: 800 })
         await seed(page, url)
         await page.evaluate((t) => {
@@ -393,10 +391,9 @@ for (const [version, url] of versions) {
           fill: 'rgb(255, 255, 255)',
           shadow: 'none',
         })
-        await mkdir('/workspace/screens/orbit-selection', { recursive: true })
         const shot = (state: string) =>
           page.screenshot({
-            path: `/workspace/screens/orbit-selection/after-${version.toLowerCase()}-${theme}-${view}-${state}.png`,
+            path: testInfo.outputPath(`${state}.png`),
           })
         await shot('focused')
         await input.press('ArrowRight')

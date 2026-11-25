@@ -8,10 +8,8 @@ import ReferenceImages from '../components/ReferenceImages.vue'
 import PromptEditor from '../components/PromptEditor.vue'
 import CustomSelect from '../components/CustomSelect.vue'
 import ModelInput from '../components/ModelInput.vue'
-import { useSettingsStore } from '../stores/settings'
 import { useWorkspaceStore } from '../stores/workspace'
 const workspace = useWorkspaceStore()
-const settings = useSettingsStore()
 const image = useImageGenerationStore()
 const templates = usePromptTemplatesStore()
 const size = useImageSizeStore()
@@ -172,11 +170,8 @@ function drop(event: DragEvent) {
           ><ModelInput
             id="imageModelQuick"
             v-model="workspace.state.settings.imageModel"
-            :models="workspace.modelCatalog.image"
+            :models="workspace.modelChoices('image')"
             label="当前生图模型"
-            refresh
-            :refreshing="settings.loadingModels.image"
-            @refresh="settings.loadModels('image', false)"
         /></label>
       </div>
       <div

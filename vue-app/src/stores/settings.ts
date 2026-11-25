@@ -18,8 +18,10 @@ export const useSettingsStore = defineStore('settings-form', () => {
   const draft = reactive(cloneData(workspace.state.settings))
   let baseline = ''
   const modelRevision = { chat: 0, image: 0 }
+  const modelRequest = { chat: -1, image: -1 }
   const showKey = reactive({ chat: false, image: false })
   const loadingModels = reactive({ chat: false, image: false })
+  const modelStatus = reactive({ chat: '', image: '' })
   const verifiedProxy = ref('')
   const proxyStatus = ref('尚未测试代理服务')
   const proxyTesting = ref(false)
@@ -32,6 +34,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
     modelRevision.chat++
     modelRevision.image++
     Object.assign(draft, cloneData(workspace.state.settings))
+    modelStatus.chat = modelStatus.image = ''
     if (ui.settingsOpen) baseline = snapshot()
   }
   function open() {
@@ -54,7 +57,12 @@ export const useSettingsStore = defineStore('settings-form', () => {
   function close(force = false) {
     modelRevision.chat++
     modelRevision.image++
-    if (!force && baseline && snapshot() !== baseline) {
+    const withoutCatalog = (value: string) => {
+      const data = JSON.parse(value)
+      delete data.models
+      return JSON.stringify(data)
+    }
+    if (!force && baseline && withoutCatalog(snapshot()) !== withoutCatalog(baseline)) {
       if (window.confirm('设置已修改, 是否保存更改?')) {
         save()
         return
@@ -87,10 +95,24 @@ export const useSettingsStore = defineStore('settings-form', () => {
       ui.notify('Agent 重试上限应为 0 到 5 的整数', 'error')
       return
     }
+    for (const kind of ['chat', 'image'] as const)
+      draft[`${kind}FetchedModels`] = [...workspace.modelCatalog[kind]]
     Object.assign(workspace.state.settings, cloneData(draft))
     rememberProxyUrl(draft.proxyUrl)
     close(true)
     ui.notify('设置已保存')
+  }
+  function clearConnectionModels(kind: ApiKind) {
+    modelRevision[kind]++
+    modelStatus[kind] = ''
+    draft[kind === 'chat' ? 'chatModel' : 'imageModel'] = ''
+    draft[kind === 'chat' ? 'chatCustomModels' : 'imageCustomModels'] = ''
+    workspace.modelCatalog[kind] = []
+  }
+  function providerEdited(value: typeof draft.imageProvider) {
+    if (value === draft.imageProvider) return
+    draft.imageProvider = value
+    clearConnectionModels('image')
   }
   function connectionEdited(
     kind: ApiKind,
@@ -104,9 +126,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
       return
     }
     draft[key] = value
-    modelRevision[kind]++
-    draft[kind === 'chat' ? 'chatModel' : 'imageModel'] = ''
-    workspace.modelCatalog[kind] = []
+    clearConnectionModels(kind)
     // Keep the selected template as the explicit update target.
   }
   function invalidateProxy() {
@@ -143,18 +163,37 @@ export const useSettingsStore = defineStore('settings-form', () => {
       proxyTesting.value = false
     }
   }
-  async function loadModels(kind: ApiKind, fromDraft = ui.settingsOpen) {
-    if (loadingModels[kind]) return
-    const settings = fromDraft ? draft : workspace.state.settings
-    const baseUrl =
-      kind === 'chat' ? settings.chatBaseUrl : settings.imageBaseUrl
-    const key = kind === 'chat' ? settings.chatApiKey : settings.imageApiKey
+  function ensureModels(kind: ApiKind) {
+    if (workspace.modelCatalog[kind].length || modelStatus[kind]) return
+    void loadModels(kind, true)
+  }
+  async function loadModels(kind: ApiKind, automatic = false) {
+    const revision = modelRevision[kind]
+    if (!ui.settingsOpen || modelRequest[kind] === revision) return
+    const settings = draft
+    const baseUrl = settings[`${kind}BaseUrl`].trim()
+    const key = settings[`${kind}ApiKey`].trim()
     if (!baseUrl || !key) {
-      ui.notify('请先填写对应的接口地址和 API Key', 'error')
+      if (automatic) return
+      modelStatus[kind] = '请先填写对应的接口地址和 API Key'
+      ui.notify(modelStatus[kind], 'error')
       return
     }
-    const revision = modelRevision[kind]
+    if (automatic) {
+      try {
+        const url = new URL(baseUrl)
+        if (!['https:', 'http:'].includes(url.protocol)) return
+        const saved = workspace.state.settings
+        if (key === saved[`${kind}ApiKey`].trim() && saved[`${kind}BaseUrl`] &&
+            url.origin !== new URL(saved[`${kind}BaseUrl`]).origin) {
+          modelStatus[kind] = '接口域名已变更，请确认后手动获取模型'
+          return
+        }
+      } catch { return }
+    }
+    modelRequest[kind] = revision
     loadingModels[kind] = true
+    modelStatus[kind] = ''
     try {
       if (kind === 'image' && settings.imageProvider === 'gemini') {
         const models = await listGeminiModels(
@@ -164,16 +203,17 @@ export const useSettingsStore = defineStore('settings-form', () => {
         )
         if (revision !== modelRevision[kind]) return
         workspace.modelCatalog.image = models
+        if (!models.length) modelStatus.image = '接口未返回可用模型'
         const profile = workspace.state.connectionProfiles.image.find(
           (item) => item.id === workspace.state.activeConnectionProfiles.image,
         )
         if (
-          profile &&
+          !automatic && profile &&
           profile.baseUrl.trim() === baseUrl.trim() &&
-          profile.apiKey.trim() === key.trim()
+          profile.apiKey.trim() === key.trim() && profile.imageProvider === settings.imageProvider
         )
           profile.models = [...workspace.modelCatalog.image]
-        ui.notify(`已获取 ${workspace.modelCatalog.image.length} 个模型`)
+        if (!automatic) ui.notify(`已获取 ${workspace.modelCatalog.image.length} 个模型`)
         return
       }
       const response = await apiFetch(
@@ -191,21 +231,31 @@ export const useSettingsStore = defineStore('settings-form', () => {
       if (!response.ok)
         throw new Error(payload.error?.message || `接口返回 ${response.status}`)
       if (revision !== modelRevision[kind]) return
-      workspace.modelCatalog[kind] = (payload.data || []).map((item) => item.id)
+      workspace.modelCatalog[kind] = [...new Set(Array.isArray(payload.data)
+        ? payload.data.map((item) => item?.id).filter((id) => typeof id === 'string' && id.trim())
+        : [])].sort()
+      if (!workspace.modelCatalog[kind].length) modelStatus[kind] = '接口未返回可用模型'
       const active = workspace.state.connectionProfiles[kind].find(
         (item) => item.id === workspace.state.activeConnectionProfiles[kind],
       )
       if (
-        active &&
+        !automatic && active &&
         active.baseUrl.trim() === baseUrl.trim() &&
-        active.apiKey.trim() === key.trim()
+        active.apiKey.trim() === key.trim() &&
+        (kind === 'chat' || (active.imageProvider || 'openai') === settings.imageProvider)
       )
         active.models = [...workspace.modelCatalog[kind]]
-      ui.notify(`已获取 ${workspace.modelCatalog[kind].length} 个模型`)
+      if (!automatic) ui.notify(`已获取 ${workspace.modelCatalog[kind].length} 个模型`)
     } catch (error) {
-      ui.notify(errorMessage(error), 'error')
+      if (revision === modelRevision[kind]) {
+        modelStatus[kind] = '获取模型失败'
+        if (!automatic) ui.notify(errorMessage(error), 'error')
+      }
     } finally {
-      loadingModels[kind] = false
+      if (modelRequest[kind] === revision) {
+        modelRequest[kind] = -1
+        loadingModels[kind] = false
+      }
     }
   }
   function fields(kind: ApiKind) {
@@ -214,6 +264,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
           baseUrl: draft.chatBaseUrl.trim(),
           apiKey: draft.chatApiKey.trim(),
           model: draft.chatModel.trim(),
+          customModels: draft.chatCustomModels?.trim() || '',
           reasoningEffort: draft.reasoningEffort,
           apiFormat: draft.chatApiFormat,
         }
@@ -221,6 +272,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
           baseUrl: draft.imageBaseUrl.trim(),
           apiKey: draft.imageApiKey.trim(),
           model: draft.imageModel.trim(),
+          customModels: draft.imageCustomModels?.trim() || '',
           imageProvider: draft.imageProvider,
           countMode: draft.imageCountMode,
           backgroundMode: draft.imageBackgroundMode,
@@ -228,12 +280,14 @@ export const useSettingsStore = defineStore('settings-form', () => {
   }
   function selectProfile(kind: ApiKind, id: string) {
     modelRevision[kind]++
+    modelStatus[kind] = ''
     workspace.state.activeConnectionProfiles[kind] = id
     const profile = workspace.state.connectionProfiles[kind].find(
       (item) => item.id === id,
     )
     if (!profile) {
       workspace.modelCatalog[kind] = []
+      workspace.state.settings[`${kind}FetchedModels`] = []
       ui.notify('已切换到临时配置，当前填写内容保留')
       return
     }
@@ -242,6 +296,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
         chatBaseUrl: profile.baseUrl,
         chatApiKey: profile.apiKey,
         chatModel: profile.model,
+        chatCustomModels: profile.customModels || '',
         reasoningEffort: profile.reasoningEffort || 'auto',
         chatApiFormat: profile.apiFormat || 'chat',
       })
@@ -249,6 +304,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
         chatBaseUrl: draft.chatBaseUrl,
         chatApiKey: draft.chatApiKey,
         chatModel: draft.chatModel,
+        chatCustomModels: draft.chatCustomModels,
         reasoningEffort: draft.reasoningEffort,
         chatApiFormat: draft.chatApiFormat,
       })
@@ -257,6 +313,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
         imageBaseUrl: profile.baseUrl,
         imageApiKey: profile.apiKey,
         imageModel: profile.model,
+        imageCustomModels: profile.customModels || '',
         imageProvider: profile.imageProvider || 'openai',
         imageCountMode: profile.countMode || 'parameter',
         imageBackgroundMode: profile.backgroundMode || 'parameter',
@@ -265,12 +322,14 @@ export const useSettingsStore = defineStore('settings-form', () => {
         imageBaseUrl: draft.imageBaseUrl,
         imageApiKey: draft.imageApiKey,
         imageModel: draft.imageModel,
+        imageCustomModels: draft.imageCustomModels,
         imageProvider: draft.imageProvider,
         imageCountMode: draft.imageCountMode,
         imageBackgroundMode: draft.imageBackgroundMode,
       })
     }
     workspace.modelCatalog[kind] = [...(profile.models || [])]
+    workspace.state.settings[`${kind}FetchedModels`] = [...workspace.modelCatalog[kind]]
     ui.notify(`已切换到“${profile.name}”`)
   }
   function suggestedProfileName(kind: ApiKind) {
@@ -352,6 +411,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
     draft,
     showKey,
     loadingModels,
+    modelStatus,
     verifiedProxy,
     proxyStatus,
     proxyTesting,
@@ -362,7 +422,9 @@ export const useSettingsStore = defineStore('settings-form', () => {
     save,
     invalidateProxy,
     connectionEdited,
+    providerEdited,
     testProxy,
+    ensureModels,
     loadModels,
     selectProfile,
     saveProfile,

@@ -231,10 +231,7 @@ onUnmounted(() => {
             v-model="workspace.state.settings.chatModel"
             id="chatModelQuick"
             label="当前对话模型"
-            :models="workspace.modelCatalog.chat"
-            refresh
-            :refreshing="settings.loadingModels.chat"
-            @refresh="settings.loadModels('chat', false)"
+            :models="workspace.modelChoices('chat')"
         /></label>
         <label class="quick-setting toolbar-bar-reasoning"
           ><span>思考</span

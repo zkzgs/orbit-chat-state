@@ -49,6 +49,8 @@ export function createDefaultSettings(): Settings {
     chatBaseUrl: '',
     chatApiKey: '',
     chatModel: '',
+    chatCustomModels: '',
+    imageCustomModels: '',
     imageBaseUrl: '',
     imageApiKey: '',
     imageModel: '',

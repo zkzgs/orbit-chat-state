@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -8,15 +8,15 @@ const props = withDefaults(
     id: string
     label: string
     placeholder?: string
-    refresh?: boolean
-    refreshing?: boolean
     disabled?: boolean
+    loading?: boolean
+    emptyMessage?: string
   }>(),
-  { placeholder: '', refresh: false, refreshing: false, disabled: false },
+  { placeholder: '', disabled: false },
 )
 const emit = defineEmits<{
   'update:modelValue': [value: string]
-  refresh: []
+  retry: []
 }>()
 
 const host = ref<HTMLDivElement | null>(null)
@@ -29,7 +29,6 @@ const options = computed(() => {
   return props.models
     .filter((model) => !value || model.toLocaleLowerCase().includes(value))
     .sort()
-    .slice(0, 80)
 })
 
 function close() {
@@ -54,8 +53,9 @@ function positionMenu() {
     spaceBelow < Math.min(dropdown.scrollHeight, 210) && spaceAbove > spaceBelow
   const available = opensUp ? spaceAbove : spaceBelow
 
-  dropdown.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8))}px`
-  dropdown.style.width = `${Math.max(1, Math.min(rect.width, window.innerWidth - 16))}px`
+  const width = Math.min(Math.max(rect.width, 360), window.innerWidth - 16)
+  dropdown.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))}px`
+  dropdown.style.width = `${width}px`
   dropdown.style.maxHeight = `${Math.max(1, Math.min(210, available))}px`
   dropdown.style.top = opensUp
     ? 'auto'
@@ -121,6 +121,7 @@ function outside(event: PointerEvent) {
 function reposition() {
   if (open.value) positionMenu()
 }
+watch([options, () => props.loading, () => props.emptyMessage], reposition, { flush: 'post' })
 
 onMounted(() => {
   document.addEventListener('pointerdown', outside)
@@ -144,14 +145,16 @@ onBeforeUnmount(() => {
     <input
       :id="id"
       :value="modelValue"
-      :placeholder="placeholder"
+      :placeholder="loading ? '正在获取模型…' : placeholder"
+      :class="{ 'model-input-loading': loading }"
+      :title="modelValue"
       :aria-label="label"
       :aria-controls="`${id}-options`"
       :aria-expanded="open"
       aria-autocomplete="list"
       autocomplete="off"
       role="combobox"
-      type="search"
+      type="text"
       :name="`orbit-${id}-model`"
       :spellcheck="false"
       autocapitalize="off"
@@ -183,21 +186,14 @@ onBeforeUnmount(() => {
           >
             {{ model }}
           </button>
-          <div v-if="!options.length" class="model-option">
-            暂无匹配模型，可直接输入模型名
+          <div v-if="loading" class="model-menu-status" role="status">
+            <span class="model-spinner" aria-hidden="true"></span>正在获取模型…
+          </div>
+          <div v-else-if="!options.length" :class="emptyMessage ? 'model-menu-status' : 'model-option'" role="status">
+            {{ emptyMessage || '暂无匹配模型，可直接输入模型名' }}
+            <button v-if="emptyMessage === '获取模型失败'" class="secondary-button" type="button" @mousedown.prevent @click="emit('retry')">重试</button>
           </div>
         </div>
-        <button
-          v-if="refresh"
-          type="button"
-          class="model-refresh"
-          :disabled="refreshing"
-          :aria-busy="refreshing"
-          @mousedown.prevent
-          @click="emit('refresh')"
-        >
-          {{ refreshing ? '获取中...' : '获取模型' }}
-        </button>
       </div>
     </Teleport>
   </div>
