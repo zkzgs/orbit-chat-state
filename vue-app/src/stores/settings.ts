@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useWorkspaceStore } from './workspace'
 import { useInterfaceStore } from './interface'
 import { apiFetch, buildModelsEndpoint, normalizeProxyUrl } from '../api/client'
+import { readApiJson } from '../api/request-error.js'
 import { joinProxyPath } from '../utils/proxy-url'
 import type { ApiKind, ConnectionProfile } from '../types/models'
 import { cloneData } from '../utils/clone'
@@ -87,14 +88,19 @@ export const useSettingsStore = defineStore('settings-form', () => {
     },
   )
   function save() {
-    if (
-      !Number.isInteger(draft.imageAgentRetryLimit) ||
-      draft.imageAgentRetryLimit < 0 ||
-      draft.imageAgentRetryLimit > 5
-    ) {
+    const validRetryLimit = (limit: number) => Number.isInteger(limit) && limit >= 0 && limit <= 5
+    const errorLimit = !draft.imageAgentRetryErrors && !validRetryLimit(draft.imageAgentErrorRetryLimit)
+      ? workspace.state.settings.imageAgentErrorRetryLimit
+      : draft.imageAgentErrorRetryLimit
+    const mismatchLimit = (!draft.imageAgentPreview || !draft.imageAgentRetryMismatch) && !validRetryLimit(draft.imageAgentMismatchRetryLimit)
+      ? workspace.state.settings.imageAgentMismatchRetryLimit
+      : draft.imageAgentMismatchRetryLimit
+    if (![errorLimit, mismatchLimit].every(validRetryLimit)) {
       ui.notify('Agent 重试上限应为 0 到 5 的整数', 'error')
       return
     }
+    draft.imageAgentErrorRetryLimit = errorLimit
+    draft.imageAgentMismatchRetryLimit = mismatchLimit
     for (const kind of ['chat', 'image'] as const)
       draft[`${kind}FetchedModels`] = [...workspace.modelCatalog[kind]]
     Object.assign(workspace.state.settings, cloneData(draft))
@@ -224,12 +230,7 @@ export const useSettingsStore = defineStore('settings-form', () => {
         },
         settings,
       )
-      const payload = (await response.json()) as {
-        data?: { id: string }[]
-        error?: { message?: string }
-      }
-      if (!response.ok)
-        throw new Error(payload.error?.message || `接口返回 ${response.status}`)
+      const payload = (await readApiJson(response, settings.proxyEnabled)) as { data?: { id: string }[] }
       if (revision !== modelRevision[kind]) return
       workspace.modelCatalog[kind] = [...new Set(Array.isArray(payload.data)
         ? payload.data.map((item) => item?.id).filter((id) => typeof id === 'string' && id.trim())

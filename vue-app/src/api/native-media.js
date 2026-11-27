@@ -1,3 +1,5 @@
+import { isHtmlResponse, readApiJson, readApiText, requestErrorMessage } from './request-error.js'
+
 export function nativeEndpoint(base, suffix, provider) {
   const url = new URL(base)
   let path = url.pathname
@@ -110,9 +112,7 @@ export async function listGeminiModels(fetchApi, settings, signal) {
       { headers: { 'x-goog-api-key': settings.imageApiKey }, signal },
       settings,
     )
-    const payload = await response.json()
-    if (!response.ok)
-      throw new Error(payload.error?.message || `接口返回 ${response.status}`)
+    const payload = await readApiJson(response, settings.proxyEnabled)
     result.push(
       ...(payload.models || []).map((model) =>
         model.name.replace(/^models\//, ''),
@@ -151,7 +151,7 @@ export async function requestNativeMedia(
       init.method === 'POST' ? onSent : undefined,
     )
     onPhase?.('parsing')
-    const raw = await response.text()
+    const raw = await readApiText(response, settings.proxyEnabled)
     let payload
     try {
       payload = JSON.parse(raw)
@@ -166,9 +166,9 @@ export async function requestNativeMedia(
       receivedAt: Date.now(),
     }
     events.push(upstream)
-    if (!response.ok || payload.error) {
+    if (!response.ok || payload.error || isHtmlResponse(response, raw)) {
       const error = new Error(
-        payload.error?.message || `接口返回 ${response.status}`,
+        requestErrorMessage(response, raw, settings.proxyEnabled, payload.error?.message),
       )
       error.upstream = { responses: events }
       error.upstreamResponse = error.upstream

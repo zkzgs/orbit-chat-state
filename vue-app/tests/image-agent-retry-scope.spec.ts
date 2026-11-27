@@ -55,7 +55,7 @@ async function run(options: {
     },
     generate: async (prompt: string, ids: string[]) => {
       generated.push({ prompt, ids })
-      return options.succeed
+      return (options.succeed || prompt === '成功')
         ? { status: 'success', imageIds: ['result-' + generated.length] }
         : { status: 'error', imageIds: [], error: '上游失败' }
     },
@@ -70,6 +70,25 @@ const first = call('first', 'generate_image', {
 })
 const retry = (id: string, of = 'first') =>
   call(id, 'retry_image', { tool_call_id: of, prompt: '修正' })
+
+test('错误和效果重试各用自己的次数', async () => {
+  const { generated, rounds } = await run({
+    settings: {
+      imageAgentPreview: true,
+      imageAgentRetryMismatch: true,
+      imageAgentErrorRetryLimit: 1,
+      imageAgentMismatchRetryLimit: 1,
+    },
+    steps: [
+      [first],
+      [call('fix', 'retry_image', { tool_call_id: 'first', prompt: '成功' })],
+      [retry('effect')],
+      [retry('error-again')],
+    ],
+  })
+  expect(generated).toHaveLength(3)
+  expect(JSON.parse(rounds.at(-1).results[0].content).error).toBe('该图片任务已不可再重试')
+})
 
 test('工具结果不带重试次数, 句柄只在本轮请求中提供且不保存', async () => {
   const { requests, rounds } = await run({ steps: [[first], [retry('r1')]] })
@@ -302,6 +321,49 @@ for (const [version, url] of [
   ['HTML', '/index.html'],
   ['Vue', '/vue-app/dist/index.html'],
 ]) {
+  test(`${version} 代理错误可区分来源，HTML 不显示原文，日志不含请求内容`, async ({ page }) => {
+    const proxyUrl = 'https://proxy.test/private-path'
+    const requestId = 'f13316bb-a593-4518-8a1f-46937dcfa795'
+    await page.route(`${proxyUrl}/**`, async (route) => {
+      if (route.request().url().endsWith('/health'))
+        return route.fulfill({ json: { service: 'orbit-api-proxy' } })
+      if (route.request().method() !== 'POST') return route.fulfill({ json: { data: [] } })
+      const prompt = JSON.stringify(route.request().postDataJSON())
+      if (prompt.includes('网关测试'))
+        return route.fulfill({ status: 502, headers: { 'access-control-expose-headers': 'x-orbit-proxy-stage, x-orbit-request-id', 'x-orbit-proxy-stage': 'gateway-proxy', 'x-orbit-request-id': requestId }, body: 'private-gateway-body' })
+      if (prompt.includes('断连测试'))
+        return route.fulfill({ status: 502, headers: { 'access-control-expose-headers': 'x-orbit-proxy-stage', 'x-orbit-proxy-stage': 'upstream-connection' }, json: { error: { message: 'socket hang up' } } })
+      if (prompt.includes('上游测试'))
+        return route.fulfill({ status: 429, headers: { 'access-control-expose-headers': 'x-orbit-proxy-stage', 'x-orbit-proxy-stage': 'upstream-response' }, json: { error: { message: 'limited' } } })
+      return route.fulfill({ status: 524, contentType: 'text/html', body: '<!DOCTYPE html><html>private-page</html>' })
+    })
+    await open(page, url, { chatModel: 'test-chat', proxyEnabled: true, proxyUrl }, [])
+    for (const [prompt, expected] of [
+      ['网页测试', '代理链路（来源未确认）返回 HTTP 524：等待源站响应超时'],
+      ['上游测试', '上游接口返回 HTTP 429'],
+      ['断连测试', '代理转发失败（HTTP 502）：socket hang up'],
+      ['网关测试', `代理网关转发失败（HTTP 502）（请求编号：${requestId}）`],
+    ]) {
+      await page.locator('#messageInput').fill(prompt)
+      await page.locator('#sendButton').click()
+      await expect(page.getByText(expected, { exact: false }).first()).toBeVisible()
+    }
+    await expect(page.getByText('private-page', { exact: false })).toHaveCount(0)
+    await page.reload()
+    await page.locator('#topbarSettings').click()
+    await page.locator('#settings-tab-proxy').click()
+    const download = page.waitForEvent('download')
+    await page.locator('#exportRequestErrors').click()
+    const text = await readFile((await (await download).path())!, 'utf8')
+    expect(JSON.parse(text)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ status: 524, stage: 'proxy-unknown', kind: 'html-response' }),
+      expect.objectContaining({ status: 429, stage: 'upstream-response' }),
+      expect.objectContaining({ status: 502, stage: 'upstream-connection', code: 'SOCKET_HANG_UP' }),
+      expect.objectContaining({ status: 502, stage: 'gateway-proxy', requestId }),
+    ]))
+    expect(text).not.toMatch(/private-path|private-page|private-gateway-body|test-chat|网页测试|limited/)
+  })
+
   test(
     version + ' 历史轮次不发送重试句柄和次数, 本地上限按当前设置',
     async ({ page }) => {
@@ -392,7 +454,7 @@ for (const [version, url] of [
           // 第一次重试已用完上限 1, 此时把上限改为 2。
           await page.locator('#topbarSettings').click()
           await page.locator('#settings-tab-agent').click()
-          await page.locator('#imageAgentRetryLimit').fill('2')
+          await page.locator('#imageAgentErrorRetryLimit').fill('2')
           await page.locator('#saveSettings').click()
         }
         const message =

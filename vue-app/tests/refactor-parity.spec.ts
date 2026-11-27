@@ -937,26 +937,28 @@ for (const width of [1440, 390]) {
 
       const mobile = width <= 780
       const scroller = page.locator(mobile ? '.content-stage' : '#imageHistory')
+      const deleteButtons = page.locator('#imageHistory [data-history-action="delete"]')
       await scroller.evaluate((element) => {
         element.scrollTop = (element.scrollHeight - element.clientHeight) / 2
       })
-      const before = await scroller.evaluate((element) => element.scrollTop)
-      const targetIndex = await page.evaluate((mobile) => {
-        const list = document.querySelector('#imageHistory')!
-        const scroller = document.querySelector(
-          mobile ? '.content-stage' : '#imageHistory',
-        )!
-        const bounds = scroller.getBoundingClientRect()
-        return Array.from(
-          list.querySelectorAll<HTMLButtonElement>(
-            '[data-history-action="delete"]',
-          ),
-        ).findIndex((button) => {
-          const card = button.closest('.history-item')!.getBoundingClientRect()
-          return card.top >= bounds.top && card.bottom <= bounds.bottom
+      let targetIndex = -1
+      await expect.poll(async () => {
+        targetIndex = await deleteButtons.evaluateAll((buttons) => {
+          const list = document.querySelector('#imageHistory')!
+          const stage = list.closest('.content-stage')!
+          const mobile = innerWidth <= 780
+          const bounds = (mobile ? stage : list).getBoundingClientRect()
+          return buttons.findIndex((button) => {
+            const item = mobile ? button : button.closest('.history-item')!
+            const box = item.getBoundingClientRect()
+            return box.height > 0 && box.top >= bounds.top && box.bottom <= bounds.bottom
+          })
         })
-      }, mobile)
-      expect(targetIndex).toBeGreaterThanOrEqual(0)
+        return targetIndex
+      }).toBeGreaterThanOrEqual(0)
+      const targetButton = deleteButtons.nth(targetIndex)
+      const before = await scroller.evaluate((element) => element.scrollTop)
+      expect(before).toBeGreaterThan(0)
       await page.evaluate((targetIndex) => {
         const cards = Array.from(
           document.querySelectorAll<HTMLElement>('#imageHistory .history-item'),
@@ -972,10 +974,7 @@ for (const width of [1440, 390]) {
       }, targetIndex)
 
       page.once('dialog', (dialog) => dialog.accept())
-      await page
-        .locator('#imageHistory [data-history-action="delete"]')
-        .nth(targetIndex)
-        .evaluate((button) => (button as HTMLButtonElement).click())
+      await targetButton.evaluate((button) => (button as HTMLButtonElement).click())
       await expect(
         page.locator('#imageHistoryTitle .history-count'),
       ).toHaveText('31')

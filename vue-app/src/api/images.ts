@@ -3,12 +3,12 @@ import type { ParsedImageResponse } from '../types/image-worker'
 import {
   apiFetch,
   buildApiEndpoint,
-  normalizeProxyUrl,
   routeApiRequest,
 } from './client'
 import { runImageWorker } from '../workers/client'
 import { parseImageResponse } from '../utils/image-response'
 import { requestNativeMedia } from './native-media.js'
+import { isHtmlResponse, readApiText, requestErrorMessage, requestNetworkError } from './request-error.js'
 
 export interface GeneratedResponse {
   images: ParsedImageResponse['images']
@@ -52,19 +52,12 @@ function sendImageEditRequest(
     request.upload.onloadend = () => {
       if (!responseReceived) onUploaded()
     }
-    request.onerror = () =>
-      fail(
-        new Error(
-          settings.proxyEnabled
-            ? `无法连接代理 ${normalizeProxyUrl(settings.proxyUrl)}`
-            : '网络请求失败, 请检查接口地址和跨域设置',
-        ),
-      )
+    request.onerror = () => fail(requestNetworkError(settings.proxyEnabled))
     request.onabort = () => fail(new DOMException('请求已中断', 'AbortError'))
     request.onload = () => {
       responseReceived = true
       if (request.status === 0) {
-        fail(new Error('网络请求失败, 请检查接口地址和跨域设置'))
+        fail(requestNetworkError(settings.proxyEnabled))
         return
       }
       const headers = new Headers()
@@ -235,7 +228,7 @@ export async function requestImages(
     response = await apiFetch(endpoint, options, settings, onSent)
   }
   onPhase?.('parsing')
-  const raw = await response.text()
+  const raw = await readApiText(response, settings.proxyEnabled)
   let result: ParsedImageResponse
   try {
     result = await runImageWorker('parseImageResponse', {
@@ -258,9 +251,9 @@ export async function requestImages(
     response.headers.get('x-model') ||
     response.headers.get('x-openai-model') ||
     ''
-  if (!response.ok || !result.parsed)
+  if (!response.ok || !result.parsed || isHtmlResponse(response, raw))
     throw new ImageRequestError(
-      result.errorMessage || `接口返回 ${response.status}`,
+      requestErrorMessage(response, raw, settings.proxyEnabled, result.errorMessage),
       upstream,
     )
   if (!result.images.length)

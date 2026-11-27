@@ -6,13 +6,13 @@
 const targetHeader = 'x-orbit-target-url';
 const blockedRequestHeaders = new Set([
   'host', 'connection', 'proxy-connection', 'keep-alive', 'transfer-encoding', 'te', 'trailer', 'upgrade',
-  'origin', 'referer', 'content-length', targetHeader
+  'origin', 'referer', 'content-length', targetHeader, 'x-orbit-proxy-stage'
 ]);
 const blockedResponseHeaders = new Set([
   'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade',
   'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers',
   'access-control-expose-headers', 'access-control-allow-credentials', 'access-control-max-age',
-  'content-length', 'content-encoding'
+  'content-length', 'content-encoding', 'x-orbit-proxy-stage'
 ]);
 
 function timingSafeEqual(a, b) {
@@ -34,8 +34,9 @@ function corsHeaders(request, headers = new Headers()) {
   return headers;
 }
 
-function json(request, status, payload) {
+function json(request, status, payload, stage = '') {
   const headers = corsHeaders(request);
+  if (stage) headers.set('X-Orbit-Proxy-Stage', stage);
   headers.set('Content-Type', 'application/json; charset=utf-8');
   return new Response(JSON.stringify(payload), { status, headers });
 }
@@ -71,7 +72,7 @@ async function forward(request) {
       redirect: 'follow'
     });
   } catch (error) {
-    return json(request, 502, { error: { message: error.message || '上游请求失败' } });
+    return json(request, 502, { error: { message: error.message || '上游请求失败' } }, 'upstream-connection');
   }
 
   const responseHeaders = new Headers();
@@ -79,6 +80,7 @@ async function forward(request) {
     if (!blockedResponseHeaders.has(name.toLowerCase())) responseHeaders.append(name, value);
   }
   corsHeaders(request, responseHeaders);
+  responseHeaders.set('X-Orbit-Proxy-Stage', 'upstream-response');
   // 直接透传响应流, 不缓冲, 保证 SSE / 流式输出
   return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers: responseHeaders });
 }

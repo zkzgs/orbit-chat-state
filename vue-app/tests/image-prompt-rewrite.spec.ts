@@ -51,7 +51,7 @@ for (const [version, url] of [
   ['Vue', '/vue-app/dist/index.html'],
 ]) {
   test(
-    version + ' 防改写开关默认关闭, 保存和刷新后保持选择',
+    version + ' 防改写开关默认开启, 保存和刷新后保持选择',
     async ({ page }) => {
       await page.route('https://guard.test/**', (route) =>
         route.fulfill({ json: { data: [] } }),
@@ -60,13 +60,13 @@ for (const [version, url] of [
       await page.locator('#topbarSettings').click()
       await page.locator('#settings-tab-images').click()
       const toggle = page.locator('#imagePreventPromptRewrite')
-      await expect(toggle).not.toBeChecked()
+      await expect(toggle).toBeChecked()
       await toggle.locator('..').click()
       await page.locator('#saveSettings').click()
       await page.reload()
       await page.locator('#topbarSettings').click()
       await page.locator('#settings-tab-images').click()
-      await expect(toggle).toBeChecked()
+      await expect(toggle).not.toBeChecked()
       mkdirSync('.cache/screens', { recursive: true })
       await page.locator('#settingsBackdrop').screenshot({
         path: '.cache/screens/image-prompt-rewrite-' + version + '.png',
@@ -76,7 +76,7 @@ for (const [version, url] of [
       await page.reload()
       await page.locator('#topbarSettings').click()
       await page.locator('#settings-tab-images').click()
-      await expect(toggle).not.toBeChecked()
+      await expect(toggle).toBeChecked()
     },
   )
 

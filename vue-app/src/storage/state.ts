@@ -20,6 +20,16 @@ export function createInitialState(): WorkspaceState {
     activeConversationId: id,
   }
 }
+export function migrateRetryLimits<T extends Partial<WorkspaceState['settings']>>(
+  settings: T & { imageAgentRetryLimit?: number },
+) {
+  const { imageAgentRetryLimit: legacy, ...rest } = settings
+  if (typeof legacy === 'number' && Number.isInteger(legacy) && legacy >= 0 && legacy <= 5) {
+    rest.imageAgentErrorRetryLimit ??= legacy
+    rest.imageAgentMismatchRetryLimit ??= legacy
+  }
+  return rest
+}
 export function loadState(): WorkspaceState {
   const initial = createInitialState()
   try {
@@ -32,7 +42,7 @@ export function loadState(): WorkspaceState {
       ...saved,
       settings: {
         ...initial.settings,
-        ...saved.settings,
+        ...migrateRetryLimits(saved.settings || {}),
         imageOptions: {
           ...initial.settings.imageOptions,
           ...saved.settings?.imageOptions,

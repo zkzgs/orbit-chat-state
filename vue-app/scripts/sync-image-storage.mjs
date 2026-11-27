@@ -101,9 +101,22 @@ else
     '// BEGIN SHARED IMAGE STORAGE',
     () => gridBlock + '\n\n// BEGIN SHARED IMAGE STORAGE',
   )
+const requestErrors = (
+  await readFile(new URL('../src/api/request-error.js', import.meta.url), 'utf8')
+).replace(/^export /gm, '').trim()
+const errorStart = '// BEGIN SHARED REQUEST ERRORS'
+const errorEnd = '// END SHARED REQUEST ERRORS'
+const errorBlock = `${errorStart}\n${requestErrors}\n${errorEnd}`
+if (html.includes(errorStart)) {
+  const start = html.indexOf(errorStart)
+  html = html.slice(0, start) + errorBlock + html.slice(html.indexOf(errorEnd, start) + errorEnd.length)
+} else {
+  html = html.replace('// BEGIN SHARED IMAGE STORAGE', () => `${errorBlock}\n\n// BEGIN SHARED IMAGE STORAGE`)
+}
 const native = (
   await readFile(new URL('../src/api/native-media.js', import.meta.url), 'utf8')
 )
+  .replace(/^import .* from '\.\/request-error\.js'\r?\n/m, '')
   .replaceAll('export function ', 'function ')
   .replaceAll('export async function ', 'async function ')
   .trim()
@@ -126,6 +139,7 @@ else
 const agent = (
   await readFile(new URL('../src/api/image-agent.js', import.meta.url), 'utf8')
 )
+  .replace(/^import .* from '\.\/request-error\.js'\r?\n/m, '')
   .replaceAll('export function ', 'function ')
   .replaceAll('export async function ', 'async function ')
   .trim()

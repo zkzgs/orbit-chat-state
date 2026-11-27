@@ -1,6 +1,7 @@
 import { useWorkspaceStore } from '../stores/workspace'
 import { joinProxyPath } from '../utils/proxy-url'
 import { imageStorage } from '../storage/database'
+import { requestNetworkError } from './request-error.js'
 
 interface ProxyConfig {
   proxyEnabled: boolean
@@ -86,8 +87,8 @@ export async function apiFetch(
     onSent?.()
     return await response
   } catch (error) {
-    if (proxyConfig.proxyEnabled && (error as Error).name !== 'AbortError')
-      throw new Error(`无法连接代理 ${normalizeProxyUrl(proxyConfig.proxyUrl)}`)
+    if ((error as Error).name !== 'AbortError' && !options.signal?.aborted)
+      throw requestNetworkError(proxyConfig.proxyEnabled)
     throw error
   }
 }

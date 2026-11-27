@@ -1,4 +1,5 @@
 import { apiFetch, chatEndpoint } from './client'
+import { isHtmlResponse, readApiChunk, readApiJson, readRequestError } from './request-error.js'
 import type { Settings } from '../types/models'
 import {
   addUrlCitations,
@@ -90,16 +91,14 @@ export async function requestChat(
     },
     settings,
   )
-  if (!response.ok) {
-    const payload = (await response.json()) as ChatPayload
-    throw new Error(payload.error?.message || `接口返回 ${response.status}`)
-  }
+  if (!response.ok || isHtmlResponse(response))
+    throw new Error(await readRequestError(response, settings.proxyEnabled))
   if (
     !onChunk ||
     response.headers.get('content-type')?.includes('application/json') ||
     !response.body
   ) {
-    let payload = (await response.json()) as ChatPayload
+    let payload = (await readApiJson(response, settings.proxyEnabled)) as ChatPayload
     if (responses) payload = fromResponsesOutput(payload) as ChatPayload
     const result = resultText(payload.choices?.[0]?.message)
     if (!result.content && !result.reasoning)
@@ -147,7 +146,7 @@ export async function requestChat(
   }
   try {
     while (!finished) {
-      const next = await reader.read()
+      const next = await readApiChunk(reader, settings.proxyEnabled, response)
       if (next.done) {
         buffer += decoder.decode()
         break

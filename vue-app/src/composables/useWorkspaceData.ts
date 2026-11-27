@@ -10,6 +10,7 @@ import { workspaceArchive } from '../storage/archive'
 import { outputImageIds } from '../storage/workspace-archive.js'
 import { errorMessage, formatExportTimestamp } from '../utils/format'
 import { createDefaultSettings } from '../constants/workspace'
+import { migrateRetryLimits } from '../storage/state'
 import {
   saveState,
   createInitialState,
@@ -434,7 +435,7 @@ export function useWorkspaceData() {
                   alwaysShowRetryButton: false,
                 }
               : {}),
-            ...settings,
+            ...migrateRetryLimits(settings),
             imageOptions: { ...old.imageOptions, ...settings.imageOptions },
             imagePromptTemplates,
             imagePolishTemplates,

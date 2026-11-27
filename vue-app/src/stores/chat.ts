@@ -792,7 +792,9 @@ export const useChatStore = defineStore('chat', () => {
           messages: await buildMessages(conversation.id, settings, contextMode),
           imageIds: available,
           signal,
-          retryLimit: () => workspace.state.settings.imageAgentRetryLimit,
+          retryLimit: (kind: 'error' | 'mismatch') => kind === 'error'
+            ? workspace.state.settings.imageAgentErrorRetryLimit
+            : workspace.state.settings.imageAgentMismatchRetryLimit,
           onChunk: settings.chatStream ? update : undefined,
           onSteps: (steps: NonNullable<Message['steps']>) => {
             if (signal.aborted) return

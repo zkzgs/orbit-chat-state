@@ -2,6 +2,7 @@ import http from 'node:http'
 import { readFile } from 'node:fs/promises'
 
 const files = new Map([
+  ['/vue-app/src/api/request-error.js', new URL('../src/api/request-error.js', import.meta.url)],
   ['/vue-app/src/api/native-media.js', new URL('../src/api/native-media.js', import.meta.url)],
   ['/vue-app/src/api/image-agent.js', new URL('../src/api/image-agent.js', import.meta.url)],
   ['/index.html', new URL('../../index.html', import.meta.url)],

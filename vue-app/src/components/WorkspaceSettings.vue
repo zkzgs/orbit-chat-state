@@ -14,6 +14,7 @@ import {
 } from '../storage/proxy-url-history'
 import CustomSelect from './CustomSelect.vue'
 import ModelInput from './ModelInput.vue'
+import { exportRequestErrors } from '../api/request-error.js'
 const workspace = useWorkspaceStore()
 const ui = useInterfaceStore()
 const settings = useSettingsStore()
@@ -671,6 +672,7 @@ function onTabKey(event: KeyboardEvent) {
               代理只处理请求转发和跨域响应, 不保存 Key 或请求内容, Key
               仍保存在当前浏览器
             </p>
+            <button id="exportRequestErrors" class="secondary-button" type="button" @click="exportRequestErrors">导出错误日志</button>
           </div>
           <div
             class="settings-section compact-section"
@@ -803,6 +805,7 @@ function onTabKey(event: KeyboardEvent) {
                 v-model="settings.draft.imageAgentAutoParameters"
               /><span class="toggle-ui"></span>
             </label>
+            <div class="agent-retry-group">
             <label class="toggle-row"
               ><span
                 ><strong>将生成图预览回传给对话模型</strong>
@@ -814,43 +817,52 @@ function onTabKey(event: KeyboardEvent) {
                 v-model="settings.draft.imageAgentPreview"
               /><span class="toggle-ui"></span>
             </label>
-            <label
-              class="toggle-row"
-              :class="{ 'is-disabled': !settings.draft.imageAgentPreview }"
-            >
-              <span
-                ><strong>允许 AI 在效果不符时重试</strong
-                ><small>需要开启生成图预览回传</small></span
-              >
-              <input
-                id="imageAgentRetryMismatch"
-                type="checkbox"
-                v-model="settings.draft.imageAgentRetryMismatch"
-                :disabled="!settings.draft.imageAgentPreview"
-              /><span class="toggle-ui"></span>
-            </label>
+            <div class="agent-retry-child" v-show="settings.draft.imageAgentPreview">
+              <label class="toggle-row">
+                <span><strong>效果不符时重试</strong></span>
+                <input
+                  id="imageAgentRetryMismatch"
+                  type="checkbox"
+                  v-model="settings.draft.imageAgentRetryMismatch"
+                  :disabled="!settings.draft.imageAgentPreview"
+                /><span class="toggle-ui"></span>
+              </label>
+              <label class="field-label agent-retry-limit" v-show="settings.draft.imageAgentRetryMismatch">
+                <span>每轮最多重试</span>
+                <input
+                  id="imageAgentMismatchRetryLimit"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="1"
+                  v-model.number="settings.draft.imageAgentMismatchRetryLimit"
+                />
+                <span>次</span>
+              </label>
+            </div>
+            </div>
+            <div class="agent-retry-group">
             <label class="toggle-row"
-              ><span><strong>允许 AI 在生图失败后重试</strong></span>
+              ><span><strong>生图失败时重试</strong></span>
               <input
                 id="imageAgentRetryErrors"
                 type="checkbox"
                 v-model="settings.draft.imageAgentRetryErrors"
               /><span class="toggle-ui"></span>
             </label>
-            <label class="field-label"
-              >每轮生图重试上限
+            <label class="field-label agent-retry-limit" v-show="settings.draft.imageAgentRetryErrors">
+              <span>每轮最多重试</span>
               <input
-                id="imageAgentRetryLimit"
+                id="imageAgentErrorRetryLimit"
                 type="number"
                 min="0"
                 max="5"
                 step="1"
-                v-model.number="settings.draft.imageAgentRetryLimit"
+                v-model.number="settings.draft.imageAgentErrorRetryLimit"
               />
-              <small class="field-help"
-                >由 AI 判断是否重试, 失败和效果检查共用次数</small
-              >
+              <span>次</span>
             </label>
+            </div>
             <label class="field-label">
               Agent 生图补充提示词
               <textarea

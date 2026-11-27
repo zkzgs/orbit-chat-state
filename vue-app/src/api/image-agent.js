@@ -1,3 +1,5 @@
+import { isHtmlResponse, readApiChunk, readApiJson, readRequestError } from './request-error.js'
+
 export function agentImageFields(
   provider = 'openai',
   models = [],
@@ -460,14 +462,8 @@ export async function requestToolChat(
     },
     settings,
   )
-  if (!response.ok) {
-    const raw = await response.text()
-    let message = raw.slice(0, 500)
-    try {
-      message = JSON.parse(raw).error?.message || message
-    } catch {}
-    throw new Error(message || `接口返回 ${response.status}`)
-  }
+  if (!response.ok || isHtmlResponse(response))
+    throw new Error(await readRequestError(response, settings.proxyEnabled))
   let content = '',
     reasoning = ''
   const calls = new Map()
@@ -538,7 +534,7 @@ export async function requestToolChat(
     }
     try {
       while (!done) {
-        const next = await reader.read()
+        const next = await readApiChunk(reader, settings.proxyEnabled)
         buffer += decoder.decode(next.value, { stream: !next.done })
         const lines = buffer.split(/\r?\n/)
         buffer = lines.pop() || ''
@@ -556,7 +552,7 @@ export async function requestToolChat(
       reader.releaseLock()
     }
   } else {
-    let payload = await response.json()
+    let payload = await readApiJson(response, settings.proxyEnabled)
     if (responses) payload = fromResponsesOutput(payload)
     if (payload.error) throw new Error(payload.error.message || '对话请求失败')
     consume(payload.choices?.[0]?.message)
@@ -576,10 +572,14 @@ export async function runImageAgent(options) {
     options.settings.imageAgentPreview,
   )
   // 重试上限只在本地判断, 每次读取当前设置, 不发给模型。
-  const currentRetryLimit = () =>
-    options.retryLimit?.() ?? options.settings.imageAgentRetryLimit ?? 2
-  const retryLimit = currentRetryLimit()
-  const allowRetry = (retryErrors || retryMismatch) && retryLimit > 0
+  const currentRetryLimit = (kind) =>
+    options.retryLimit?.(kind) ??
+    options.settings[kind === 'error' ? 'imageAgentErrorRetryLimit' : 'imageAgentMismatchRetryLimit'] ??
+    options.settings.imageAgentRetryLimit ?? 2
+  const retryBudget = () =>
+    (retryErrors ? currentRetryLimit('error') : 0) +
+    (retryMismatch ? currentRetryLimit('mismatch') : 0)
+  const allowRetry = retryBudget() > 0
   const autoParameters = Boolean(options.settings.imageAgentAutoParameters)
   const imageModels = [
     ...new Set(
@@ -602,7 +602,7 @@ export async function runImageAgent(options) {
   const attempts = new Map()
   const notRun = new Set()
   const notRunHint = '未执行生图，不可重试，请修正参数后重新调用 generate_image'
-  let retries = 0
+  const retries = { error: 0, mismatch: 0 }
   messages.unshift({
     role: 'system',
     content: `只有用户要求生图或改图时才使用 generate_image, 日常聊天直接回答。可引用的当前对话图片 ID: ${[...available].join(', ') || '无'}。工具成功后按返回结果回答, 不要虚构图片链接。${options.settings.imageAgentInstruction ? `\n\n用户补充要求: ${options.settings.imageAgentInstruction}` : ''}`,
@@ -658,9 +658,9 @@ export async function runImageAgent(options) {
     toolSteps.set(index, step)
     return step
   }
-  let rounds = 5 + (allowRetry ? retryLimit : 0)
+  let rounds = 5 + (allowRetry ? retryBudget() : 0)
   for (let index = 0; index < rounds; index++) {
-    rounds = Math.max(rounds, 5 + (allowRetry ? currentRetryLimit() : 0))
+    rounds = Math.max(rounds, 5 + (allowRetry ? retryBudget() : 0))
     if (options.signal.aborted) throw options.signal.reason
     options.onStatus?.({ status: '正在等待对话模型', prompt: '' })
     const textStep = startTextStep()
@@ -707,6 +707,7 @@ export async function runImageAgent(options) {
     for (const call of result.tool_calls) {
       let output
       let retryId
+      let retryKind
       let started = false
       const isRetry = call.function?.name === 'retry_image'
       try {
@@ -732,7 +733,8 @@ export async function runImageAgent(options) {
                 ? '未允许效果不符时重试, 或未开启结果预览'
                 : '未允许生图失败后重试',
             )
-          if (retries >= currentRetryLimit())
+          retryKind = previous.hasImages ? 'mismatch' : 'error'
+          if (retries[retryKind] >= currentRetryLimit(retryKind))
             throw new Error('该图片任务已不可再重试')
           ids = previous.ids
         } else {
@@ -753,14 +755,14 @@ export async function runImageAgent(options) {
               options.settings.imageModel,
             )
           : undefined
-        if (isRetry) retries++
+        if (retryKind) retries[retryKind]++
         else used++
         const attempt = { ids, hasImages: false }
         retryId = isRetry ? args.tool_call_id : call.id
         attempts.set(retryId, attempt)
         options.onStatus?.({
-          status: isRetry
-            ? `正在重试图片 (${retries}/${currentRetryLimit()})`
+          status: retryKind
+            ? `正在重试图片 (${retries[retryKind]}/${currentRetryLimit(retryKind)})`
             : '正在生成图片',
           prompt: args.prompt,
         })
@@ -938,4 +940,3 @@ export function remapAgentMessage(message, remap) {
     if (step.imageIds) step.imageIds = remap(step.imageIds)
   }
 }
-

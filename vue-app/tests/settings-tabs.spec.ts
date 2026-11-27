@@ -52,8 +52,8 @@ for (const [version, url] of [
     await expect(page.getByRole('tabpanel')).toHaveCount(1)
     await page.locator('#chatModel').fill('settings-chat-draft')
     await page.locator('#settings-tab-image').click()
-    await page.locator('#imageModel').fill('settings-image-draft')
     await page.locator('#imageBaseUrl').fill('https://settings-image.test/v1')
+    await page.locator('#imageModel').fill('settings-image-draft')
     page.once('dialog', (dialog) => dialog.accept('设置分栏测试接口'))
     await page.locator('#saveImageProfile').click()
     await expect(page.locator('#imageProfileSelect option:checked')).toHaveText(
@@ -84,13 +84,33 @@ for (const [version, url] of [
         .locator('#settings-panel-agent input, #settings-panel-agent textarea')
         .evaluateAll((elements) => elements.map((element) => element.id)),
     ).toEqual([
-      'imageAgentInstruction',
       'imageAgentAutoParameters',
       'imageAgentPreview',
       'imageAgentRetryMismatch',
+      'imageAgentMismatchRetryLimit',
       'imageAgentRetryErrors',
-      'imageAgentRetryLimit',
+      'imageAgentErrorRetryLimit',
+      'imageAgentInstruction',
     ])
+    const preview = page.locator('#imageAgentPreview')
+    const mismatch = page.locator('#imageAgentRetryMismatch')
+    const mismatchLimit = page.locator('#imageAgentMismatchRetryLimit')
+    const errorRetry = page.locator('#imageAgentRetryErrors')
+    const errorLimit = page.locator('#imageAgentErrorRetryLimit')
+    const originalLimit = await mismatchLimit.inputValue()
+    await preview.locator('..').click()
+    await expect(mismatch.locator('..')).toBeHidden()
+    await expect(mismatchLimit).toBeHidden()
+    await expect(errorLimit).toBeVisible()
+    await errorRetry.locator('..').click()
+    await expect(errorLimit).toBeHidden()
+    await preview.locator('..').click()
+    await expect(mismatchLimit).toHaveValue(originalLimit)
+    await expect(mismatchLimit).toBeVisible()
+    await mismatch.locator('..').click()
+    await expect(mismatchLimit).toBeHidden()
+    await mismatch.locator('..').click()
+    await errorRetry.locator('..').click()
     await expect(page.locator('#settingsBackdrop')).not.toContainText(
       'DeepSeek 官方 Agent',
     )

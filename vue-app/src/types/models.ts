@@ -67,7 +67,8 @@ export interface Settings {
   chatSendReasoning: boolean
   imageAgentRetryErrors: boolean
   imageAgentRetryMismatch: boolean
-  imageAgentRetryLimit: number
+  imageAgentErrorRetryLimit: number
+  imageAgentMismatchRetryLimit: number
   chatBaseUrl: string
   chatApiKey: string
   chatModel: string

@@ -1637,6 +1637,32 @@ video[hidden] {
   min-width: 0;
   line-height: 1.65;
 }
+#settings-panel-agent > .toggle-row,
+.agent-retry-group {
+  border-bottom: 1px solid var(--line);
+}
+.agent-retry-child {
+  margin: 0 0 8px 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+}
+#settings-panel-agent .agent-retry-limit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px 12px;
+}
+#settings-panel-agent .agent-retry-child .agent-retry-limit {
+  margin-left: 0;
+}
+#settings-panel-agent .agent-retry-limit input {
+  width: 4.5rem;
+  padding: 5px 9px;
+}
+#settings-panel-agent .agent-retry-limit[hidden] {
+  display: none;
+}
 .agent-settings-button {
   flex: none;
   padding: 5px 8px;
@@ -2278,6 +2304,7 @@ video[hidden] {
           <div class="field-label"><label for="proxyUrl">代理地址</label><div class="proxy-address-row"><div class="proxy-url-combo" id="proxyUrlCombo"><input id="proxyUrl" type="url" placeholder="http://127.0.0.1:8787" autocomplete="off" spellcheck="false"><button class="proxy-history-toggle" id="proxyHistoryToggle" type="button" aria-label="代理地址历史" aria-haspopup="listbox" aria-expanded="false" aria-controls="proxyHistoryMenu" disabled>▾</button></div><button class="secondary-button" id="testProxyConnection" type="button">测试连接</button></div><small class="proxy-test-status" id="proxyTestStatus">尚未测试代理服务</small></div>
           <label class="toggle-row is-disabled" id="proxyToggleRow"><span><strong>使用本地代理</strong><small>测试成功后才可开启, 开启后对话, 模型, 润色和生图接口统一转发</small></span><input type="checkbox" id="proxyEnabled" disabled><span class="toggle-ui"></span></label>
           <p class="field-help">代理只处理请求转发和跨域响应, 不保存 Key 或请求内容, Key 仍保存在当前浏览器</p>
+          <button id="exportRequestErrors" class="secondary-button" type="button">导出错误日志</button>
         </div>
         <div class="settings-section compact-section" id="settings-panel-chat-policy" role="tabpanel" aria-labelledby="settings-tab-chat-policy" data-settings-panel="chat-policy" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">04</span><div><strong>对话策略</strong></div></div>
@@ -2295,10 +2322,17 @@ video[hidden] {
         <div class="settings-section compact-section" id="settings-panel-agent" role="tabpanel" aria-labelledby="settings-tab-agent" data-settings-panel="agent" tabindex="0" hidden>
           <div class="section-title"><span class="section-number">06</span><div><strong>生图 Agent</strong></div></div>
           <label class="toggle-row"><span><strong>由 AI 决定生图参数</strong></span><input id="imageAgentAutoParameters" type="checkbox"><span class="toggle-ui"></span></label>
-          <label class="toggle-row"><span><strong>将生成图预览回传给对话模型</strong><small>用于检查生成效果, 会额外消耗图片 token</small></span><input id="imageAgentPreview" type="checkbox"><span class="toggle-ui"></span></label>
-          <label class="toggle-row"><span><strong>允许 AI 在效果不符时重试</strong><small>需要开启生成图预览回传</small></span><input id="imageAgentRetryMismatch" type="checkbox"><span class="toggle-ui"></span></label>
-          <label class="toggle-row"><span><strong>允许 AI 在生图失败后重试</strong></span><input id="imageAgentRetryErrors" type="checkbox"><span class="toggle-ui"></span></label>
-          <label class="field-label">每轮生图重试上限<input id="imageAgentRetryLimit" type="number" min="0" max="5" step="1" value="2"><small class="field-help">由 AI 判断是否重试, 失败和效果检查共用次数</small></label>
+          <div class="agent-retry-group">
+            <label class="toggle-row"><span><strong>将生成图预览回传给对话模型</strong><small>用于检查生成效果, 会额外消耗图片 token</small></span><input id="imageAgentPreview" type="checkbox"><span class="toggle-ui"></span></label>
+            <div class="agent-retry-child" hidden>
+              <label class="toggle-row"><span><strong>效果不符时重试</strong></span><input id="imageAgentRetryMismatch" type="checkbox"><span class="toggle-ui"></span></label>
+              <label class="field-label agent-retry-limit" hidden><span>每轮最多重试</span><input id="imageAgentMismatchRetryLimit" type="number" min="0" max="5" step="1" required><span>次</span></label>
+            </div>
+          </div>
+          <div class="agent-retry-group">
+            <label class="toggle-row"><span><strong>生图失败时重试</strong></span><input id="imageAgentRetryErrors" type="checkbox"><span class="toggle-ui"></span></label>
+            <label class="field-label agent-retry-limit" hidden><span>每轮最多重试</span><input id="imageAgentErrorRetryLimit" type="number" min="0" max="5" step="1" required><span>次</span></label>
+          </div>
           <label class="field-label">Agent 生图补充提示词<textarea id="imageAgentInstruction" rows="4" placeholder="补充对话模型判断生图和编写提示词的要求"></textarea></label>
         </div>
         <div class="settings-section compact-section" id="settings-panel-prompts" role="tabpanel" aria-labelledby="settings-tab-prompts" data-settings-panel="prompts" tabindex="0" hidden>
@@ -2599,7 +2633,8 @@ const defaultState = {
     chatSendReasoning: true,
     imageAgentRetryErrors: true,
     imageAgentRetryMismatch: true,
-    imageAgentRetryLimit: 5,
+    imageAgentErrorRetryLimit: 5,
+    imageAgentMismatchRetryLimit: 5,
     chatBaseUrl: '',
     chatApiKey: '',
     chatModel: '',
@@ -2814,11 +2849,20 @@ function runImageWorker(type, payload) {
   });
 }
 
+function migrateRetryLimits(settings) {
+  const { imageAgentRetryLimit: legacy, ...rest } = settings;
+  if (Number.isInteger(legacy) && legacy >= 0 && legacy <= 5) {
+    rest.imageAgentErrorRetryLimit ??= legacy;
+    rest.imageAgentMismatchRetryLimit ??= legacy;
+  }
+  return rest;
+}
+
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!saved) return createInitialState();
-    const savedSettings = saved.settings || {};
+    const savedSettings = migrateRetryLimits(saved.settings || {});
     const imagePromptTemplates = normalizeImagePromptTemplates(savedSettings.imagePromptTemplates);
     const imagePolishTemplates = normalizePolishTemplates(savedSettings.imagePolishTemplates);
     const activeImagePromptTemplateId = imagePromptTemplates.some((template) => template.id === savedSettings.activeImagePromptTemplateId) ? savedSettings.activeImagePromptTemplateId : '';
@@ -3568,9 +3612,7 @@ async function listGeminiModels(fetchApi, settings, signal) {
       { headers: { 'x-goog-api-key': settings.imageApiKey }, signal },
       settings,
     )
-    const payload = await response.json()
-    if (!response.ok)
-      throw new Error(payload.error?.message || `接口返回 ${response.status}`)
+    const payload = await readApiJson(response, settings.proxyEnabled)
     result.push(
       ...(payload.models || []).map((model) =>
         model.name.replace(/^models\//, ''),
@@ -3609,7 +3651,7 @@ async function requestNativeMedia(
       init.method === 'POST' ? onSent : undefined,
     )
     onPhase?.('parsing')
-    const raw = await response.text()
+    const raw = await readApiText(response, settings.proxyEnabled)
     let payload
     try {
       payload = JSON.parse(raw)
@@ -3624,9 +3666,9 @@ async function requestNativeMedia(
       receivedAt: Date.now(),
     }
     events.push(upstream)
-    if (!response.ok || payload.error) {
+    if (!response.ok || payload.error || isHtmlResponse(response, raw)) {
       const error = new Error(
-        payload.error?.message || `接口返回 ${response.status}`,
+        requestErrorMessage(response, raw, settings.proxyEnabled, payload.error?.message),
       )
       error.upstream = { responses: events }
       error.upstreamResponse = error.upstream
@@ -4236,14 +4278,8 @@ async function requestToolChat(
     },
     settings,
   )
-  if (!response.ok) {
-    const raw = await response.text()
-    let message = raw.slice(0, 500)
-    try {
-      message = JSON.parse(raw).error?.message || message
-    } catch {}
-    throw new Error(message || `接口返回 ${response.status}`)
-  }
+  if (!response.ok || isHtmlResponse(response))
+    throw new Error(await readRequestError(response, settings.proxyEnabled))
   let content = '',
     reasoning = ''
   const calls = new Map()
@@ -4314,7 +4350,7 @@ async function requestToolChat(
     }
     try {
       while (!done) {
-        const next = await reader.read()
+        const next = await readApiChunk(reader, settings.proxyEnabled)
         buffer += decoder.decode(next.value, { stream: !next.done })
         const lines = buffer.split(/\r?\n/)
         buffer = lines.pop() || ''
@@ -4332,7 +4368,7 @@ async function requestToolChat(
       reader.releaseLock()
     }
   } else {
-    let payload = await response.json()
+    let payload = await readApiJson(response, settings.proxyEnabled)
     if (responses) payload = fromResponsesOutput(payload)
     if (payload.error) throw new Error(payload.error.message || '对话请求失败')
     consume(payload.choices?.[0]?.message)
@@ -4352,10 +4388,14 @@ async function runImageAgent(options) {
     options.settings.imageAgentPreview,
   )
   // 重试上限只在本地判断, 每次读取当前设置, 不发给模型。
-  const currentRetryLimit = () =>
-    options.retryLimit?.() ?? options.settings.imageAgentRetryLimit ?? 2
-  const retryLimit = currentRetryLimit()
-  const allowRetry = (retryErrors || retryMismatch) && retryLimit > 0
+  const currentRetryLimit = (kind) =>
+    options.retryLimit?.(kind) ??
+    options.settings[kind === 'error' ? 'imageAgentErrorRetryLimit' : 'imageAgentMismatchRetryLimit'] ??
+    options.settings.imageAgentRetryLimit ?? 2
+  const retryBudget = () =>
+    (retryErrors ? currentRetryLimit('error') : 0) +
+    (retryMismatch ? currentRetryLimit('mismatch') : 0)
+  const allowRetry = retryBudget() > 0
   const autoParameters = Boolean(options.settings.imageAgentAutoParameters)
   const imageModels = [
     ...new Set(
@@ -4378,7 +4418,7 @@ async function runImageAgent(options) {
   const attempts = new Map()
   const notRun = new Set()
   const notRunHint = '未执行生图，不可重试，请修正参数后重新调用 generate_image'
-  let retries = 0
+  const retries = { error: 0, mismatch: 0 }
   messages.unshift({
     role: 'system',
     content: `只有用户要求生图或改图时才使用 generate_image, 日常聊天直接回答。可引用的当前对话图片 ID: ${[...available].join(', ') || '无'}。工具成功后按返回结果回答, 不要虚构图片链接。${options.settings.imageAgentInstruction ? `\n\n用户补充要求: ${options.settings.imageAgentInstruction}` : ''}`,
@@ -4434,9 +4474,9 @@ async function runImageAgent(options) {
     toolSteps.set(index, step)
     return step
   }
-  let rounds = 5 + (allowRetry ? retryLimit : 0)
+  let rounds = 5 + (allowRetry ? retryBudget() : 0)
   for (let index = 0; index < rounds; index++) {
-    rounds = Math.max(rounds, 5 + (allowRetry ? currentRetryLimit() : 0))
+    rounds = Math.max(rounds, 5 + (allowRetry ? retryBudget() : 0))
     if (options.signal.aborted) throw options.signal.reason
     options.onStatus?.({ status: '正在等待对话模型', prompt: '' })
     const textStep = startTextStep()
@@ -4483,6 +4523,7 @@ async function runImageAgent(options) {
     for (const call of result.tool_calls) {
       let output
       let retryId
+      let retryKind
       let started = false
       const isRetry = call.function?.name === 'retry_image'
       try {
@@ -4508,7 +4549,8 @@ async function runImageAgent(options) {
                 ? '未允许效果不符时重试, 或未开启结果预览'
                 : '未允许生图失败后重试',
             )
-          if (retries >= currentRetryLimit())
+          retryKind = previous.hasImages ? 'mismatch' : 'error'
+          if (retries[retryKind] >= currentRetryLimit(retryKind))
             throw new Error('该图片任务已不可再重试')
           ids = previous.ids
         } else {
@@ -4529,14 +4571,14 @@ async function runImageAgent(options) {
               options.settings.imageModel,
             )
           : undefined
-        if (isRetry) retries++
+        if (retryKind) retries[retryKind]++
         else used++
         const attempt = { ids, hasImages: false }
         retryId = isRetry ? args.tool_call_id : call.id
         attempts.set(retryId, attempt)
         options.onStatus?.({
-          status: isRetry
-            ? `正在重试图片 (${retries}/${currentRetryLimit()})`
+          status: retryKind
+            ? `正在重试图片 (${retries[retryKind]}/${currentRetryLimit(retryKind)})`
             : '正在生成图片',
           prompt: args.prompt,
         })
@@ -4911,6 +4953,132 @@ const chatDocuments = (() => {
 })()
 
 // END SHARED IMAGE AGENT
+
+// BEGIN SHARED REQUEST ERRORS
+const requestErrorLogKey = 'orbit-request-errors-v1'
+const requestErrors = []
+
+const proxyErrorStages = new Set(['entry', 'gateway', 'gateway-proxy', 'upstream-connection', 'upstream-response'])
+
+function proxyRequestId(response, proxied) {
+  const value = proxied && response?.headers.get('x-orbit-request-id')
+  return value && /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(value)
+    ? value : undefined
+}
+
+function recordError(stage, status, kind, detail = '', requestId = undefined) {
+  const code = String(detail).match(/\b(?:ECONNRESET|EPIPE|ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EAI_AGAIN)\b/i)?.[0]?.toUpperCase()
+    || (/socket hang up/i.test(detail) ? 'SOCKET_HANG_UP' : undefined)
+  const entry = { time: new Date().toISOString(), stage, status, kind, code, requestId }
+  requestErrors.push(entry)
+  if (requestErrors.length > 100) requestErrors.shift()
+  try {
+    const stored = JSON.parse(localStorage.getItem(requestErrorLogKey) || '[]')
+    localStorage.setItem(requestErrorLogKey, JSON.stringify([...(Array.isArray(stored) ? stored : []), entry].slice(-100)))
+  } catch {}
+}
+
+function exportRequestErrors() {
+  let entries = requestErrors
+  try {
+    const stored = JSON.parse(localStorage.getItem(requestErrorLogKey) || 'null')
+    if (Array.isArray(stored)) entries = stored.slice(-100)
+  } catch {}
+  const url = URL.createObjectURL(new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'orbit-error-log.json'
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function isHtmlResponse(response, raw = '') {
+  return /\btext\/html\b/i.test(response.headers.get('content-type') || '') ||
+    /^\s*<(?:!doctype\b|!--|[a-z][\w:-]*[\s/>])/i.test(raw)
+}
+
+function requestErrorMessage(response, raw, proxied, detail = '') {
+  const html = isHtmlResponse(response, raw) || isHtmlResponse(response, detail)
+  const status = `HTTP ${response.status}`
+  const stage = proxied && response.headers.get('x-orbit-proxy-stage')
+  const requestId = proxyRequestId(response, proxied)
+  const suffix = requestId ? `（请求编号：${requestId}）` : ''
+  const source = stage === 'upstream-connection' ? '代理转发失败'
+    : stage === 'upstream-response' ? '上游接口'
+    : proxied ? '代理链路（来源未确认）' : '接口'
+  const recordedStage = proxyErrorStages.has(stage) ? stage : proxied ? 'proxy-unknown' : 'direct'
+  recordError(recordedStage, response.status, html ? 'html-response' : 'http-error', detail || raw, requestId)
+  if (stage === 'entry' || stage === 'gateway' || stage === 'gateway-proxy') {
+    const hints = { 403: '代理入口拒绝访问，请检查站点或接口是否放行', 404: '未找到代理接口，请检查代理地址', 429: '代理入口限流，请稍后再试' }
+    const hint = hints[response.status] || '代理网关转发失败'
+    return `${hint}（${status}）${suffix}`
+  }
+  if (response.status === 524) return `${source}返回 HTTP 524：等待源站响应超时${suffix}`
+  if (response.status === 504) return `${source}返回 HTTP 504：网关等待响应超时${suffix}`
+  if (stage === 'upstream-response' && [401, 403].includes(response.status))
+    return `上游接口返回 ${status}：请检查接口密钥和访问权限${suffix}`
+  if (html) return `${source}返回了 HTML 页面（${status}），未收到接口数据${suffix}`
+  const message = String(detail || raw || '').trim().slice(0, 300)
+  if (stage === 'upstream-connection')
+    return `代理转发失败（${status}）${message ? `：${message}` : ''}${suffix}`
+  if (stage === 'upstream-response')
+    return `上游接口返回 ${status}${message ? `：${message}` : ''}${suffix}`
+  if (proxied)
+    return `代理链路返回 ${status}（来源未确认）${message ? `：${message}` : ''}${suffix}`
+  return message || `接口返回 ${response.status}`
+}
+
+async function readRequestError(response, proxied) {
+  const raw = await readApiText(response, proxied)
+  let detail = ''
+  try {
+    const payload = JSON.parse(raw)
+    detail = payload?.error?.message || payload?.message || ''
+  } catch {}
+  return requestErrorMessage(response, raw, proxied, detail)
+}
+
+/** @param {Response} [response] */
+function requestNetworkError(proxied, reading = false, response) {
+  const requestId = proxyRequestId(response, proxied)
+  recordError(proxied ? 'proxy-unknown' : 'direct', response?.status ?? null, reading ? 'response-interrupted' : 'no-response', '', requestId)
+  const suffix = requestId ? `（请求编号：${requestId}）` : ''
+  return new Error(reading
+    ? proxied ? `代理链路响应中断，无法确认断开位置${suffix}` : '接口响应中断'
+    : proxied ? '请求未收到代理响应，请检查代理连通性和跨域设置' : '网络请求失败, 请检查接口地址和跨域设置')
+}
+
+async function readApiText(response, proxied) {
+  try {
+    return await response.text()
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
+    throw requestNetworkError(proxied, true, response)
+  }
+}
+
+async function readApiJson(response, proxied) {
+  if (!response.ok) throw new Error(await readRequestError(response, proxied))
+  const raw = await readApiText(response, proxied)
+  if (isHtmlResponse(response, raw))
+    throw new Error(requestErrorMessage(response, raw, proxied))
+  try {
+    return JSON.parse(raw)
+  } catch {
+    throw new Error(requestErrorMessage(response, '', proxied, '接口未返回 JSON'))
+  }
+}
+
+/** @param {Response} [response] */
+async function readApiChunk(reader, proxied, response) {
+  try {
+    return await reader.read()
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
+    throw requestNetworkError(proxied, true, response)
+  }
+}
+// END SHARED REQUEST ERRORS
 
 // BEGIN SHARED IMAGE STORAGE
 // HTML 内联同一份实现, 两个入口共用数据库格式和图片引用规则。
@@ -9180,7 +9348,7 @@ async function apiFetch(endpoint, options = {}, proxyConfig = state.settings, on
     onSent?.();
     return await response;
   } catch (error) {
-    if (proxyConfig.proxyEnabled && error.name !== 'AbortError') throw new Error(`无法连接代理 ${normalizeProxyUrl(proxyConfig.proxyUrl)}`);
+    if (error.name !== 'AbortError' && !options.signal?.aborted) throw requestNetworkError(proxyConfig.proxyEnabled);
     throw error;
   }
 }
@@ -9564,7 +9732,7 @@ async function requestChatAgent(run, streamEnabled) {
       imageModels: modelCatalog.image,
       imageIds: conversation.messages.flatMap((message) => [...(message.imageIds || []), ...messageBatchImages(message).map((image) => image.id)]).filter((id) => { const image = storedImages.get(id); return image?.type === 'image' && image.mediaType !== 'video'; }),
       signal,
-      retryLimit: () => state.settings.imageAgentRetryLimit,
+      retryLimit: (kind) => kind === 'error' ? state.settings.imageAgentErrorRetryLimit : state.settings.imageAgentMismatchRetryLimit,
       onChunk: streamEnabled ? (content, reasoning) => updateStreamingMessage(run, content, false, reasoning) : undefined,
       onSteps: (steps) => {
         if (signal.aborted) return;
@@ -9623,21 +9791,14 @@ async function requestChat(run, streamEnabled) {
     window.clearTimeout(timeout);
     timeout = 0;
   };
-  const readErrorPayload = async (response) => {
-    try { return await response.clone().json(); } catch { return null; }
-  };
   try {
     const response = await sendRequest();
+    if (!response.ok || isHtmlResponse(response)) throw new Error(await readRequestError(response, settings.proxyEnabled));
     if (streamEnabled) {
-      if (!response.ok) {
-        const payload = await readErrorPayload(response);
-        throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
-      }
-      return await readChatStream(response, run, responses);
+      return await readChatStream(response, run, responses, settings.proxyEnabled);
     }
     await new Promise((resolve) => window.setTimeout(resolve, 0));
-    let payload = await response.json();
-    if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
+    let payload = await readApiJson(response, settings.proxyEnabled);
     if (responses) payload = fromResponsesOutput(payload);
     const assistantMessage = payload?.choices?.[0]?.message;
     const content = extractChatText(assistantMessage?.content);
@@ -9652,9 +9813,9 @@ async function requestChat(run, streamEnabled) {
   }
 }
 
-async function readChatStream(response, run, responses = false) {
+async function readChatStream(response, run, responses = false, proxied = false) {
   if (response.headers?.get('content-type')?.includes('application/json') || !response.body?.getReader) {
-    let payload = await response.json();
+    let payload = await readApiJson(response, proxied);
     if (responses) payload = fromResponsesOutput(payload);
     const assistantMessage = payload?.choices?.[0]?.message;
     const content = extractChatText(assistantMessage?.content);
@@ -9693,7 +9854,7 @@ async function readChatStream(response, run, responses = false) {
   try {
     let finished = false;
     while (!finished) {
-      const { done, value } = await reader.read();
+      const { done, value } = await readApiChunk(reader, proxied, response);
       if (done) {
         buffer += decoder.decode();
         break;
@@ -9730,15 +9891,15 @@ async function readChatStream(response, run, responses = false) {
   return { content, reasoning, sources };
 }
 
-async function parseImageResponse(response, endpoint, isEdit) {
-  const raw = await response.text();
+async function parseImageResponse(response, endpoint, isEdit, proxied) {
+  const raw = await readApiText(response, proxied);
   try {
     const parsedResult = await runImageWorker('parseImageResponse', { raw, endpoint, isEdit });
     const responseModel = parsedResult.responseModel || response.headers.get('x-model') || response.headers.get('x-openai-model') || '';
     const images = parsedResult.images.map((image) => image.responseMeta?.model || !responseModel ? image : { ...image, responseMeta: { ...image.responseMeta, model: responseModel } });
     const upstreamResponse = { status: response.status, statusText: response.statusText || '', headers: Object.fromEntries(response.headers.entries()), body: parsedResult.apiResponse, receivedAt: Date.now() };
-    if (!response.ok || !parsedResult.parsed) {
-      const error = new Error(response.ok ? `接口返回的不是 JSON 图片数据, 请检查生图接口地址: ${endpoint}` : parsedResult.errorMessage || raw.slice(0, 500) || `接口返回 ${response.status}`);
+    if (!response.ok || !parsedResult.parsed || isHtmlResponse(response, raw)) {
+      const error = new Error(requestErrorMessage(response, raw, proxied, parsedResult.errorMessage));
       error.upstreamResponse = upstreamResponse;
       throw error;
     }
@@ -9747,10 +9908,10 @@ async function parseImageResponse(response, endpoint, isEdit) {
   } catch (error) {
     if (error?.upstreamResponse) throw error;
   }
-  return parseImageResponseOnMain(raw, response, endpoint, isEdit);
+  return parseImageResponseOnMain(raw, response, endpoint, isEdit, proxied);
 }
 
-function parseImageResponseOnMain(raw, response, endpoint, isEdit) {
+function parseImageResponseOnMain(raw, response, endpoint, isEdit, proxied) {
   let payload = {};
   let parsed = true;
   try { payload = raw ? JSON.parse(raw) : {}; } catch (error) { payload = {}; parsed = false; }
@@ -9760,8 +9921,8 @@ function parseImageResponseOnMain(raw, response, endpoint, isEdit) {
     return { ...item, b64_json: item.b64_json ? abbreviateResponseValue(item.b64_json) : item.b64_json, delivery: item.b64_json ? 'b64_json' : item.url ? 'url' : 'unknown', base64Length: item.b64_json?.length || 0 };
   }) : payload.data } : raw;
   const upstreamResponse = { status: response.status, statusText: response.statusText || '', headers: Object.fromEntries(response.headers.entries()), body: apiResponse, receivedAt: Date.now() };
-  if (!response.ok || !parsed) {
-    const error = new Error(response.ok ? `接口返回的不是 JSON 图片数据, 请检查生图接口地址: ${endpoint}` : payload?.error?.message || payload?.message || payload?.detail || raw.slice(0, 500) || `接口返回 ${response.status}`);
+  if (!response.ok || !parsed || isHtmlResponse(response, raw)) {
+    const error = new Error(requestErrorMessage(response, raw, proxied, payload?.error?.message || payload?.message || payload?.detail));
     error.upstreamResponse = upstreamResponse;
     throw error;
   }
@@ -9791,7 +9952,7 @@ function sendImageEditRequest(endpoint, fetchOptions, onUploaded, onSent, settin
     request.open(routed.options.method || 'POST', routed.endpoint);
     new Headers(routed.options.headers || {}).forEach((value, name) => request.setRequestHeader(name, value));
     request.upload.onloadend = () => { if (!responseReceived) onUploaded?.(); };
-    request.onerror = () => reject(new Error(settings.proxyEnabled ? `无法连接代理 ${normalizeProxyUrl(settings.proxyUrl)}` : '网络请求失败, 请检查接口地址和跨域设置'));
+    request.onerror = () => reject(requestNetworkError(settings.proxyEnabled));
     const signal = fetchOptions.signal;
     const abort = () => request.abort();
     request.onloadend = () => signal?.removeEventListener('abort', abort);
@@ -9800,6 +9961,7 @@ function sendImageEditRequest(endpoint, fetchOptions, onUploaded, onSent, settin
     if (signal?.aborted) { reject(new DOMException('请求已中断', 'AbortError')); return; }
     request.onload = () => {
       responseReceived = true;
+      if (!request.status) { reject(requestNetworkError(settings.proxyEnabled)); return; }
       const headers = new Headers();
       request.getAllResponseHeaders().trim().split(/[\r\n]+/).filter(Boolean).forEach((line) => {
         const separator = line.indexOf(':');
@@ -9833,7 +9995,7 @@ async function fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, o
   const response = hasReference ? await sendImageEditRequest(endpoint, { ...fetchOptions, signal }, () => onPhase?.('waiting'), onSent, settings) : await apiFetch(endpoint, { ...fetchOptions, signal }, settings, onSent);
   onPhase?.('parsing');
   await new Promise((resolve) => window.setTimeout(resolve, 0));
-  return parseImageResponse(response, endpoint, isEdit);
+  return parseImageResponse(response, endpoint, isEdit, settings.proxyEnabled);
 }
 
 async function removeRetriedGenerationRecord(oldTaskId, newTaskId, generation) {
@@ -10473,8 +10635,7 @@ async function loadModels(kind, automatic = false) {
         headers: { Authorization: `Bearer ${apiKey}` },
         signal: AbortSignal.timeout(15000),
       }, proxyConfig);
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
+      const payload = await readApiJson(response, proxyConfig.proxyEnabled);
       const models = Array.isArray(payload?.data) ? payload.data.map((item) => item?.id).filter(id => typeof id === 'string' && id.trim()) : [];
       if (revision !== modelRevision[kind]) return;
       modelCatalog[kind] = [...new Set(models)].sort();
@@ -11276,8 +11437,7 @@ async function generatePolishResult() {
       const systemPrompt = [state.settings.imagePolishSystemPrompt || defaultState.settings.imagePolishSystemPrompt, polishReferenceNote].filter(Boolean).join('\n\n');
       const polishBody = { model: state.settings.chatModel, stream: false, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }] };
       const response = await apiFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.settings.chatApiKey}` }, body: JSON.stringify(state.settings.chatApiFormat === 'responses' ? toResponsesBody(polishBody) : polishBody) });
-      let payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error?.message || `接口返回 ${response.status}`);
+      let payload = await readApiJson(response, state.settings.proxyEnabled);
       if (state.settings.chatApiFormat === 'responses') payload = fromResponsesOutput(payload);
       const content = payload?.choices?.[0]?.message?.content;
       result = Array.isArray(content) ? content.map((part) => part.text || '').join('') : content || '';
@@ -12175,9 +12335,12 @@ function settingsFormSnapshot() {
 }
 
 function updateAgentRetryControls() {
-  const enabled = $('#imageAgentPreview').checked;
-  $('#imageAgentRetryMismatch').disabled = !enabled;
-  $('#imageAgentRetryMismatch').closest('.toggle-row').classList.toggle('is-disabled', !enabled);
+  const previewEnabled = $('#imageAgentPreview').checked;
+  const mismatch = $('#imageAgentRetryMismatch');
+  mismatch.disabled = !previewEnabled;
+  mismatch.closest('.agent-retry-child').hidden = !previewEnabled;
+  $('#imageAgentMismatchRetryLimit').closest('label').hidden = !mismatch.checked;
+  $('#imageAgentErrorRetryLimit').closest('label').hidden = !$('#imageAgentRetryErrors').checked;
 }
 
 function captureSettingsBaseline() {
@@ -12222,7 +12385,8 @@ function fillSettingsForm() {
   $('#chatSendReasoning').checked = Boolean(state.settings.chatSendReasoning);
   $('#imageAgentRetryErrors').checked = state.settings.imageAgentRetryErrors;
   $('#imageAgentRetryMismatch').checked = state.settings.imageAgentRetryMismatch;
-  $('#imageAgentRetryLimit').value = state.settings.imageAgentRetryLimit;
+  $('#imageAgentErrorRetryLimit').value = state.settings.imageAgentErrorRetryLimit;
+  $('#imageAgentMismatchRetryLimit').value = state.settings.imageAgentMismatchRetryLimit;
   updateAgentRetryControls();
   $('#reasoningEffort').value = state.settings.reasoningEffort || 'auto';
   $('#chatApiFormat').value = state.settings.chatApiFormat;
@@ -12286,8 +12450,16 @@ function closeSettings(force = false) {
 }
 
 function saveSettings() {
-  const imageAgentRetryLimit = Number($('#imageAgentRetryLimit').value);
-  if (!Number.isInteger(imageAgentRetryLimit) || imageAgentRetryLimit < 0 || imageAgentRetryLimit > 5) {
+  const validRetryLimit = (limit) => Number.isInteger(limit) && limit >= 0 && limit <= 5;
+  let imageAgentErrorRetryLimit = $('#imageAgentErrorRetryLimit').valueAsNumber;
+  let imageAgentMismatchRetryLimit = $('#imageAgentMismatchRetryLimit').valueAsNumber;
+  if (!$('#imageAgentRetryErrors').checked && !validRetryLimit(imageAgentErrorRetryLimit)) {
+    imageAgentErrorRetryLimit = state.settings.imageAgentErrorRetryLimit;
+  }
+  if ((!$('#imageAgentPreview').checked || !$('#imageAgentRetryMismatch').checked) && !validRetryLimit(imageAgentMismatchRetryLimit)) {
+    imageAgentMismatchRetryLimit = state.settings.imageAgentMismatchRetryLimit;
+  }
+  if (![imageAgentErrorRetryLimit, imageAgentMismatchRetryLimit].every(validRetryLimit)) {
     showErrorToast('Agent 重试上限应为 0 到 5 的整数');
     return false;
   }
@@ -12302,7 +12474,7 @@ function saveSettings() {
     showErrorToast('代理地址尚未通过连接测试');
     return;
   }
-  state.settings = { theme: $('#themeSetting').value, imageProvider: $('#imageProvider').value, chatImageTools: Boolean(state.settings.chatImageTools), imageAgentInstruction: $('#imageAgentInstruction').value.trim(), imageAgentPreview: $('#imageAgentPreview').checked, imageAgentAutoParameters: $('#imageAgentAutoParameters').checked, chatHistoryImages: $('#chatHistoryImages').value, conversationSort: $('#conversationSort').value, chatImagePreview: $('#chatImagePreview').checked, chatSendReasoning: $('#chatSendReasoning').checked, imageAgentRetryErrors: $('#imageAgentRetryErrors').checked, imageAgentRetryMismatch: $('#imageAgentRetryMismatch').checked, imageAgentRetryLimit, chatApiFormat: $('#chatApiFormat').value, chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim(), imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, imagePreventPromptRewrite: $('#imagePreventPromptRewrite').checked, persistInputContent: $('#persistInputContent').checked, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), chatWebSearchMode: state.settings.chatWebSearchMode, chatStream: Boolean(state.settings.chatStream), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, imagePrivacyEnabled: $('#imagePrivacyEnabled').checked, imagePrivacyMode: $('#imagePrivacyMode').value, demoMode: $('#demoMode').checked, deleteRetriedRecordOnSuccess: $('#deleteRetriedRecordOnSuccess').checked, clearInputAfterSubmit: $('#clearInputAfterSubmit').checked, alwaysShowRetryButton: $('#alwaysShowRetryButton').checked };
+  state.settings = { theme: $('#themeSetting').value, imageProvider: $('#imageProvider').value, chatImageTools: Boolean(state.settings.chatImageTools), imageAgentInstruction: $('#imageAgentInstruction').value.trim(), imageAgentPreview: $('#imageAgentPreview').checked, imageAgentAutoParameters: $('#imageAgentAutoParameters').checked, chatHistoryImages: $('#chatHistoryImages').value, conversationSort: $('#conversationSort').value, chatImagePreview: $('#chatImagePreview').checked, chatSendReasoning: $('#chatSendReasoning').checked, imageAgentRetryErrors: $('#imageAgentRetryErrors').checked, imageAgentRetryMismatch: $('#imageAgentRetryMismatch').checked, imageAgentErrorRetryLimit, imageAgentMismatchRetryLimit, chatApiFormat: $('#chatApiFormat').value, chatBaseUrl: $('#chatBaseUrl').value.trim(), chatApiKey: $('#chatApiKey').value.trim(), chatModel: $('#chatModel').value.trim(), imageBaseUrl: $('#imageBaseUrl').value.trim(), imageApiKey: $('#imageApiKey').value.trim(), imageModel, imageOptions: { ...state.settings.imageOptions, model: imageModel, countMode: imageCountMode, backgroundMode: imageBackgroundMode }, imageCountMode, imageBackgroundMode, imagePreventPromptRewrite: $('#imagePreventPromptRewrite').checked, persistInputContent: $('#persistInputContent').checked, compressRequestImages, requestImageCompressionLimitMb, systemPrompt: $('#systemPrompt').value.trim(), reasoningEffort: $('#reasoningEffort').value, chatWebSearch: Boolean(state.settings.chatWebSearch), chatWebSearchMode: state.settings.chatWebSearchMode, chatStream: Boolean(state.settings.chatStream), imagePolishSystemPrompt: $('#imagePolishSystemPrompt').value.trim(), imagePolishInstruction: state.settings.imagePolishInstruction, imagePromptTemplates: getImagePromptTemplates(), activeImagePromptTemplateId: state.settings.activeImagePromptTemplateId || '', imagePolishTemplates: getPolishTemplates(), activeImagePolishTemplateId: state.settings.activeImagePolishTemplateId || '', proxyUrl, proxyEnabled, imagePrivacyEnabled: $('#imagePrivacyEnabled').checked, imagePrivacyMode: $('#imagePrivacyMode').value, demoMode: $('#demoMode').checked, deleteRetriedRecordOnSuccess: $('#deleteRetriedRecordOnSuccess').checked, clearInputAfterSubmit: $('#clearInputAfterSubmit').checked, alwaysShowRetryButton: $('#alwaysShowRetryButton').checked };
   for (const kind of ['chat', 'image']) {
     state.settings[`${kind}CustomModels`] = $(`#${kind}CustomModels`).value.trim();
     state.settings[`${kind}FetchedModels`] = [...modelCatalog[kind]];
@@ -12897,7 +13069,8 @@ async function importWorkspace(file) {
       });
     }
     if (['config', 'all', 'chat-config', 'image-config'].includes(scope)) {
-      const importedSettings = payload.apiConfig.settings;
+      const rawSettings = payload.apiConfig.settings;
+      const importedSettings = rawSettings && typeof rawSettings === 'object' ? migrateRetryLimits(rawSettings) : null;
       if (importedSettings && typeof importedSettings === 'object') {
         const importedPromptTemplates = normalizeImagePromptTemplates(importedSettings.imagePromptTemplates).map((template) => ({ ...template, referenceImageIds: remapImageIds(template.referenceImageIds, mergedImages.idMap) }));
         const imagePromptTemplates = merge ? mergeNamedRecords(state.settings.imagePromptTemplates, importedPromptTemplates) : importedPromptTemplates;
@@ -13374,7 +13547,9 @@ function bindEvents() {
   $('#closeSettings').addEventListener('click', () => closeSettings());
   $('#cancelSettings').addEventListener('click', () => closeSettings());
   $('#saveSettings').addEventListener('click', saveSettings);
-  $('#imageAgentPreview').addEventListener('change', updateAgentRetryControls);
+  for (const id of ['imageAgentPreview', 'imageAgentRetryMismatch', 'imageAgentRetryErrors']) {
+    $('#' + id).addEventListener('change', updateAgentRetryControls);
+  }
   $('#themeSetting').addEventListener('change', (event) => applyTheme(event.target.value));
   $('#imagePrivacyEnabled').addEventListener('change', (event) => {
     $('#imagePrivacyMode').disabled = !event.target.checked;
@@ -13405,6 +13580,7 @@ function bindEvents() {
   $('#proxyUrl').addEventListener('input', invalidateProxyConnection);
   bindProxyUrlHistory();
   $('#testProxyConnection').addEventListener('click', testProxyConnection);
+  $('#exportRequestErrors').addEventListener('click', exportRequestErrors);
   $('#proxyEnabled').addEventListener('change', () => {
     if ($('#proxyEnabled').checked && normalizeProxyUrl($('#proxyUrl').value) !== verifiedProxyUrl) {
       $('#proxyEnabled').checked = false;
