@@ -9982,7 +9982,7 @@ function imageRequestPrompt(prompt, settings, config) {
 
 async function fetchImageRequest(endpoint, fetchOptions, isEdit, hasReference, onPhase, onSent, config, references, signal, taskId, settings) {
   if (config.provider && config.provider !== 'openai') {
-    const result = await requestNativeMedia(apiFetch, settings, config, imageRequestPrompt(config.submittedPrompt, settings, config), references, signal || AbortSignal.timeout(600000), onPhase, onSent, async (remote) => {
+    const result = await requestNativeMedia(apiFetch, settings, config, imageRequestPrompt(config.submittedPrompt, settings, config), references, signal || AbortSignal.timeout((config.mediaType === 'video' ? 10 : 12) * 60_000), onPhase, onSent, async (remote) => {
       const task = imageTasks.find((item) => item.id === taskId);
       if (!task) return;
       task.requestLog.remoteRequests = [...(task.requestLog.remoteRequests || []), remote];
@@ -10074,7 +10074,7 @@ async function generateImage(options = {}) {
   options.signal?.addEventListener('abort', abort, { once: true });
   if (options.signal?.aborted) controller.abort();
   const signal = controller.signal;
-  const timeout = setTimeout(abort, config.mediaType === 'video' ? 600000 : 300000);
+  const timeout = setTimeout(abort, (config.mediaType === 'video' ? 10 : 12) * 60_000);
   let retryCleanup;
   const onRequestSent = () => {
     if (removeOldRetry && !retryCleanup) retryCleanup = removeRetriedGenerationRecord(retryTask.id, taskId, generation);

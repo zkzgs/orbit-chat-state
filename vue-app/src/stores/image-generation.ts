@@ -304,7 +304,7 @@ export const useImageGenerationStore = defineStore('image-generation', () => {
     controllers.set(id, controller)
     const timeout = setTimeout(
       () => controller.abort(),
-      config.mediaType === 'video' ? 600000 : 300000,
+      config.mediaType === 'video' ? 10 * 60_000 : 12 * 60_000,
     )
     const persist = () =>
       generation === workspace.generation

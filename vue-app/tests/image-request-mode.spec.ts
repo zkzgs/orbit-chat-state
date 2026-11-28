@@ -50,6 +50,35 @@ for (const [version, url] of [
   ['HTML', '/index.html'],
   ['Vue', '/vue-app/dist/index.html'],
 ]) {
+  for (const mode of ['generations', 'edits']) {
+    test(`${version} ${mode} 等待超过 10 分钟后仍接收上游响应`, async ({ page }) => {
+      await page.clock.install()
+      let releaseResponse!: () => void
+      const pending = new Promise<void>((resolve) => { releaseResponse = resolve })
+      await page.route('https://mode.test/**', async (route) => {
+        if (route.request().method() !== 'POST') return route.fulfill({ json: { data: [] } })
+        await pending
+        return route.fulfill({ status: 400, json: { error: { message: '上游十一分钟后返回' } } })
+      })
+      try {
+        await openWorkspace(page, url)
+        if (mode === 'edits') {
+          await page.locator('#imageReferenceUpload').setInputFiles(await referenceFile(page, 'red'))
+        }
+        await page.locator('#imagePrompt').fill('等待上游响应')
+        await Promise.all([
+          page.waitForRequest(`https://mode.test/v1/images/${mode}`),
+          page.locator('#generateImage').click(),
+        ])
+        await page.clock.fastForward(11 * 60_000)
+        await expect(page.locator('.generation-task-card.running')).toHaveCount(1)
+      } finally {
+        releaseResponse()
+      }
+      await expect(page.getByText('上游十一分钟后返回', { exact: false }).first()).toBeVisible()
+    })
+  }
+
   for (const width of [1440, 390]) {
     test(
       version +
