@@ -398,15 +398,16 @@
 }
 .agent-retry-child {
   margin: 0 0 8px 10px;
-  padding-left: 12px;
-  border-left: 2px solid var(--line);
 }
 #settings-panel-agent .agent-retry-limit {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin: 0 0 12px 12px;
+  width: fit-content;
+  margin: 2px 0 14px;
+  font-size: 12px;
 }
 #settings-panel-agent .agent-retry-child .agent-retry-limit {
   margin-left: 0;

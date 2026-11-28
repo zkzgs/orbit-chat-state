@@ -20,7 +20,7 @@ const blockedRequestHeaders = new Set([
   'upgrade',
   'origin',
   'referer',
-  targetHeader
+  targetHeader, 'x-orbit-proxy-stage'
 ]);
 const blockedResponseHeaders = new Set([
   'connection',
@@ -34,7 +34,7 @@ const blockedResponseHeaders = new Set([
   'access-control-allow-origin',
   'access-control-allow-methods',
   'access-control-allow-headers',
-  'access-control-expose-headers'
+  'access-control-expose-headers', 'x-orbit-proxy-stage'
 ]);
 
 function getUpstreamProxy() {
@@ -143,8 +143,10 @@ function forwardRequest(request, response) {
       if (!blockedResponseHeaders.has(name) && value !== undefined) response.setHeader(name, value);
     });
     setCorsHeaders(request, response);
+    response.setHeader('X-Orbit-Proxy-Stage', 'upstream-response');
     response.writeHead(upstreamResponse.statusCode || 502, upstreamResponse.statusMessage || '');
     upstreamResponse.pipe(response);
+    upstreamResponse.on('error', (error) => response.destroy(error));
     upstreamResponse.on('end', () => {
       console.log(`${request.method} ${target.origin}${target.pathname} -> ${upstreamResponse.statusCode} (${Date.now() - startedAt}ms)`);
     });
@@ -153,9 +155,15 @@ function forwardRequest(request, response) {
   upstreamRequest.setTimeout(requestTimeout, () => upstreamRequest.destroy(new Error('上游请求超时')));
   upstreamRequest.on('error', (error) => {
     if (response.headersSent) response.destroy(error);
-    else sendJson(request, response, 502, { error: { message: error.message || '上游请求失败' } });
+    else {
+      response.setHeader('X-Orbit-Proxy-Stage', 'upstream-connection');
+      sendJson(request, response, 502, { error: { message: error.message || '上游请求失败' } });
+    }
   });
   request.on('aborted', () => upstreamRequest.destroy());
+  response.on('close', () => {
+    if (!response.writableFinished) upstreamRequest.destroy();
+  });
   request.pipe(upstreamRequest);
 }
 
